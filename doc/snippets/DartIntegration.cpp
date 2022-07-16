@@ -26,10 +26,10 @@
 
 #include <dart/simulation/World.hpp>
 
-#include "Magnum/SceneGraph/Scene.h"
-#include "Magnum/SceneGraph/Object.h"
-#include "Magnum/SceneGraph/MatrixTransformation3D.h"
 #include "Magnum/DartIntegration/World.h"
+#include "Magnum/SceneGraph/MatrixTransformation3D.h"
+#include "Magnum/SceneGraph/Object.h"
+#include "Magnum/SceneGraph/Scene.h"
 
 #define DOXYGEN_ELLIPSIS(...) __VA_ARGS__
 
@@ -37,10 +37,13 @@ using namespace Magnum;
 
 dart::simulation::WorldPtr createWorldInDart();
 void addDartSkeletonsToDartWorld();
-template<class T> void deleteObjectsFromScene(T&);
-template<class T> void updateMeshesAndMaterials(T&);
+template <class T>
+void deleteObjectsFromScene(T&);
+template <class T>
+void updateMeshesAndMaterials(T&);
 
-int main() {
+int main()
+{
 
 #ifdef __clang__
 #pragma GCC diagnostic push
@@ -49,70 +52,68 @@ int main() {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-{
-/* [Object-bodynode] */
-dart::dynamics::BodyNode* bodyNode = DOXYGEN_ELLIPSIS({});
-SceneGraph::Object<SceneGraph::MatrixTransformation3D> object;
-auto* obj = new DartIntegration::Object{object, bodyNode};
-/* [Object-bodynode] */
-static_cast<void>(obj);
-}
+    {
+        /* [Object-bodynode] */
+        dart::dynamics::BodyNode* bodyNode = DOXYGEN_ELLIPSIS({});
+        SceneGraph::Object<SceneGraph::MatrixTransformation3D> object;
+        auto* obj = new DartIntegration::Object { object, bodyNode };
+        /* [Object-bodynode] */
+        static_cast<void>(obj);
+    }
 
-{
-/* [Object-shapenode] */
-dart::dynamics::ShapeNode* shapeNode = DOXYGEN_ELLIPSIS({});
-SceneGraph::Object<SceneGraph::MatrixTransformation3D> object;
-auto* obj = new DartIntegration::Object{object, shapeNode};
-/* [Object-shapenode] */
-static_cast<void>(obj);
-}
+    {
+        /* [Object-shapenode] */
+        dart::dynamics::ShapeNode* shapeNode = DOXYGEN_ELLIPSIS({});
+        SceneGraph::Object<SceneGraph::MatrixTransformation3D> object;
+        auto* obj = new DartIntegration::Object { object, shapeNode };
+        /* [Object-shapenode] */
+        static_cast<void>(obj);
+    }
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
 
-{
-/* [World-init] */
-dart::simulation::WorldPtr dartWorld = createWorldInDart();
-addDartSkeletonsToDartWorld();
-SceneGraph::Scene<SceneGraph::MatrixTransformation3D> scene;
-SceneGraph::Object<SceneGraph::MatrixTransformation3D> object{&scene};
+    {
+        /* [World-init] */
+        dart::simulation::WorldPtr dartWorld = createWorldInDart();
+        addDartSkeletonsToDartWorld();
+        SceneGraph::Scene<SceneGraph::MatrixTransformation3D> scene;
+        SceneGraph::Object<SceneGraph::MatrixTransformation3D> object { &scene };
 
-/* object should never be a SceneGraph::Scene */
-DartIntegration::World world{object, *dartWorld};
-/* [World-init] */
+        /* object should never be a SceneGraph::Scene */
+        DartIntegration::World world { object, *dartWorld };
+        /* [World-init] */
 
-UnsignedInt simulationSteps{};
-/* [World-loop] */
-/* Simulate with time step of 0.001 seconds */
-world.world().setTimeStep(0.001);
+        UnsignedInt simulationSteps {};
+        /* [World-loop] */
+        /* Simulate with time step of 0.001 seconds */
+        world.world().setTimeStep(0.001);
 
-for(UnsignedInt i = 0; i < simulationSteps; ++i) {
-    world.step();
+        for (UnsignedInt i = 0; i < simulationSteps; ++i) {
+            world.step();
 
-    /* Update graphics at ~60Hz (15*0.001 ~= 60Hz) */
-    if(i % 15 == 0) {
-        world.refresh();
+            /* Update graphics at ~60Hz (15*0.001 ~= 60Hz) */
+            if (i % 15 == 0) {
+                world.refresh();
 
-        /* Get unused/deleted shapes */
-        std::vector<std::unique_ptr<DartIntegration::Object>>& unusedObjects =
-            world.unusedObjects();
+                /* Get unused/deleted shapes */
+                std::vector<std::unique_ptr<DartIntegration::Object>>& unusedObjects = world.unusedObjects();
 
-        /* The user is expected to handle unused objects. One possible handling
-           would be to remove them from the parent scene. */
-        deleteObjectsFromScene(unusedObjects);
+                /* The user is expected to handle unused objects. One possible handling
+                   would be to remove them from the parent scene. */
+                deleteObjectsFromScene(unusedObjects);
 
-        /* Get updated shapes -- ones that either the materials or the meshes
-          have changed */
-        std::vector<std::reference_wrapper<DartIntegration::Object>>
-            updatedObjects = world.updatedShapeObjects();
+                /* Get updated shapes -- ones that either the materials or the meshes
+                  have changed */
+                std::vector<std::reference_wrapper<DartIntegration::Object>>
+                    updatedObjects = world.updatedShapeObjects();
 
-        updateMeshesAndMaterials(updatedObjects);
+                updateMeshesAndMaterials(updatedObjects);
 
-        /* Clear list of updated objects */
-        world.clearUpdatedShapeObjects();
+                /* Clear list of updated objects */
+                world.clearUpdatedShapeObjects();
+            }
+        }
+        /* [World-loop] */
     }
-}
-/* [World-loop] */
-}
-
 }

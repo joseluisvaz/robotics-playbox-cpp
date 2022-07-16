@@ -34,12 +34,12 @@
  * @brief Class @ref Magnum::ImGuiIntegration::Context
  */
 
-#include <Magnum/Timeline.h>
 #include <Magnum/GL/AbstractShaderProgram.h>
-#include <Magnum/GL/Texture.h>
 #include <Magnum/GL/Buffer.h>
 #include <Magnum/GL/Mesh.h>
+#include <Magnum/GL/Texture.h>
 #include <Magnum/Shaders/FlatGL.h>
+#include <Magnum/Timeline.h>
 
 #include "Magnum/ImGuiIntegration/visibility.h"
 
@@ -47,260 +47,263 @@
 struct ImGuiContext;
 #endif
 
-namespace Magnum { namespace ImGuiIntegration {
+namespace Magnum {
+namespace ImGuiIntegration {
 
-/**
-@brief Dear ImGui context
+    /**
+    @brief Dear ImGui context
 
-Handles initialization and destruction of a Dear ImGui context and implements a
-Magnum-based rendering backend.
+    Handles initialization and destruction of a Dear ImGui context and implements a
+    Magnum-based rendering backend.
 
-@section ImGuiIntegration-Context-usage Usage
+    @section ImGuiIntegration-Context-usage Usage
 
-Creating the @ref Context instance will create the Dear ImGui context and make
-it current. From that point on you can use ImGui calls.
+    Creating the @ref Context instance will create the Dear ImGui context and make
+    it current. From that point on you can use ImGui calls.
 
-@snippet ImGuiIntegration.cpp Context-usage
+    @snippet ImGuiIntegration.cpp Context-usage
 
-@subsection ImGuiIntegration-Context-usage-rendering Rendering
+    @subsection ImGuiIntegration-Context-usage-rendering Rendering
 
-Use @ref newFrame() to initialize a ImGui frame and finally draw it with
-@ref drawFrame() to the currently bound framebuffer. Dear ImGui requires
-@ref GL::Renderer::Feature::ScissorTest "scissor test" to be enabled and
-@ref GL::Renderer::Feature::DepthTest "depth test" to be disabled.
-@ref GL::Renderer::Feature::Blending "Blending" should be enabled and set up as
-below. The following snippet sets up all required renderer state and then
-resets it back to default values. Adapt the state changes based on what else
-you are rendering. Right before @ref drawFrame() you can call
-@ref updateApplicationCursor() if your application implementation supports
-setting cursors.
+    Use @ref newFrame() to initialize a ImGui frame and finally draw it with
+    @ref drawFrame() to the currently bound framebuffer. Dear ImGui requires
+    @ref GL::Renderer::Feature::ScissorTest "scissor test" to be enabled and
+    @ref GL::Renderer::Feature::DepthTest "depth test" to be disabled.
+    @ref GL::Renderer::Feature::Blending "Blending" should be enabled and set up as
+    below. The following snippet sets up all required renderer state and then
+    resets it back to default values. Adapt the state changes based on what else
+    you are rendering. Right before @ref drawFrame() you can call
+    @ref updateApplicationCursor() if your application implementation supports
+    setting cursors.
 
-@snippet ImGuiIntegration-sdl2.cpp Context-usage-per-frame
+    @snippet ImGuiIntegration-sdl2.cpp Context-usage-per-frame
 
-<b></b>
+    <b></b>
 
-@m_class{m-note m-warning}
+    @m_class{m-note m-warning}
 
-@par
-    As shown above, because Dear ImGui has frame-based event handling, you're
-    * *required* to constantly @ref Platform::Sdl2Application::redraw() "redraw()",
-    instead of just waiting on input events. While that's not a problem for
-    games, for regular apps that unfortunately means your application will use
-    the CPU even when completely idle.
+    @par
+        As shown above, because Dear ImGui has frame-based event handling, you're
+        * *required* to constantly @ref Platform::Sdl2Application::redraw()
+    "redraw()", instead of just waiting on input events. While that's not a problem
+    for games, for regular apps that unfortunately means your application will use
+        the CPU even when completely idle.
 
-<b></b>
+    <b></b>
 
-@m_class{m-block m-info}
+    @m_class{m-block m-info}
 
-@par Reduced renderer state setup
-    The above assumes you're drawing ImGui together with something else (a 3D
-    scene in the background, for example). If you only draw ImGui alone, it's
-    enough (and also faster) to set just the following in the constructor,
-    without doing any renderer state changes each frame:
-@par
-    @snippet ImGuiIntegration.cpp Context-usage-state-imgui-only
+    @par Reduced renderer state setup
+        The above assumes you're drawing ImGui together with something else (a 3D
+        scene in the background, for example). If you only draw ImGui alone, it's
+        enough (and also faster) to set just the following in the constructor,
+        without doing any renderer state changes each frame:
+    @par
+        @snippet ImGuiIntegration.cpp Context-usage-state-imgui-only
 
-@subsection ImGuiIntegration-Context-usage-events Event handling
+    @subsection ImGuiIntegration-Context-usage-events Event handling
 
-The templated @ref handleMousePressEvent(), @ref handleMouseReleaseEvent() etc.
-functions are meant to be used inside event handlers of application classes
-such as @ref Platform::Sdl2Application, directly passing the @p event parameter
-to them. The returned value is then @cpp true @ce if ImGui used the event (and
-thus it shouldn't be propagated further) and @cpp false @ce otherwise.
+    The templated @ref handleMousePressEvent(), @ref handleMouseReleaseEvent() etc.
+    functions are meant to be used inside event handlers of application classes
+    such as @ref Platform::Sdl2Application, directly passing the @p event parameter
+    to them. The returned value is then @cpp true @ce if ImGui used the event (and
+    thus it shouldn't be propagated further) and @cpp false @ce otherwise.
 
-@snippet ImGuiIntegration-sdl2.cpp Context-events
+    @snippet ImGuiIntegration-sdl2.cpp Context-events
 
-<b></b>
+    <b></b>
 
-@m_class{m-note m-warning}
+    @m_class{m-note m-warning}
 
-@par
-    As shown above, implementation of those templated functions is provided in
-    a separate @ref ImGuiIntegration/Context.hpp file --- don't forget to
-    include it at the point of use to avoid linker errors. This is done in
-    order to optimize compile times, as the event handling implementation is
-    rather large. See @ref compilation-speedup-hpp for more information.
+    @par
+        As shown above, implementation of those templated functions is provided in
+        a separate @ref ImGuiIntegration/Context.hpp file --- don't forget to
+        include it at the point of use to avoid linker errors. This is done in
+        order to optimize compile times, as the event handling implementation is
+        rather large. See @ref compilation-speedup-hpp for more information.
 
-@subsection ImGuiIntegration-Context-usage-text-input Text input
+    @subsection ImGuiIntegration-Context-usage-text-input Text input
 
-UTF-8 text input is handled via @ref handleTextInputEvent() but the application
-implementations only call
-@ref Platform::Sdl2Application::textInputEvent() "textInputEvent()" when text
-input is enabled. This is done because some platforms require explicit action
-in order to start a text input (for example, to open an on-screen keyboard on
-touch devices, or [IME](https://en.wikipedia.org/wiki/Input_method) for complex
-alphabets). ImGui exposes its desire to capture text input during a call to
-@ref newFrame(). Based on that, you can toggle the text input in the
-application, for example using
-@ref Platform::Sdl2Application::startTextInput() "startTextInput()" /
-@ref Platform::Sdl2Application::stopTextInput() "stopTextInput()" in
-@ref Platform::Sdl2Application or @link Platform::GlfwApplication @endlink:
+    UTF-8 text input is handled via @ref handleTextInputEvent() but the application
+    implementations only call
+    @ref Platform::Sdl2Application::textInputEvent() "textInputEvent()" when text
+    input is enabled. This is done because some platforms require explicit action
+    in order to start a text input (for example, to open an on-screen keyboard on
+    touch devices, or [IME](https://en.wikipedia.org/wiki/Input_method) for complex
+    alphabets). ImGui exposes its desire to capture text input during a call to
+    @ref newFrame(). Based on that, you can toggle the text input in the
+    application, for example using
+    @ref Platform::Sdl2Application::startTextInput() "startTextInput()" /
+    @ref Platform::Sdl2Application::stopTextInput() "stopTextInput()" in
+    @ref Platform::Sdl2Application or @link Platform::GlfwApplication @endlink:
 
-@snippet ImGuiIntegration-sdl2.cpp Context-text-input
+    @snippet ImGuiIntegration-sdl2.cpp Context-text-input
 
-The above snippet also means that ImGui's @cpp InputQueueCharacters @ce will be
-empty unless an text input box is focused --- so if you want to handle text
-input through ImGui manually, you need to explicitly call
-@ref Platform::Sdl2Application::startTextInput() "startTextInput()" /
-@ref Platform::Sdl2Application::stopTextInput() "stopTextInput()" when desired.
+    The above snippet also means that ImGui's @cpp InputQueueCharacters @ce will be
+    empty unless an text input box is focused --- so if you want to handle text
+    input through ImGui manually, you need to explicitly call
+    @ref Platform::Sdl2Application::startTextInput() "startTextInput()" /
+    @ref Platform::Sdl2Application::stopTextInput() "stopTextInput()" when desired.
 
-@section ImGuiIntegration-Context-fonts Loading custom fonts
+    @section ImGuiIntegration-Context-fonts Loading custom fonts
 
-The @ref Context class does additional adjustments to ImGui font setup in order
-to make their scaling DPI-aware. If you load custom fonts, it's recommended to
-do that before the @ref Context class is created, in which case it picks up the
-custom font as default. Create the ImGui context first, add the font and then
-construct the integration using the @ref Context(ImGuiContext&, const Vector2i&)
-constructor, passing the already created ImGui context to it:
+    The @ref Context class does additional adjustments to ImGui font setup in order
+    to make their scaling DPI-aware. If you load custom fonts, it's recommended to
+    do that before the @ref Context class is created, in which case it picks up the
+    custom font as default. Create the ImGui context first, add the font and then
+    construct the integration using the @ref Context(ImGuiContext&, const Vector2i&)
+    constructor, passing the already created ImGui context to it:
 
-@snippet ImGuiIntegration.cpp Context-custom-fonts
+    @snippet ImGuiIntegration.cpp Context-custom-fonts
 
-It's possible to load custom fonts after the @ref Context instance been
-constructed as well, but you first need to clear the default font added during
-@ref Context construction and finally call @ref relayout() to make it pick up
-the updated glyph cache. Alternatively, if you don't call @cpp Clear() @ce, you
-need to explicitly call @cpp PushFont() @ce to switch to a non-default one.
-Compared to loading fonts before the @ref Context is created, this is the less
-efficient option, as the glyph cache is unnecessarily built and discarded one
-more time.
+    It's possible to load custom fonts after the @ref Context instance been
+    constructed as well, but you first need to clear the default font added during
+    @ref Context construction and finally call @ref relayout() to make it pick up
+    the updated glyph cache. Alternatively, if you don't call @cpp Clear() @ce, you
+    need to explicitly call @cpp PushFont() @ce to switch to a non-default one.
+    Compared to loading fonts before the @ref Context is created, this is the less
+    efficient option, as the glyph cache is unnecessarily built and discarded one
+    more time.
 
-@snippet ImGuiIntegration-sdl2.cpp Context-custom-fonts-after
+    @snippet ImGuiIntegration-sdl2.cpp Context-custom-fonts-after
 
-See the @ref ImGuiIntegration-Context-dpi "DPI awareness" section below for
-more information about configuring the fonts for HiDPI screens.
+    See the @ref ImGuiIntegration-Context-dpi "DPI awareness" section below for
+    more information about configuring the fonts for HiDPI screens.
 
-@m_class{m-block m-warning}
+    @m_class{m-block m-warning}
 
-@par Loading fonts from memory
-    Note that, when using @cpp AddFontFromMemoryTTF() @ce (for example
-    to load a font from @ref Corrade::Utility::Resource), ImGui by default
-    takes over the memory ownership. In order to avoid memory corruption on
-    exit, you need to explicitly tell it to *not* do that by setting
-    @cpp ImFontConfig::FontDataOwnedByAtlas @ce to @cpp false @ce:
-@par
-    @snippet ImGuiIntegration.cpp Context-custom-fonts-resource
+    @par Loading fonts from memory
+        Note that, when using @cpp AddFontFromMemoryTTF() @ce (for example
+        to load a font from @ref Corrade::Utility::Resource), ImGui by default
+        takes over the memory ownership. In order to avoid memory corruption on
+        exit, you need to explicitly tell it to *not* do that by setting
+        @cpp ImFontConfig::FontDataOwnedByAtlas @ce to @cpp false @ce:
+    @par
+        @snippet ImGuiIntegration.cpp Context-custom-fonts-resource
 
-@section ImGuiIntegration-Context-dpi DPI awareness
+    @section ImGuiIntegration-Context-dpi DPI awareness
 
-There are three separate concepts for DPI-aware UI rendering:
+    There are three separate concepts for DPI-aware UI rendering:
 
--   UI size --- size of the user interface to which all widgets are positioned
--   Window size --- size of the window to which all input events are related
--   Framebuffer size --- size of the framebuffer the UI is being rendered to
+    -   UI size --- size of the user interface to which all widgets are positioned
+    -   Window size --- size of the window to which all input events are related
+    -   Framebuffer size --- size of the framebuffer the UI is being rendered to
 
-Depending on the platform and use case, each of these three values can be
-different. For example, a game menu screen can have the UI size the same
-regardless of window size. Or on Retina macOS you can have different window and
-framebuffer size and the UI size might be related to window size but
-independent on the framebuffer size.
+    Depending on the platform and use case, each of these three values can be
+    different. For example, a game menu screen can have the UI size the same
+    regardless of window size. Or on Retina macOS you can have different window and
+    framebuffer size and the UI size might be related to window size but
+    independent on the framebuffer size.
 
-When using for example @ref Platform::Sdl2Application or other `*Application`
-implementations, you usually have three values at your disposal ---
-@ref Platform::Sdl2Application::windowSize() "windowSize()",
-@ref Platform::Sdl2Application::framebufferSize() "framebufferSize()" and
-@ref Platform::Sdl2Application::dpiScaling() "dpiScaling()". ImGui interfaces
-are usually positioned with pixel units, getting more room on bigger windows.
-A non-DPI-aware setup would be simply this:
+    When using for example @ref Platform::Sdl2Application or other `*Application`
+    implementations, you usually have three values at your disposal ---
+    @ref Platform::Sdl2Application::windowSize() "windowSize()",
+    @ref Platform::Sdl2Application::framebufferSize() "framebufferSize()" and
+    @ref Platform::Sdl2Application::dpiScaling() "dpiScaling()". ImGui interfaces
+    are usually positioned with pixel units, getting more room on bigger windows.
+    A non-DPI-aware setup would be simply this:
 
-@snippet ImGuiIntegration-sdl2.cpp Context-dpi-unaware
+    @snippet ImGuiIntegration-sdl2.cpp Context-dpi-unaware
 
-If you want the UI to keep a reasonable physical size and stay crisp with
-different pixel densities, pass a ratio of window size and DPI scaling to the
-UI size:
+    If you want the UI to keep a reasonable physical size and stay crisp with
+    different pixel densities, pass a ratio of window size and DPI scaling to the
+    UI size:
 
-@snippet ImGuiIntegration-sdl2.cpp Context-dpi-aware
+    @snippet ImGuiIntegration-sdl2.cpp Context-dpi-aware
 
-Finally, by clamping the first @p size parameter you can achieve various other
-results like limiting it to a minimal / maximal area or have it fully scaled
-with window size. When window size, framebuffer size or DPI scaling changes
-(usually as a response to @ref Platform::Sdl2Application::viewportEvent() "viewportEvent()"),
-call @ref relayout() with the new values. If the pixel density is changed, this
-will result in the font caches being rebuilt.
+    Finally, by clamping the first @p size parameter you can achieve various other
+    results like limiting it to a minimal / maximal area or have it fully scaled
+    with window size. When window size, framebuffer size or DPI scaling changes
+    (usually as a response to @ref Platform::Sdl2Application::viewportEvent()
+    "viewportEvent()"), call @ref relayout() with the new values. If the pixel
+    density is changed, this will result in the font caches being rebuilt.
 
-@m_class{m-note m-warning}
+    @m_class{m-note m-warning}
 
-@par
-    Additional steps are needed on some platforms in order to make the
-    executable itself DPI-aware --- otherwise it will appear blurry on HiDPI
-    displays. See the corresponding sections in
-    @ref platforms-windows-hidpi "Windows" and
-    @ref platforms-macos-hidpi "macOS / iOS" platform docs for details.
+    @par
+        Additional steps are needed on some platforms in order to make the
+        executable itself DPI-aware --- otherwise it will appear blurry on HiDPI
+        displays. See the corresponding sections in
+        @ref platforms-windows-hidpi "Windows" and
+        @ref platforms-macos-hidpi "macOS / iOS" platform docs for details.
 
-@subsection ImGuiIntegration-Context-dpi-fonts HiDPI fonts
+    @subsection ImGuiIntegration-Context-dpi-fonts HiDPI fonts
 
-@note
-    The default font used by ImGui, [Proggy Clean](https://www.dafont.com/proggy-clean.font),
-    is a bitmap one, becoming rather blurry and blocky in larger sizes. It's
-    recommended to switch to a different font for a crisper experience on HiDPI
-    screens.
+    @note
+        The default font used by ImGui, [Proggy
+    Clean](https://www.dafont.com/proggy-clean.font), is a bitmap one, becoming
+    rather blurry and blocky in larger sizes. It's recommended to switch to a
+    different font for a crisper experience on HiDPI screens.
 
-There are further important steps for DPI awareness if you are supplying custom
-fonts. Use the @ref Context(ImGuiContext&, const Vector2&, const Vector2i&, const Vector2i&)
-constructor and pre-scale their size by the ratio of @p size and
-@p framebufferSize. If you don't do that, the fonts will appear tiny on HiDPI
-screens. Example:
+    There are further important steps for DPI awareness if you are supplying custom
+    fonts. Use the @ref Context(ImGuiContext&, const Vector2&, const Vector2i&,
+    const Vector2i&) constructor and pre-scale their size by the ratio of @p size
+    and
+    @p framebufferSize. If you don't do that, the fonts will appear tiny on HiDPI
+    screens. Example:
 
-@snippet ImGuiIntegration-sdl2.cpp Context-custom-fonts-dpi
+    @snippet ImGuiIntegration-sdl2.cpp Context-custom-fonts-dpi
 
-If you supplied custom fonts and pixel density changed, in order to regenerate
-them you have to clear the font atlas and re-add all fonts again with a
-different scaling *before* calling @ref relayout(), for example:
+    If you supplied custom fonts and pixel density changed, in order to regenerate
+    them you have to clear the font atlas and re-add all fonts again with a
+    different scaling *before* calling @ref relayout(), for example:
 
-@snippet ImGuiIntegration-sdl2.cpp Context-relayout-fonts-dpi
+    @snippet ImGuiIntegration-sdl2.cpp Context-relayout-fonts-dpi
 
-If you don't do that, the fonts stay at the original scale, not matching the
-new UI scaling anymore. If you didn't supply any custom font, the function will
-reconfigure the builtin font automatically.
+    If you don't do that, the fonts stay at the original scale, not matching the
+    new UI scaling anymore. If you didn't supply any custom font, the function will
+    reconfigure the builtin font automatically.
 
-@section ImGuiIntegration-Context-large-meshes Large meshes
+    @section ImGuiIntegration-Context-large-meshes Large meshes
 
-Complex user interfaces or widgets like [ImPlot](https://github.com/epezent/implot)
-may end up creating large meshes with more than 65k vertices. Because ImGui
-defaults to 16-bit index buffers this can lead to asserts or visual errors.
+    Complex user interfaces or widgets like
+    [ImPlot](https://github.com/epezent/implot) may end up creating large meshes
+    with more than 65k vertices. Because ImGui defaults to 16-bit index buffers this
+    can lead to asserts or visual errors.
 
-If the underlying GL context supports @ref GL::Mesh::setBaseVertex() "setting the base vertex for indexed meshes"
-the rendering backend sets the @cpp ImGuiBackendFlags_RendererHasVtxOffset @ce
-flag. This lets ImGui know the backend can handle per-draw vertex offsets,
-removing the 65k limitation altogether. Support for that requires one of the
-following:
+    If the underlying GL context supports @ref GL::Mesh::setBaseVertex() "setting
+    the base vertex for indexed meshes" the rendering backend sets the @cpp
+    ImGuiBackendFlags_RendererHasVtxOffset @ce flag. This lets ImGui know the
+    backend can handle per-draw vertex offsets, removing the 65k limitation
+    altogether. Support for that requires one of the following:
 
-@requires_gl32 Extension @gl_extension{ARB,draw_elements_base_vertex}
-@requires_gles32 Extension @gl_extension{OES,draw_elements_base_vertex} or
-    @gl_extension{EXT,draw_elements_base_vertex}
-@requires_webgl_extension WebGL 2.0 and extension
-    @webgl_extension{WEBGL,draw_instanced_base_vertex_base_instance}
+    @requires_gl32 Extension @gl_extension{ARB,draw_elements_base_vertex}
+    @requires_gles32 Extension @gl_extension{OES,draw_elements_base_vertex} or
+        @gl_extension{EXT,draw_elements_base_vertex}
+    @requires_webgl_extension WebGL 2.0 and extension
+        @webgl_extension{WEBGL,draw_instanced_base_vertex_base_instance}
 
-If you can't guarantee that the required GL versions or extensions will be
-available at runtime (especially relevant on WebGL), the next best option is to
-change ImGui's index type to 32-bit by adding the following line to the
-@ref ImGuiIntegration-configuration "ImGui user config":
+    If you can't guarantee that the required GL versions or extensions will be
+    available at runtime (especially relevant on WebGL), the next best option is to
+    change ImGui's index type to 32-bit by adding the following line to the
+    @ref ImGuiIntegration-configuration "ImGui user config":
 
-@code{.cpp}
-#define ImDrawIdx unsigned int
-@endcode
+    @code{.cpp}
+    #define ImDrawIdx unsigned int
+    @endcode
 
-This doubles the size of the index buffer, resulting in potentially reduced
-draw performance, but is guaranteed to work on all GL versions.
+    This doubles the size of the index buffer, resulting in potentially reduced
+    draw performance, but is guaranteed to work on all GL versions.
 
-@section ImGuiIntegration-Context-multiple-contexts Multiple contexts
+    @section ImGuiIntegration-Context-multiple-contexts Multiple contexts
 
-Each instance of @ref Context creates a new ImGui context. You can also pass an
-existing context to the @ref Context(ImGuiContext&, const Vector2i&)
-constructor, which will then take ownership (and thus delete it on
-destruction). Switching between various @cpp ImGui @ce contexts wrapped in
-@ref Context instances is done automatically when calling any of the
-@ref relayout(), @ref newFrame(), @ref drawFrame() APIs or the event handling
-functions. You can also query the instance-specific context with @ref context()
-and call @cpp ImGui::SetCurrentContext() @ce manually on that.
+    Each instance of @ref Context creates a new ImGui context. You can also pass an
+    existing context to the @ref Context(ImGuiContext&, const Vector2i&)
+    constructor, which will then take ownership (and thus delete it on
+    destruction). Switching between various @cpp ImGui @ce contexts wrapped in
+    @ref Context instances is done automatically when calling any of the
+    @ref relayout(), @ref newFrame(), @ref drawFrame() APIs or the event handling
+    functions. You can also query the instance-specific context with @ref context()
+    and call @cpp ImGui::SetCurrentContext() @ce manually on that.
 
-It's also possible to create a context-less instance using the
-@ref Context(NoCreateT) constructor and release context ownership using
-@ref release(). Such instances, together with moved-out instances are empty and
-calling any API that interacts with ImGui is not allowed on these.
+    It's also possible to create a context-less instance using the
+    @ref Context(NoCreateT) constructor and release context ownership using
+    @ref release(). Such instances, together with moved-out instances are empty and
+    calling any API that interacts with ImGui is not allowed on these.
 
-@experimental
-*/
-class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
+    @experimental
+    */
+    class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
     public:
         /**
          * @brief Constructor
@@ -316,8 +319,8 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * @cpp ImGui::CreateContext() @ce and then queries the font glyph
          * cache from ImGui, uploading it to the GPU. If you need to do some
          * extra work on the context and before the font texture gets uploaded,
-         * use @ref Context(ImGuiContext&, const Vector2&, const Vector2i&, const Vector2i&)
-         * instead.
+         * use @ref Context(ImGuiContext&, const Vector2&, const Vector2i&, const
+         * Vector2i&) instead.
          *
          * The sizes are allowed to be zero in any dimension, but note that
          * specifying a concrete value later in @ref relayout() may trigger an
@@ -327,13 +330,14 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * constructor instead.
          * @see @ref relayout(const Vector2&, const Vector2i&, const Vector2i&)
          */
-        explicit Context(const Vector2& size, const Vector2i& windowSize, const Vector2i& framebufferSize);
+        explicit Context(const Vector2& size, const Vector2i& windowSize,
+            const Vector2i& framebufferSize);
 
         /**
          * @brief Construct without DPI awareness
          *
-         * Equivalent to calling @ref Context(const Vector2&, const Vector2i&, const Vector2i&)
-         * with @p size passed to all three parameters.
+         * Equivalent to calling @ref Context(const Vector2&, const Vector2i&, const
+         * Vector2i&) with @p size passed to all three parameters.
          * @see @ref relayout(const Vector2i&)
          */
         explicit Context(const Vector2i& size);
@@ -364,13 +368,15 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * instead.
          * @see @ref relayout(const Vector2&, const Vector2i&, const Vector2i&)
          */
-        explicit Context(ImGuiContext& context, const Vector2& size, const Vector2i& windowSize, const Vector2i& framebufferSize);
+        explicit Context(ImGuiContext& context, const Vector2& size,
+            const Vector2i& windowSize, const Vector2i& framebufferSize);
 
         /**
          * @brief Construct from an existing context without DPI awareness
          *
-         * Equivalent to calling @ref Context(ImGuiContext&, const Vector2&, const Vector2i&, const Vector2i&)
-         * with @p size passed to the last three parameters. In comparison to
+         * Equivalent to calling @ref Context(ImGuiContext&, const Vector2&, const
+         * Vector2i&, const Vector2i&) with @p size passed to the last three
+         * parameters. In comparison to
          * @ref Context(const Vector2i&) this constructor is useful if you need
          * to do some work before the font glyph cache gets uploaded to the
          * GPU, for example @ref ImGuiIntegration-Context-fonts "adding custom fonts".
@@ -446,13 +452,14 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * may trigger an unwanted rebuild of the font glyph cache due to
          * different calculated pixel density.
          */
-        void relayout(const Vector2& size, const Vector2i& windowSize, const Vector2i& framebufferSize);
+        void relayout(const Vector2& size, const Vector2i& windowSize,
+            const Vector2i& framebufferSize);
 
         /**
          * @brief Relayout the context
          *
-         * Equivalent to calling @ref relayout(const Vector2&, const Vector2i&, const Vector2i&)
-         * with @p size passed to all three parameters.
+         * Equivalent to calling @ref relayout(const Vector2&, const Vector2i&, const
+         * Vector2i&) with @p size passed to all three parameters.
          */
         void relayout(const Vector2i& size);
 
@@ -489,7 +496,8 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * propagated to the rest of the application), @cpp false @ce
          * otherwise.
          */
-        template<class MouseEvent> bool handleMousePressEvent(MouseEvent& event);
+        template <class MouseEvent>
+        bool handleMousePressEvent(MouseEvent& event);
 
         /**
          * @brief Handle mouse release event
@@ -500,7 +508,8 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * propagated to the rest of the application), @cpp false @ce
          * otherwise.
          */
-        template<class MouseEvent> bool handleMouseReleaseEvent(MouseEvent& event);
+        template <class MouseEvent>
+        bool handleMouseReleaseEvent(MouseEvent& event);
 
         /**
          * @brief Handle mouse scroll event
@@ -511,7 +520,8 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * propagated to the rest of the application), @cpp false @ce
          * otherwise.
          */
-        template<class MouseScrollEvent> bool handleMouseScrollEvent(MouseScrollEvent& event);
+        template <class MouseScrollEvent>
+        bool handleMouseScrollEvent(MouseScrollEvent& event);
 
         /**
          * @brief Handle mouse move event
@@ -522,7 +532,8 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * propagated to the rest of the application), @cpp false @ce
          * otherwise.
          */
-        template<class MouseMoveEvent> bool handleMouseMoveEvent(MouseMoveEvent& event);
+        template <class MouseMoveEvent>
+        bool handleMouseMoveEvent(MouseMoveEvent& event);
 
         /**
          * @brief Handle key press event
@@ -533,7 +544,8 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * further propagated to the rest of the application), @cpp false @ce
          * otherwise.
          */
-        template<class KeyEvent> bool handleKeyPressEvent(KeyEvent& event);
+        template <class KeyEvent>
+        bool handleKeyPressEvent(KeyEvent& event);
 
         /**
          * @brief Handle key release event
@@ -544,7 +556,8 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * further propagated to the rest of the application), @cpp false @ce
          * otherwise.
          */
-        template<class KeyEvent> bool handleKeyReleaseEvent(KeyEvent& event);
+        template <class KeyEvent>
+        bool handleKeyReleaseEvent(KeyEvent& event);
 
         /**
          * @brief Handle text input event
@@ -555,7 +568,8 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          * further propagated to the rest of the application), @cpp false @ce
          * otherwise.
          */
-        template<class TextInputEvent> bool handleTextInputEvent(TextInputEvent& event);
+        template <class TextInputEvent>
+        bool handleTextInputEvent(TextInputEvent& event);
 
         /**
          * @brief Update application mouse cursor
@@ -563,29 +577,33 @@ class MAGNUM_IMGUIINTEGRATION_EXPORT Context {
          *
          * Calls @cpp ImGui::SetCurrentContext() @ce on @ref context() first
          * and then queries @cpp ImGui::GetMouseCursor() @ce, propagating that
-         * to the application via @ref Platform::Sdl2Application::setCursor() "setCursor()".
-         * If the application doesn't implement a corresponding cursor, falls
-         * back to @ref Platform::Sdl2Application::Cursor::Arrow "Cursor::Arrow".
+         * to the application via @ref Platform::Sdl2Application::setCursor()
+         * "setCursor()". If the application doesn't implement a corresponding cursor,
+         * falls back to @ref Platform::Sdl2Application::Cursor::Arrow
+         * "Cursor::Arrow".
          */
-        template<class Application> void updateApplicationCursor(Application& application);
+        template <class Application>
+        void updateApplicationCursor(Application& application);
 
     private:
         ImGuiContext* _context;
         Shaders::FlatGL2D _shader;
-        GL::Texture2D _texture{NoCreate};
-        GL::Buffer _vertexBuffer{GL::Buffer::TargetHint::Array};
-        GL::Buffer _indexBuffer{GL::Buffer::TargetHint::ElementArray};
+        GL::Texture2D _texture { NoCreate };
+        GL::Buffer _vertexBuffer { GL::Buffer::TargetHint::Array };
+        GL::Buffer _indexBuffer { GL::Buffer::TargetHint::ElementArray };
         Timeline _timeline;
         GL::Mesh _mesh;
-        Vector2 _supersamplingRatio,
-            _eventScaling;
+        Vector2 _supersamplingRatio, _eventScaling;
         BoolVector3 _mousePressed, _mousePressedInThisFrame;
 
     private:
-        template<class KeyEvent> bool handleKeyEvent(KeyEvent& event, bool value);
-        template<class MouseEvent> bool handleMouseEvent(MouseEvent& event, bool value);
-};
+        template <class KeyEvent>
+        bool handleKeyEvent(KeyEvent& event, bool value);
+        template <class MouseEvent>
+        bool handleMouseEvent(MouseEvent& event, bool value);
+    };
 
-}}
+} // namespace ImGuiIntegration
+} // namespace Magnum
 
 #endif

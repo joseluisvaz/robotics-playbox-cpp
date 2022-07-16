@@ -24,102 +24,113 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/Utility/DebugStl.h>
+#include <sstream>
 
 #include "Magnum/Magnum.h"
 
 #include <glm/fwd.hpp>
 #if GLM_VERSION < 96
-#define GLM_FORCE_RADIANS /* Otherwise 0.9.5 spits a lot of loud messages :/ */
+#define GLM_FORCE_RADIANS /* Otherwise 0.9.5 spits a lot of loud messages :/ \
+                           */
 #endif
 #include "Magnum/GlmIntegration/GtcIntegration.h"
 
-namespace Magnum { namespace GlmIntegration { namespace Test { namespace {
+namespace Magnum {
+namespace GlmIntegration {
+    namespace Test {
+        namespace {
 
-struct GtcIntegrationTest: TestSuite::Tester {
-    explicit GtcIntegrationTest();
+            struct GtcIntegrationTest : TestSuite::Tester {
+                explicit GtcIntegrationTest();
 
-    void quat();
-    void dquat();
+                void quat();
+                void dquat();
 
-    void debugQuat();
-};
+                void debugQuat();
+            };
 
-GtcIntegrationTest::GtcIntegrationTest() {
-    addTests({&GtcIntegrationTest::quat,
-              &GtcIntegrationTest::dquat,
+            GtcIntegrationTest::GtcIntegrationTest()
+            {
+                addTests({ &GtcIntegrationTest::quat, &GtcIntegrationTest::dquat,
 
-              &GtcIntegrationTest::debugQuat});
-}
+                    &GtcIntegrationTest::debugQuat });
+            }
 
-void GtcIntegrationTest::quat() {
-    Quaternion a{{1.0f, 2.0f, 3.0f}, 4.0f};
-    #if GLM_VERSION*10 + GLM_VERSION_REVISION < 952
-    /* Due to initializer list fiasco in < 0.9.5.2, using {} gives a totally
-       different result. https://github.com/g-truc/glm/issues/159 */
-    glm::quat b(4.0f, 1.0f, 2.0f, 3.0f);
-    #else
-    glm::quat b{4.0f, 1.0f, 2.0f, 3.0f};
-    #endif
+            void GtcIntegrationTest::quat()
+            {
+                Quaternion a { { 1.0f, 2.0f, 3.0f }, 4.0f };
+#if GLM_VERSION * 10 + GLM_VERSION_REVISION < 952
+                /* Due to initializer list fiasco in < 0.9.5.2, using {} gives a totally
+                   different result. https://github.com/g-truc/glm/issues/159 */
+                glm::quat b(4.0f, 1.0f, 2.0f, 3.0f);
+#else
+                glm::quat b { 4.0f, 1.0f, 2.0f, 3.0f };
+#endif
 
-    CORRADE_COMPARE(Quaternion{b}, a);
-    #if GLM_VERSION < 97
-    /* Can't use {} in < 0.9.5.2 because it matches *anything*. Too bad this
-       version is in 14.04 LTS. https://github.com/g-truc/glm/issues/159. Also,
-       glm::to_string() for quat is since O.9.7. */
-    CORRADE_VERIFY(glm::quat(a) == b);
-    #else
-    CORRADE_COMPARE(glm::quat{a}, b);
-    #endif
+                CORRADE_COMPARE(Quaternion { b }, a);
+#if GLM_VERSION < 97
+                /* Can't use {} in < 0.9.5.2 because it matches *anything*. Too bad this
+                   version is in 14.04 LTS. https://github.com/g-truc/glm/issues/159. Also,
+                   glm::to_string() for quat is since O.9.7. */
+                CORRADE_VERIFY(glm::quat(a) == b);
+#else
+                CORRADE_COMPARE(glm::quat { a }, b);
+#endif
 
-    CORRADE_COMPARE(Quaternion{b}.vector().z(), b.z);
-    /* Can't use {} in < 0.9.5.2 because it matches *anything*. Too bad this
-       version is in 14.04 LTS. https://github.com/g-truc/glm/issues/159 */
-    CORRADE_COMPARE(glm::quat(a).z, a.vector().z());
-}
+                CORRADE_COMPARE(Quaternion { b }.vector().z(), b.z);
+                /* Can't use {} in < 0.9.5.2 because it matches *anything*. Too bad this
+                   version is in 14.04 LTS. https://github.com/g-truc/glm/issues/159 */
+                CORRADE_COMPARE(glm::quat(a).z, a.vector().z());
+            }
 
-void GtcIntegrationTest::dquat() {
-    Quaterniond a{{1.0, 2.0, 3.0}, 4.0};
-    #if GLM_VERSION*10 + GLM_VERSION_REVISION < 952
-    /* Due to initializer list fiasco in < 0.9.5.2, using {} gives a totally
-       different result. https://github.com/g-truc/glm/issues/159 */
-    glm::dquat b(4.0, 1.0, 2.0, 3.0);
-    #else
-    glm::dquat b{4.0, 1.0, 2.0, 3.0};
-    #endif
+            void GtcIntegrationTest::dquat()
+            {
+                Quaterniond a { { 1.0, 2.0, 3.0 }, 4.0 };
+#if GLM_VERSION * 10 + GLM_VERSION_REVISION < 952
+                /* Due to initializer list fiasco in < 0.9.5.2, using {} gives a totally
+                   different result. https://github.com/g-truc/glm/issues/159 */
+                glm::dquat b(4.0, 1.0, 2.0, 3.0);
+#else
+                glm::dquat b { 4.0, 1.0, 2.0, 3.0 };
+#endif
 
-    CORRADE_COMPARE(Quaterniond{b}, a);
-    #if GLM_VERSION < 97
-    /* Can't use {} in < 0.9.5.2 because it matches *anything*. Too bad this
-       version is in 14.04 LTS. https://github.com/g-truc/glm/issues/159. Also,
-       glm::to_string() for quat is since O.9.7. */
-    CORRADE_VERIFY(glm::dquat(a) == b);
-    #else
-    CORRADE_COMPARE(glm::dquat{a}, b);
-    #endif
+                CORRADE_COMPARE(Quaterniond { b }, a);
+#if GLM_VERSION < 97
+                /* Can't use {} in < 0.9.5.2 because it matches *anything*. Too bad this
+                   version is in 14.04 LTS. https://github.com/g-truc/glm/issues/159. Also,
+                   glm::to_string() for quat is since O.9.7. */
+                CORRADE_VERIFY(glm::dquat(a) == b);
+#else
+                CORRADE_COMPARE(glm::dquat { a }, b);
+#endif
 
-    CORRADE_COMPARE(Quaterniond{b}.vector().z(), b.z);
-    /* Can't use {} in < 0.9.5.2 because it matches *anything*. Too bad this
-       version is in 14.04 LTS. https://github.com/g-truc/glm/issues/159 */
-    CORRADE_COMPARE(glm::dquat(a).z, a.vector().z());
-}
+                CORRADE_COMPARE(Quaterniond { b }.vector().z(), b.z);
+                /* Can't use {} in < 0.9.5.2 because it matches *anything*. Too bad this
+                   version is in 14.04 LTS. https://github.com/g-truc/glm/issues/159 */
+                CORRADE_COMPARE(glm::dquat(a).z, a.vector().z());
+            }
 
-void GtcIntegrationTest::debugQuat() {
-    #if GLM_VERSION < 97
-    CORRADE_SKIP("Not available in GLM < 0.9.7.");
-    #else
-    std::ostringstream out;
-    Debug{&out} << glm::mediump_quat{4.0f, 1.0f, 2.0f, 3.0f};
-    #if GLM_VERSION < 990
-    CORRADE_COMPARE(out.str(), "quat(1.000000, 2.000000, 3.000000, 4.000000)\n");
-    #else
-    CORRADE_COMPARE(out.str(), "quat(4.000000, {1.000000, 2.000000, 3.000000})\n");
-    #endif
-    #endif
-}
+            void GtcIntegrationTest::debugQuat()
+            {
+#if GLM_VERSION < 97
+                CORRADE_SKIP("Not available in GLM < 0.9.7.");
+#else
+                std::ostringstream out;
+                Debug { &out } << glm::mediump_quat { 4.0f, 1.0f, 2.0f, 3.0f };
+#if GLM_VERSION < 990
+                CORRADE_COMPARE(out.str(), "quat(1.000000, 2.000000, 3.000000, 4.000000)\n");
+#else
+                CORRADE_COMPARE(out.str(),
+                    "quat(4.000000, {1.000000, 2.000000, 3.000000})\n");
+#endif
+#endif
+            }
 
-}}}}
+        } // namespace
+    } // namespace Test
+} // namespace GlmIntegration
+} // namespace Magnum
 
 CORRADE_TEST_MAIN(Magnum::GlmIntegration::Test::GtcIntegrationTest)

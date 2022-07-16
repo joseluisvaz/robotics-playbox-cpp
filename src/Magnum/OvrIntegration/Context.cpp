@@ -26,69 +26,82 @@
 
 #include "Context.h"
 
-#include "Magnum/OvrIntegration/Session.h"
 #include "Magnum/OvrIntegration/Enums.h"
+#include "Magnum/OvrIntegration/Session.h"
 
 #include <OVR_CAPI_GL.h>
 
-namespace Magnum { namespace OvrIntegration {
+namespace Magnum {
+namespace OvrIntegration {
 
-Debug& operator<<(Debug& debug, const DetectResult value) {
-    switch(value) {
-        #define _c(value) case DetectResult::value: return debug << "OvrIntegration::DetectResult::" #value;
-        _c(ServiceRunning)
-        _c(HmdConnected)
-        #undef _c
+    Debug& operator<<(Debug& debug, const DetectResult value)
+    {
+        switch (value) {
+#define _c(value)             \
+    case DetectResult::value: \
+        return debug << "OvrIntegration::DetectResult::" #value;
+            _c(ServiceRunning) _c(HmdConnected)
+#undef _c
+        }
+
+        return debug << "OvrIntegration::DetectResult::(invalid)";
     }
 
-    return debug << "OvrIntegration::DetectResult::(invalid)";
-}
+    Context* Context::_instance = nullptr;
 
-Context* Context::_instance = nullptr;
+    Context::Context()
+        : _compositor()
+    {
+        CORRADE_ASSERT(_instance == nullptr,
+            "Another instance of Context already exists.", );
 
-Context::Context() : _compositor() {
-    CORRADE_ASSERT(_instance == nullptr, "Another instance of Context already exists.", );
+        _instance = this;
+        ovr_Initialize(nullptr);
+    }
 
-    _instance = this;
-    ovr_Initialize(nullptr);
-}
+    Context::~Context()
+    {
+        ovr_Shutdown();
 
-Context::~Context() {
-    ovr_Shutdown();
+        _instance = nullptr;
+    }
 
-    _instance = nullptr;
-}
+    Context& Context::get()
+    {
+        CORRADE_ASSERT(_instance != nullptr,
+            "No instance of Context for ::get() exists.",
+            *Context::_instance);
 
-Context& Context::get() {
-    CORRADE_ASSERT(_instance != nullptr,
-                   "No instance of Context for ::get() exists.",
-                   *Context::_instance);
+        return *Context::_instance;
+    }
 
-    return *Context::_instance;
-}
+    bool Context::detect() const
+    {
+        return ovr_GetHmdDesc(nullptr).Type != ovrHmd_None;
+    }
 
-bool Context::detect() const {
-    return ovr_GetHmdDesc(nullptr).Type != ovrHmd_None;
-}
+    std::unique_ptr<Session> Context::createSession()
+    {
+        if (!detect())
+            return {};
 
-std::unique_ptr<Session> Context::createSession() {
-    if(!detect()) return {};
+        ovrSession session;
+        ovrGraphicsLuid luid;
+        ovr_Create(&session, &luid);
+        return std::unique_ptr<Session>(new Session(session));
+    }
 
-    ovrSession session;
-    ovrGraphicsLuid luid;
-    ovr_Create(&session, &luid);
-    return std::unique_ptr<Session>(new Session(session));
-}
+    Error Context::error() const
+    {
+        ovrErrorInfo info;
+        ovr_GetLastErrorInfo(&info);
 
-Error Context::error() const {
-    ovrErrorInfo info;
-    ovr_GetLastErrorInfo(&info);
+        Error err;
+        err.type = ErrorType(info.Result);
+        std::strncpy(err.message, info.ErrorString, 512);
 
-    Error err;
-    err.type = ErrorType(info.Result);
-    std::strncpy(err.message, info.ErrorString, 512);
+        return err;
+    }
 
-    return err;
-}
-
-}}
+} // namespace OvrIntegration
+} // namespace Magnum

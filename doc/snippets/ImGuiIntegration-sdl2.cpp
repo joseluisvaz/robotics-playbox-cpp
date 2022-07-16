@@ -24,105 +24,108 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <imgui.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/Platform/Sdl2Application.h>
+#include <imgui.h>
 
 #include "Magnum/ImGuiIntegration/Context.h"
 
 using namespace Magnum;
 
-struct MyApp: Platform::Sdl2Application {
-void foo() {
-{
-/* [Context-dpi-unaware] */
-ImGuiIntegration::Context imgui{windowSize()};
-/* [Context-dpi-unaware] */
-}
-{
-/* [Context-dpi-aware] */
-ImGuiIntegration::Context imgui{
-    Vector2{windowSize()}/dpiScaling(), windowSize(), framebufferSize()};
-/* [Context-dpi-aware] */
-}
+struct MyApp : Platform::Sdl2Application {
+    void foo()
+    {
+        {
+            /* [Context-dpi-unaware] */
+            ImGuiIntegration::Context imgui { windowSize() };
+            /* [Context-dpi-unaware] */
+        }
+        {
+            /* [Context-dpi-aware] */
+            ImGuiIntegration::Context imgui { Vector2 { windowSize() } / dpiScaling(),
+                windowSize(), framebufferSize() };
+            /* [Context-dpi-aware] */
+        }
 
-{
-/* [Context-custom-fonts-after] */
-ImGuiIntegration::Context imgui({640, 480});
+        {
+            /* [Context-custom-fonts-after] */
+            ImGuiIntegration::Context imgui({ 640, 480 });
 
-// ...
+            // ...
 
-ImGui::GetIO().Fonts->Clear();
-ImGui::GetIO().Fonts->AddFontFromFileTTF("SourceSansPro-Regular.ttf", 16.0f);
+            ImGui::GetIO().Fonts->Clear();
+            ImGui::GetIO().Fonts->AddFontFromFileTTF("SourceSansPro-Regular.ttf",
+                16.0f);
 
-imgui.relayout(windowSize());
-/* [Context-custom-fonts-after] */
-}
+            imgui.relayout(windowSize());
+            /* [Context-custom-fonts-after] */
+        }
 
-{
-/* [Context-custom-fonts-dpi] */
-ImGui::CreateContext();
+        {
+            /* [Context-custom-fonts-dpi] */
+            ImGui::CreateContext();
 
-const Vector2 size = Vector2{windowSize()}/dpiScaling();
+            const Vector2 size = Vector2 { windowSize() } / dpiScaling();
 
-ImGui::GetIO().Fonts->AddFontFromFileTTF("SourceSansPro-Regular.ttf",
-    16.0f*framebufferSize().x()/size.x());
+            ImGui::GetIO().Fonts->AddFontFromFileTTF("SourceSansPro-Regular.ttf",
+                16.0f * framebufferSize().x() / size.x());
 
-ImGuiIntegration::Context imgui(*ImGui::GetCurrentContext(),
-    size, windowSize(), framebufferSize());
+            ImGuiIntegration::Context imgui(*ImGui::GetCurrentContext(), size,
+                windowSize(), framebufferSize());
 
-// ...
-/* [Context-custom-fonts-dpi] */
-}
+            // ...
+            /* [Context-custom-fonts-dpi] */
+        }
 
-{
-/* [Context-text-input] */
-_imgui.newFrame();
-if(ImGui::GetIO().WantTextInput && !isTextInputActive())
-    startTextInput();
-else if(!ImGui::GetIO().WantTextInput && isTextInputActive())
-    stopTextInput();
-/* [Context-text-input] */
-}
+        {
+            /* [Context-text-input] */
+            _imgui.newFrame();
+            if (ImGui::GetIO().WantTextInput && !isTextInputActive())
+                startTextInput();
+            else if (!ImGui::GetIO().WantTextInput && isTextInputActive())
+                stopTextInput();
+            /* [Context-text-input] */
+        }
 
-{
-/* [Context-usage-per-frame] */
-GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
-    GL::Renderer::BlendEquation::Add);
-GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
-    GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+        {
+            /* [Context-usage-per-frame] */
+            GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
+                GL::Renderer::BlendEquation::Add);
+            GL::Renderer::setBlendFunction(
+                GL::Renderer::BlendFunction::SourceAlpha,
+                GL::Renderer::BlendFunction::OneMinusSourceAlpha);
 
-_imgui.newFrame();
+            _imgui.newFrame();
 
-// ImGui widget calls here ...
+            // ImGui widget calls here ...
 
-_imgui.updateApplicationCursor(*this);
+            _imgui.updateApplicationCursor(*this);
 
-GL::Renderer::enable(GL::Renderer::Feature::Blending);
-GL::Renderer::enable(GL::Renderer::Feature::ScissorTest);
-GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
-GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
+            GL::Renderer::enable(GL::Renderer::Feature::Blending);
+            GL::Renderer::enable(GL::Renderer::Feature::ScissorTest);
+            GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+            GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
 
-_imgui.drawFrame();
+            _imgui.drawFrame();
 
-GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
-GL::Renderer::disable(GL::Renderer::Feature::ScissorTest);
-GL::Renderer::disable(GL::Renderer::Feature::Blending);
+            GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+            GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
+            GL::Renderer::disable(GL::Renderer::Feature::ScissorTest);
+            GL::Renderer::disable(GL::Renderer::Feature::Blending);
 
-// ...
+            // ...
 
-redraw();
-/* [Context-usage-per-frame] */
-}
-}
+            redraw();
+            /* [Context-usage-per-frame] */
+        }
+    }
 
-void viewportEvent(ViewportEvent& event) override;
-void mousePressEvent(MouseEvent& event) override;
-void mouseReleaseEvent(MouseEvent& event) override;
+    void viewportEvent(ViewportEvent& event) override;
+    void mousePressEvent(MouseEvent& event) override;
+    void mouseReleaseEvent(MouseEvent& event) override;
 
-ImGuiIntegration::Context _imgui{Vector2i{}};
-Float _supersamplingRatio{};
+    ImGuiIntegration::Context _imgui { Vector2i {} };
+    Float _supersamplingRatio {};
 };
 
 /* [Context-events] */
@@ -130,14 +133,18 @@ Float _supersamplingRatio{};
 
 // ...
 
-void MyApp::mousePressEvent(MouseEvent& event) {
-    if(_imgui.handleMousePressEvent(event)) return;
+void MyApp::mousePressEvent(MouseEvent& event)
+{
+    if (_imgui.handleMousePressEvent(event))
+        return;
 
     // event not handled by ImGui, handle it for the app itself
 }
 
-void MyApp::mouseReleaseEvent(MouseEvent& event) {
-    if(_imgui.handleMouseReleaseEvent(event)) return;
+void MyApp::mouseReleaseEvent(MouseEvent& event)
+{
+    if (_imgui.handleMouseReleaseEvent(event))
+        return;
 
     // ...
 }
@@ -146,19 +153,20 @@ void MyApp::mouseReleaseEvent(MouseEvent& event) {
 /* [Context-events] */
 
 /* [Context-relayout-fonts-dpi] */
-void MyApp::viewportEvent(ViewportEvent& event) {
+void MyApp::viewportEvent(ViewportEvent& event)
+{
     // ...
 
-    const Vector2 size = Vector2{event.windowSize()}/event.dpiScaling();
+    const Vector2 size = Vector2 { event.windowSize() } / event.dpiScaling();
 
     /* Reload fonts if pixel density changed */
-    const Float supersamplingRatio = Float(event.framebufferSize().x())/size.x();
-    if(supersamplingRatio != _supersamplingRatio) {
+    const Float supersamplingRatio = Float(event.framebufferSize().x()) / size.x();
+    if (supersamplingRatio != _supersamplingRatio) {
         _supersamplingRatio = supersamplingRatio;
 
         ImGui::GetIO().Fonts->Clear(); // important
         ImGui::GetIO().Fonts->AddFontFromFileTTF("SourceSansPro-Regular.ttf",
-            16.0f*supersamplingRatio);
+            16.0f * supersamplingRatio);
     }
 
     _imgui.relayout(size, event.windowSize(), event.framebufferSize());

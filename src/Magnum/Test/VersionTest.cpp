@@ -23,44 +23,57 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <Corrade/TestSuite/Tester.h>
 #include <Corrade/TestSuite/Compare/Numeric.h>
+#include <Corrade/TestSuite/Tester.h>
 
 #include "Magnum/Magnum.h"
 #include "Magnum/versionIntegration.h"
 
-namespace Magnum { namespace Test { namespace {
+namespace Magnum {
+namespace Test {
+    namespace {
 
-struct VersionTest: TestSuite::Tester {
-    explicit VersionTest();
+        struct VersionTest : TestSuite::Tester {
+            explicit VersionTest();
 
-    void test();
-};
+            void test();
+        };
 
-VersionTest::VersionTest() {
-    addTests({&VersionTest::test});
-}
+        VersionTest::VersionTest() { addTests({ &VersionTest::test }); }
 
-void VersionTest::test() {
-    Debug{} << "MAGNUMINTEGRATION_VERSION_YEAR:" << MAGNUMINTEGRATION_VERSION_YEAR;
-    Debug{} << "MAGNUMINTEGRATION_VERSION_MONTH:" << MAGNUMINTEGRATION_VERSION_MONTH;
-    #ifdef MAGNUMINTEGRATION_VERSION_COMMIT
-    Debug{} << "MAGNUMINTEGRATION_VERSION_COMMIT:" << MAGNUMINTEGRATION_VERSION_COMMIT;
-    Debug{} << "MAGNUMINTEGRATION_VERSION_HASH:" << reinterpret_cast<void*>(MAGNUMINTEGRATION_VERSION_HASH);
-    Debug{} << "MAGNUMINTEGRATION_VERSION_STRING:" << MAGNUMINTEGRATION_VERSION_STRING;
-    #else
-    Debug{} << "No Git version information available.";
-    #endif
+        void VersionTest::test()
+        {
+            Debug {} << "MAGNUMINTEGRATION_VERSION_YEAR:"
+                     << MAGNUMINTEGRATION_VERSION_YEAR;
+            Debug {} << "MAGNUMINTEGRATION_VERSION_MONTH:"
+                     << MAGNUMINTEGRATION_VERSION_MONTH;
+#ifdef MAGNUMINTEGRATION_VERSION_COMMIT
+            Debug {} << "MAGNUMINTEGRATION_VERSION_COMMIT:"
+                     << MAGNUMINTEGRATION_VERSION_COMMIT;
+            Debug {} << "MAGNUMINTEGRATION_VERSION_HASH:"
+                     << reinterpret_cast<void*>(MAGNUMINTEGRATION_VERSION_HASH);
+            Debug {} << "MAGNUMINTEGRATION_VERSION_STRING:"
+                     << MAGNUMINTEGRATION_VERSION_STRING;
+#else
+            Debug {} << "No Git version information available.";
+#endif
 
-    CORRADE_COMPARE_AS(MAGNUMINTEGRATION_VERSION_YEAR, 2019, TestSuite::Compare::GreaterOrEqual);
-    CORRADE_COMPARE_AS(MAGNUMINTEGRATION_VERSION_YEAR, 2100, TestSuite::Compare::LessOrEqual);
-    CORRADE_COMPARE_AS(MAGNUMINTEGRATION_VERSION_MONTH, 0, TestSuite::Compare::Greater);
-    CORRADE_COMPARE_AS(MAGNUMINTEGRATION_VERSION_MONTH, 12, TestSuite::Compare::LessOrEqual);
-    #ifdef MAGNUMINTEGRATION_VERSION_COMMIT
-    CORRADE_COMPARE_AS(MAGNUMINTEGRATION_VERSION_COMMIT, 0, TestSuite::Compare::GreaterOrEqual);
-    #endif
-}
+            CORRADE_COMPARE_AS(MAGNUMINTEGRATION_VERSION_YEAR, 2019,
+                TestSuite::Compare::GreaterOrEqual);
+            CORRADE_COMPARE_AS(MAGNUMINTEGRATION_VERSION_YEAR, 2100,
+                TestSuite::Compare::LessOrEqual);
+            CORRADE_COMPARE_AS(MAGNUMINTEGRATION_VERSION_MONTH, 0,
+                TestSuite::Compare::Greater);
+            CORRADE_COMPARE_AS(MAGNUMINTEGRATION_VERSION_MONTH, 12,
+                TestSuite::Compare::LessOrEqual);
+#ifdef MAGNUMINTEGRATION_VERSION_COMMIT
+            CORRADE_COMPARE_AS(MAGNUMINTEGRATION_VERSION_COMMIT, 0,
+                TestSuite::Compare::GreaterOrEqual);
+#endif
+        }
 
-}}}
+    } // namespace
+} // namespace Test
+} // namespace Magnum
 
 CORRADE_TEST_MAIN(Magnum::Test::VersionTest)

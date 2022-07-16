@@ -38,53 +38,60 @@
 
 #include "Magnum/BulletIntegration/visibility.h"
 
-namespace Magnum { namespace BulletIntegration {
+namespace Magnum {
+namespace BulletIntegration {
 
-/**
-@brief Bullet Physics motion state
+    /**
+    @brief Bullet Physics motion state
 
-Encapsulates `btMotionState` as a @ref SceneGraph feature.
+    Encapsulates `btMotionState` as a @ref SceneGraph feature.
 
-@section BulletIntegration-MotionState-usage Usage
+    @section BulletIntegration-MotionState-usage Usage
 
-Common usage is to either create a `btRigidBody` to share transformation with
-a @ref SceneGraph::Object by passing the motion state in its constructor:
+    Common usage is to either create a `btRigidBody` to share transformation with
+    a @ref SceneGraph::Object by passing the motion state in its constructor:
 
-@snippet BulletIntegration.cpp MotionState-usage
+    @snippet BulletIntegration.cpp MotionState-usage
 
-This way, the scene graph will be affected automatically by the Bullet
-simulation. It's also possible to attach the motion state afterwards:
+    This way, the scene graph will be affected automatically by the Bullet
+    simulation. It's also possible to attach the motion state afterwards:
 
-@snippet BulletIntegration.cpp MotionState-usage-after
+    @snippet BulletIntegration.cpp MotionState-usage-after
 
-Note that in the other direction, the transform is propagated from the scene
-graph to the rigid body only during the initial creation of the
-@cpp btRigidBody @ce or when you explicitly set the body as kinematic (which
-however makes it mostly a passive collision object):
+    Note that in the other direction, the transform is propagated from the scene
+    graph to the rigid body only during the initial creation of the
+    @cpp btRigidBody @ce or when you explicitly set the body as kinematic (which
+    however makes it mostly a passive collision object):
 
-@snippet BulletIntegration.cpp MotionState-kinematic
+    @snippet BulletIntegration.cpp MotionState-kinematic
 
-In order to update the transformation of a non-kinematic body, set the
-transform directly on the @cpp btRigidBody @ce:
+    In order to update the transformation of a non-kinematic body, set the
+    transform directly on the @cpp btRigidBody @ce:
 
-@snippet BulletIntegration.cpp MotionState-update
+    @snippet BulletIntegration.cpp MotionState-update
 
-Keep in mind that changes to a rigid body using
-@cpp btRigidBody::setWorldTransform() @ce may only update the motion state of
-non-static objects and while @cpp btDynamicsWorld::stepSimulation() @ce is
-called.
+    Keep in mind that changes to a rigid body using
+    @cpp btRigidBody::setWorldTransform() @ce may only update the motion state of
+    non-static objects and while @cpp btDynamicsWorld::stepSimulation() @ce is
+    called.
 
-@attention All objects with a @ref MotionState attached that are part of the
-    same Bullet world need to have a single common parent object, otherwise the
-    transformations will not propagate correctly.
-*/
-class MAGNUM_BULLETINTEGRATION_EXPORT MotionState: public SceneGraph::AbstractBasicFeature3D<btScalar>, private btMotionState {
+    @attention All objects with a @ref MotionState attached that are part of the
+        same Bullet world need to have a single common parent object, otherwise the
+        transformations will not propagate correctly.
+    */
+    class MAGNUM_BULLETINTEGRATION_EXPORT MotionState
+        : public SceneGraph::AbstractBasicFeature3D<btScalar>,
+          private btMotionState {
     public:
         /**
          * @brief Constructor
          * @param object    Object this motion state belongs to
          */
-        template<class T> MotionState(T& object): MotionState{object, object} {}
+        template <class T>
+        MotionState(T& object)
+            : MotionState { object, object }
+        {
+        }
 
         ~MotionState();
 
@@ -107,12 +114,15 @@ class MAGNUM_BULLETINTEGRATION_EXPORT MotionState: public SceneGraph::AbstractBa
         void setWorldTransform(const btTransform& worldTrans) override;
 
     private:
-        explicit MotionState(SceneGraph::AbstractBasicObject3D<btScalar>& object, SceneGraph::AbstractBasicTranslationRotation3D<btScalar>& transformation);
+        explicit MotionState(
+            SceneGraph::AbstractBasicObject3D<btScalar>& object,
+            SceneGraph::AbstractBasicTranslationRotation3D<btScalar>& transformation);
 
         SceneGraph::AbstractBasicTranslationRotation3D<btScalar>& _transformation;
-        bool _broken{false};
-};
+        bool _broken { false };
+    };
 
-}}
+} // namespace BulletIntegration
+} // namespace Magnum
 
 #endif

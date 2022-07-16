@@ -27,82 +27,86 @@
 */
 
 /** @file
- * @brief Class @ref Magnum::OvrIntegration::Context, struct @ref Magnum::OvrIntegration::Error, enum @ref Magnum::OvrIntegration::DetectResult, enum set @ref Magnum::OvrIntegration::DetectResults
+ * @brief Class @ref Magnum::OvrIntegration::Context, struct @ref
+ * Magnum::OvrIntegration::Error, enum @ref
+ * Magnum::OvrIntegration::DetectResult, enum set @ref
+ * Magnum::OvrIntegration::DetectResults
  */
 
 #include <memory>
 
 #include "Magnum/OvrIntegration/Compositor.h"
-#include "Magnum/OvrIntegration/Session.h" /* required for std::unique_ptr<Session> */
 #include "Magnum/OvrIntegration/OvrIntegration.h"
+#include "Magnum/OvrIntegration/Session.h" /* required for std::unique_ptr<Session> */
 #include "Magnum/OvrIntegration/visibility.h"
 
-namespace Magnum { namespace OvrIntegration {
+namespace Magnum {
+namespace OvrIntegration {
 
-/**
-@brief Error
+    /**
+    @brief Error
 
-@see @ref Context::error()
-*/
-struct Error {
-    ErrorType type;     /**< @brief Error type */
-    char message[512];  /**< @brief Error message */
-};
+    @see @ref Context::error()
+    */
+    struct Error {
+        ErrorType type; /**< @brief Error type */
+        char message[512]; /**< @brief Error message */
+    };
 
-/**
-@brief Detection result
+    /**
+    @brief Detection result
 
-@see @ref DetectResults, @ref Context::detect(Int)
-*/
-enum class DetectResult: UnsignedByte {
-    ServiceRunning = 1,     /**< Service is running */
-    HmdConnected = 2        /**< HMD is connected */
-};
+    @see @ref DetectResults, @ref Context::detect(Int)
+    */
+    enum class DetectResult : UnsignedByte {
+        ServiceRunning = 1, /**< Service is running */
+        HmdConnected = 2 /**< HMD is connected */
+    };
 
-/**
-@brief Detection results
+    /**
+    @brief Detection results
 
-@see @ref Context::detect(Int)
-*/
-typedef Containers::EnumSet<DetectResult> DetectResults;
+    @see @ref Context::detect(Int)
+    */
+    typedef Containers::EnumSet<DetectResult> DetectResults;
 
-CORRADE_ENUMSET_OPERATORS(DetectResults)
+    CORRADE_ENUMSET_OPERATORS(DetectResults)
 
-/**
-@brief Context singleton
+    /**
+    @brief Context singleton
 
-Handles connection to devices, creation of debug HMDs and provides access to
-the Oculus SDK @ref Compositor.
+    Handles connection to devices, creation of debug HMDs and provides access to
+    the Oculus SDK @ref Compositor.
 
-@section OvrIntegration-Context-usage Usage
+    @section OvrIntegration-Context-usage Usage
 
-There should always only be one instance of @ref Context. As soon as this
-one instance is created, you can access it via @ref Context::get().
+    There should always only be one instance of @ref Context. As soon as this
+    one instance is created, you can access it via @ref Context::get().
 
-Example:
+    Example:
 
-@code{.cpp}
-Context context;
+    @code{.cpp}
+    Context context;
 
-// ...
-
-if(Context::get().detect()) {
     // ...
-}
-@endcode
 
-Or without initializing the service you can do:
+    if(Context::get().detect()) {
+        // ...
+    }
+    @endcode
 
-@code{.cpp}
-const OvrDetectResults result = Context::detect();
-if(result & OvrDetectResult::HmdConnected) {
-    // ...
-}
-@endcode
+    Or without initializing the service you can do:
 
-@see @ref Session, @ref Compositor
-*/
-class MAGNUM_OVRINTEGRATION_EXPORT Context {
+    @code{.cpp}
+    const OvrDetectResults result = Context::detect();
+    if(result & OvrDetectResult::HmdConnected) {
+        // ...
+    }
+    @endcode
+
+    @see @ref Session, @ref Compositor
+    */
+    class MAGNUM_OVRINTEGRATION_EXPORT Context {
     public:
         /**
          * @brief Detect if a device is currently connected
@@ -112,10 +116,13 @@ class MAGNUM_OVRINTEGRATION_EXPORT Context {
          * loading the LibOVRRT shared library.  This may be called before
          * @ref Context() to help decide whether or not to initialize LibOVR.
          */
-        static DetectResults detect(Int timeout) {
+        static DetectResults detect(Int timeout)
+        {
             const ovrDetectResult result = ovr_Detect(timeout);
-            return ((result.IsOculusHMDConnected) ? DetectResult::ServiceRunning : DetectResults{}) |
-                   ((result.IsOculusServiceRunning) ? DetectResult::HmdConnected : DetectResults{});
+            return ((result.IsOculusHMDConnected) ? DetectResult::ServiceRunning
+                                                  : DetectResults {})
+                | ((result.IsOculusServiceRunning) ? DetectResult::HmdConnected
+                                                   : DetectResults {});
         }
 
         /**
@@ -169,11 +176,13 @@ class MAGNUM_OVRINTEGRATION_EXPORT Context {
     private:
         static Context* _instance;
         Compositor _compositor;
-};
+    };
 
-/** @debugoperatorenum{Magnum::OvrIntegration::DetectResult} */
-MAGNUM_OVRINTEGRATION_EXPORT Debug& operator<<(Debug& debug, DetectResult value);
+    /** @debugoperatorenum{Magnum::OvrIntegration::DetectResult} */
+    MAGNUM_OVRINTEGRATION_EXPORT Debug& operator<<(Debug& debug,
+        DetectResult value);
 
-}}
+} // namespace OvrIntegration
+} // namespace Magnum
 
 #endif

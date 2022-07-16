@@ -31,113 +31,141 @@
 
 #include <OVR_CAPI_GL.h>
 
-namespace Magnum { namespace OvrIntegration {
+namespace Magnum {
+namespace OvrIntegration {
 
-Layer::Layer(const LayerType type): _layer(), _type(type) {
-    _layer.Header.Type = ovrLayerType(Int(_type));
-    _layer.Header.Flags = ovrLayerFlag_TextureOriginAtBottomLeft;
-}
-
-Layer& Layer::setEnabled(bool enabled) {
-    if(enabled) {
+    Layer::Layer(const LayerType type)
+        : _layer()
+        , _type(type)
+    {
         _layer.Header.Type = ovrLayerType(Int(_type));
-    } else {
-        _layer.Header.Type = ovrLayerType_Disabled;
+        _layer.Header.Flags = ovrLayerFlag_TextureOriginAtBottomLeft;
     }
-    return *this;
-}
 
-LayerEyeFov::LayerEyeFov(): HeadLockableLayer(LayerType::EyeFov) {}
+    Layer& Layer::setEnabled(bool enabled)
+    {
+        if (enabled) {
+            _layer.Header.Type = ovrLayerType(Int(_type));
+        } else {
+            _layer.Header.Type = ovrLayerType_Disabled;
+        }
+        return *this;
+    }
 
-LayerEyeFov& LayerEyeFov::setColorTexture(const Int eye, const TextureSwapChain& swapChain) {
-    _layer.EyeFov.ColorTexture[eye] = swapChain.ovrTextureSwapChain();
+    LayerEyeFov::LayerEyeFov()
+        : HeadLockableLayer(LayerType::EyeFov)
+    {
+    }
 
-    return *this;
-}
+    LayerEyeFov& LayerEyeFov::setColorTexture(const Int eye,
+        const TextureSwapChain& swapChain)
+    {
+        _layer.EyeFov.ColorTexture[eye] = swapChain.ovrTextureSwapChain();
 
-LayerEyeFov& LayerEyeFov::setViewport(const Int eye, const Range2Di& viewport) {
-    _layer.EyeFov.Viewport[eye] = ovrRecti(viewport);
+        return *this;
+    }
 
-    return *this;
-}
+    LayerEyeFov& LayerEyeFov::setViewport(const Int eye, const Range2Di& viewport)
+    {
+        _layer.EyeFov.Viewport[eye] = ovrRecti(viewport);
 
-LayerEyeFov& LayerEyeFov::setRenderPoses(const Session& session) {
-    const ovrPosef* poses = session.ovrEyePoses();
-    _layer.EyeFov.RenderPose[0] = poses[0];
-    _layer.EyeFov.RenderPose[1] = poses[1];
+        return *this;
+    }
 
-    return *this;
-}
+    LayerEyeFov& LayerEyeFov::setRenderPoses(const Session& session)
+    {
+        const ovrPosef* poses = session.ovrEyePoses();
+        _layer.EyeFov.RenderPose[0] = poses[0];
+        _layer.EyeFov.RenderPose[1] = poses[1];
 
-LayerEyeFov& LayerEyeFov::setFov(const Session& session) {
-    const ovrFovPort* fov = session.ovrHmdDesc().DefaultEyeFov;
-    _layer.EyeFov.Fov[0] = fov[0];
-    _layer.EyeFov.Fov[1] = fov[1];
+        return *this;
+    }
 
-    return *this;
-}
+    LayerEyeFov& LayerEyeFov::setFov(const Session& session)
+    {
+        const ovrFovPort* fov = session.ovrHmdDesc().DefaultEyeFov;
+        _layer.EyeFov.Fov[0] = fov[0];
+        _layer.EyeFov.Fov[1] = fov[1];
 
-LayerQuad::LayerQuad(): HeadLockableLayer(LayerType::Quad) {}
+        return *this;
+    }
 
-LayerQuad& LayerQuad::setColorTexture(const TextureSwapChain& swapChain) {
-    _layer.Quad.ColorTexture = swapChain.ovrTextureSwapChain();
+    LayerQuad::LayerQuad()
+        : HeadLockableLayer(LayerType::Quad)
+    {
+    }
 
-    return *this;
-}
+    LayerQuad& LayerQuad::setColorTexture(const TextureSwapChain& swapChain)
+    {
+        _layer.Quad.ColorTexture = swapChain.ovrTextureSwapChain();
 
-LayerQuad& LayerQuad::setViewport(const Range2Di& viewport) {
-    _layer.Quad.Viewport = ovrRecti(viewport);
+        return *this;
+    }
 
-    return *this;
-}
+    LayerQuad& LayerQuad::setViewport(const Range2Di& viewport)
+    {
+        _layer.Quad.Viewport = ovrRecti(viewport);
 
-LayerQuad& LayerQuad::setCenterPose(const DualQuaternion& pose) {
-    _layer.Quad.QuadPoseCenter = ovrPosef(pose);
+        return *this;
+    }
 
-    return *this;
-}
+    LayerQuad& LayerQuad::setCenterPose(const DualQuaternion& pose)
+    {
+        _layer.Quad.QuadPoseCenter = ovrPosef(pose);
 
-LayerQuad& LayerQuad::setQuadSize(const Vector2& size) {
-    _layer.Quad.QuadSize = ovrVector2f(size);
+        return *this;
+    }
 
-    return *this;
-}
+    LayerQuad& LayerQuad::setQuadSize(const Vector2& size)
+    {
+        _layer.Quad.QuadSize = ovrVector2f(size);
 
-Compositor::Compositor() = default;
+        return *this;
+    }
 
-Layer& Compositor::addLayer(const LayerType type) {
-    switch (type) {
+    Compositor::Compositor() = default;
+
+    Layer& Compositor::addLayer(const LayerType type)
+    {
+        switch (type) {
         case LayerType::EyeFov:
             return addLayerEyeFov();
         case LayerType::EyeMatrix:
-            CORRADE_ASSERT(false,
-                           "Layer type EyeMatrix is currently not supported.",
-                           addLayerEyeFov());
+            CORRADE_ASSERT(false, "Layer type EyeMatrix is currently not supported.",
+                addLayerEyeFov());
         case LayerType::Quad:
             return addLayerQuad();
+        }
+        CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
     }
-    CORRADE_INTERNAL_ASSERT_UNREACHABLE(); /* LCOV_EXCL_LINE */
-}
 
-Layer& Compositor::addLayer(std::unique_ptr<Layer> layer) {
-    _wrappedLayers.push_back(std::move(layer));
-    _layers.emplace_back(&_wrappedLayers.back().get()->layerHeader());
+    Layer& Compositor::addLayer(std::unique_ptr<Layer> layer)
+    {
+        _wrappedLayers.push_back(std::move(layer));
+        _layers.emplace_back(&_wrappedLayers.back().get()->layerHeader());
 
-    return *_wrappedLayers.back().get();
-}
+        return *_wrappedLayers.back().get();
+    }
 
-LayerEyeFov& Compositor::addLayerEyeFov() {
-    return static_cast<LayerEyeFov&>(addLayer(std::move(std::unique_ptr<Layer>(new LayerEyeFov()))));
-}
+    LayerEyeFov& Compositor::addLayerEyeFov()
+    {
+        return static_cast<LayerEyeFov&>(
+            addLayer(std::move(std::unique_ptr<Layer>(new LayerEyeFov()))));
+    }
 
-LayerQuad& Compositor::addLayerQuad() {
-    return static_cast<LayerQuad&>(addLayer(std::move(std::unique_ptr<Layer>(new LayerQuad()))));
-}
+    LayerQuad& Compositor::addLayerQuad()
+    {
+        return static_cast<LayerQuad&>(
+            addLayer(std::move(std::unique_ptr<Layer>(new LayerQuad()))));
+    }
 
-Compositor& Compositor::submitFrame(Session& session) {
-    ovr_SubmitFrame(session.ovrSession(), session.incFrameIndex(), &session.ovrViewScaleDesc(), _layers.data(), _layers.size());
+    Compositor& Compositor::submitFrame(Session& session)
+    {
+        ovr_SubmitFrame(session.ovrSession(), session.incFrameIndex(),
+            &session.ovrViewScaleDesc(), _layers.data(), _layers.size());
 
-    return *this;
-}
+        return *this;
+    }
 
-}}
+} // namespace OvrIntegration
+} // namespace Magnum

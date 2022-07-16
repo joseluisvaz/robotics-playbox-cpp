@@ -35,7 +35,8 @@ Provides conversion for the following types. See
 
 | Magnum type                           | Equivalent GLM type               |
 | ------------------------------------- | --------------------------------- |
-| @ref Magnum::Quaternion "Quaternion", @ref Magnum::Quaterniond "Quaterniond" | `glm::quat`, `glm::dquat` |
+| @ref Magnum::Quaternion "Quaternion", @ref Magnum::Quaterniond "Quaterniond" |
+`glm::quat`, `glm::dquat` |
 
 Types with extra qualifiers (such as `glm::mediump_dquat`) are treated the
 same as types with no qualifier. Debug output using @ref Corrade::Utility::Debug
@@ -54,56 +55,68 @@ for all types is provided as well on GLM >= 0.9.7. Example usage:
 #ifndef DOXYGEN_GENERATING_OUTPUT
 #if GLM_VERSION < 96 /* Was just two decimals in the old days, now it's 3 */
 namespace glm {
-    /* The types were moved from glm::detail to glm in 0.9.6. Can't be bothered
-       so I'm just making aliases here. */
-    template<class T, glm::precision q> using tquat = detail::tquat<T, q>;
-}
+/* The types were moved from glm::detail to glm in 0.9.6. Can't be bothered
+   so I'm just making aliases here. */
+template <class T, glm::precision q>
+using tquat = detail::tquat<T, q>;
+} // namespace glm
 #endif
 
-namespace Magnum { namespace Math { namespace Implementation {
+namespace Magnum {
+namespace Math {
+    namespace Implementation {
 
-/* Quaternion */
+        /* Quaternion */
 
-template<class T,
-    #if GLM_VERSION < 990
-    glm::precision
-    #else
-    glm::qualifier /* thanks, GLM */
-    #endif
-q> struct QuaternionConverter<T, glm::tquat<T, q>> {
-    static Quaternion<T> from(const glm::tquat<T, q>& other) {
-        return {{other.x, other.y, other.z}, other.w};
-    }
+        template <class T,
+#if GLM_VERSION < 990
+            glm::precision
+#else
+            glm::qualifier /* thanks, GLM */
+#endif
+                q>
+        struct QuaternionConverter<T, glm::tquat<T, q>> {
+            static Quaternion<T> from(const glm::tquat<T, q>& other)
+            {
+                return { { other.x, other.y, other.z }, other.w };
+            }
 
-    static glm::tquat<T, q> to(const Quaternion<T>& other) {
-        #if GLM_VERSION*10 + GLM_VERSION_REVISION < 952
-        /* Due to initializer list fiasco in 0.9.5.1, using {} gives a totally
-           different result. https://github.com/g-truc/glm/issues/159 */
-        return glm::tquat<T, q>(other.scalar(), other.vector().x(), other.vector().y(), other.vector().z());
-        #else
-        return {other.scalar(), other.vector().x(), other.vector().y(), other.vector().z()};
-        #endif
-    }
-};
+            static glm::tquat<T, q> to(const Quaternion<T>& other)
+            {
+#if GLM_VERSION * 10 + GLM_VERSION_REVISION < 952
+                /* Due to initializer list fiasco in 0.9.5.1, using {} gives a totally
+                   different result. https://github.com/g-truc/glm/issues/159 */
+                return glm::tquat<T, q>(other.scalar(), other.vector().x(),
+                    other.vector().y(), other.vector().z());
+#else
+                return { other.scalar(), other.vector().x(), other.vector().y(),
+                    other.vector().z() };
+#endif
+            }
+        };
 
-}}}
+    } // namespace Implementation
+} // namespace Math
+} // namespace Magnum
 #endif
 
 #if !defined(CORRADE_NO_DEBUG) && (defined(DOXYGEN_GENERATING_OUTPUT) || GLM_VERSION >= 97)
 namespace glm {
-    /**
-     * @brief Debug output operator for GLM quaternion types
-     *
-     * Uses `glm::to_string()` internally. Available since GLM 0.9.7.
-     */
-    template<class T,
-        #if GLM_VERSION < 990
-        glm::precision
-        #else
-        glm::qualifier /* thanks, GLM */
-        #endif
-    q> Corrade::Utility::Debug& operator<<(Corrade::Utility::Debug& debug, const tquat<T, q>& value);
-}
+/**
+ * @brief Debug output operator for GLM quaternion types
+ *
+ * Uses `glm::to_string()` internally. Available since GLM 0.9.7.
+ */
+template <class T,
+#if GLM_VERSION < 990
+    glm::precision
+#else
+    glm::qualifier /* thanks, GLM */
+#endif
+        q>
+Corrade::Utility::Debug& operator<<(Corrade::Utility::Debug& debug,
+    const tquat<T, q>& value);
+} // namespace glm
 #endif
 
 #endif

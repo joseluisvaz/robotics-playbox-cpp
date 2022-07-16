@@ -30,13 +30,13 @@
  * @brief Class @ref Magnum::DartIntegration::World
  */
 
-#include <functional>
-#include <memory>
 #include <Corrade/Containers/Pointer.h>
 #include <Corrade/Utility/StlForwardVector.h>
 #include <Magnum/SceneGraph/AbstractFeature.h>
 #include <Magnum/SceneGraph/AbstractObject.h>
 #include <Magnum/Trade/AbstractImporter.h>
+#include <functional>
+#include <memory>
 
 #include "Magnum/DartIntegration/Object.h"
 
@@ -50,42 +50,43 @@ namespace dynamics {
     class BodyNode;
     class ShapeNode;
     class Frame;
-}
+} // namespace dynamics
 
-}
+} // namespace dart
 
-namespace Magnum { namespace DartIntegration {
+namespace Magnum {
+namespace DartIntegration {
 
-/**
-@brief DART physics world
+    /**
+    @brief DART physics world
 
-Parses a `dart::simulation::World` for easy usage in Magnum. It basically
-parses all the `dart::dynamics::Skeleton` objects in the DART world and keeps
-track of a list of @ref DartIntegration::Object instances. It automatically
-captures any change that occurs in the DART world. After each @ref refresh()
-the user has access to deleted shapes via @ref unusedObjects() and can get
-updated shapes (material or mesh) via @ref updatedShapeObjects().
+    Parses a `dart::simulation::World` for easy usage in Magnum. It basically
+    parses all the `dart::dynamics::Skeleton` objects in the DART world and keeps
+    track of a list of @ref DartIntegration::Object instances. It automatically
+    captures any change that occurs in the DART world. After each @ref refresh()
+    the user has access to deleted shapes via @ref unusedObjects() and can get
+    updated shapes (material or mesh) via @ref updatedShapeObjects().
 
-@section DartIntegration-World-usage Usage
+    @section DartIntegration-World-usage Usage
 
-Common usage is to create a `dart::simulation::World` and then instantiate
-this class by passing a parent @ref SceneGraph::Object and the DART world to
-its constructor:
+    Common usage is to create a `dart::simulation::World` and then instantiate
+    this class by passing a parent @ref SceneGraph::Object and the DART world to
+    its constructor:
 
-@snippet DartIntegration.cpp World-init
+    @snippet DartIntegration.cpp World-init
 
-Only the DART world can affect the transformation of the Magnum world and not
-the other way around. Of course, one can change things directly in the DART
-world and observe the changes in Magnum world. To update the world and get the
-updated shapes you can do the following:
+    Only the DART world can affect the transformation of the Magnum world and not
+    the other way around. Of course, one can change things directly in the DART
+    world and observe the changes in Magnum world. To update the world and get the
+    updated shapes you can do the following:
 
-@snippet DartIntegration.cpp World-loop
+    @snippet DartIntegration.cpp World-loop
 
-@experimental
-*/
-class MAGNUM_DARTINTEGRATION_EXPORT World {
+    @experimental
+    */
+    class MAGNUM_DARTINTEGRATION_EXPORT World {
     public:
-         /**
+        /**
          * @brief Constructor
          * @param object    Parent object
          * @param world     DART world instance
@@ -94,14 +95,20 @@ class MAGNUM_DARTINTEGRATION_EXPORT World {
          * @ref Trade::AbstractImporter plugin manager for importing model
          * data. If you plan to use importer plugins elsewhere in your
          * application, it's advised to keep the plugin manager on the app side
-         * and construct the world using @ref World(PluginManager::Manager<Trade::AbstractImporter>&, T&, dart::simulation::World&)
-         * instead.
+         * and construct the world using @ref
+         * World(PluginManager::Manager<Trade::AbstractImporter>&, T&,
+         * dart::simulation::World&) instead.
          */
-        template<class T> explicit World(T& object, dart::simulation::World& world): World(nullptr, static_cast<SceneGraph::AbstractBasicObject3D<Float>&>(object), world) {
+        template <class T>
+        explicit World(T& object, dart::simulation::World& world)
+            : World(nullptr,
+                static_cast<SceneGraph::AbstractBasicObject3D<Float>&>(object),
+                world)
+        {
             initializeCreators<T>();
         }
 
-         /**
+        /**
          * @brief Construct with an external importer plugin manager
          * @param importerManager   Importer plugin manager
          * @param object            Parent object
@@ -110,7 +117,14 @@ class MAGNUM_DARTINTEGRATION_EXPORT World {
          * The @p importerManager is expected to be in scope for the whole
          * lifetime of the @ref World instance.
          */
-        template<class T> explicit World(PluginManager::Manager<Trade::AbstractImporter>& importerManager, T& object, dart::simulation::World& world): World(&importerManager, static_cast<SceneGraph::AbstractBasicObject3D<Float>&>(object), world) {
+        template <class T>
+        explicit World(
+            PluginManager::Manager<Trade::AbstractImporter>& importerManager,
+            T& object, dart::simulation::World& world)
+            : World(&importerManager,
+                static_cast<SceneGraph::AbstractBasicObject3D<Float>&>(object),
+                world)
+        {
             initializeCreators<T>();
         }
 
@@ -174,7 +188,7 @@ class MAGNUM_DARTINTEGRATION_EXPORT World {
          * Returns @ref Object instance associated with a DART `Frame` /
          * `BodyNode` / `ShapeNode`. Expects that the DART frame is part of the
          * world.
-        */
+         */
         Object& objectFromDartFrame(dart::dynamics::Frame* frame);
 
         /** @brief Underlying DART world object */
@@ -183,33 +197,50 @@ class MAGNUM_DARTINTEGRATION_EXPORT World {
     private:
         struct State;
 
-        explicit World(PluginManager::Manager<Trade::AbstractImporter>* importerManager, SceneGraph::AbstractBasicObject3D<Float>& object, dart::simulation::World& world);
+        explicit World(
+            PluginManager::Manager<Trade::AbstractImporter>* importerManager,
+            SceneGraph::AbstractBasicObject3D<Float>& object,
+            dart::simulation::World& world);
 
-        SceneGraph::AbstractBasicObject3D<Float>*(*objectCreator)(SceneGraph::AbstractBasicObject3D<Float>& parent);
-        std::unique_ptr<Object>(*dartObjectCreator)(SceneGraph::AbstractBasicObject3D<Float>& parent, dart::dynamics::BodyNode* body);
-        std::unique_ptr<Object>(*dartShapeObjectCreator)(SceneGraph::AbstractBasicObject3D<Float>& parent, dart::dynamics::ShapeNode* node);
+        SceneGraph::AbstractBasicObject3D<Float>* (*objectCreator)(
+            SceneGraph::AbstractBasicObject3D<Float>& parent);
+        std::unique_ptr<Object> (*dartObjectCreator)(
+            SceneGraph::AbstractBasicObject3D<Float>& parent,
+            dart::dynamics::BodyNode* body);
+        std::unique_ptr<Object> (*dartShapeObjectCreator)(
+            SceneGraph::AbstractBasicObject3D<Float>& parent,
+            dart::dynamics::ShapeNode* node);
 
-        void MAGNUM_DARTINTEGRATION_LOCAL parseBodyNodeRecursive(SceneGraph::AbstractBasicObject3D<Float>& parent, dart::dynamics::BodyNode& bn);
+        void MAGNUM_DARTINTEGRATION_LOCAL
+        parseBodyNodeRecursive(SceneGraph::AbstractBasicObject3D<Float>& parent,
+            dart::dynamics::BodyNode& bn);
 
-        template<class T> void initializeCreators();
+        template <class T>
+        void initializeCreators();
 
         Containers::Pointer<State> _state;
-};
-
-template<class T> void World::initializeCreators() {
-    objectCreator = [](SceneGraph::AbstractBasicObject3D<Float>& parent) -> SceneGraph::AbstractBasicObject3D<Float>* {
-        return new T{static_cast<T*>(&parent)};
-    };
-    dartObjectCreator = [](SceneGraph::AbstractBasicObject3D<Float>& parent, dart::dynamics::BodyNode* body) {
-        return std::unique_ptr<Object>(new Object{static_cast<T&>(parent), body});
-    };
-    dartShapeObjectCreator = [](SceneGraph::AbstractBasicObject3D<Float>& parent, dart::dynamics::ShapeNode* node) {
-        return std::unique_ptr<Object>(new Object{static_cast<T&>(parent), node});
     };
 
-    refresh();
-}
+    template <class T>
+    void World::initializeCreators()
+    {
+        objectCreator = [](SceneGraph::AbstractBasicObject3D<Float>& parent)
+            -> SceneGraph::AbstractBasicObject3D<Float>* {
+            return new T { static_cast<T*>(&parent) };
+        };
+        dartObjectCreator = [](SceneGraph::AbstractBasicObject3D<Float>& parent,
+                                dart::dynamics::BodyNode* body) {
+            return std::unique_ptr<Object>(new Object { static_cast<T&>(parent), body });
+        };
+        dartShapeObjectCreator = [](SceneGraph::AbstractBasicObject3D<Float>& parent,
+                                     dart::dynamics::ShapeNode* node) {
+            return std::unique_ptr<Object>(new Object { static_cast<T&>(parent), node });
+        };
 
-}}
+        refresh();
+    }
+
+} // namespace DartIntegration
+} // namespace Magnum
 
 #endif

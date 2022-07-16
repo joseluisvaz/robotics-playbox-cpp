@@ -25,49 +25,60 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/Utility/DebugStl.h>
+#include <sstream>
 
 #include "Magnum/BulletIntegration/DebugDraw.h"
 
-namespace Magnum { namespace BulletIntegration { namespace Test { namespace {
+namespace Magnum {
+namespace BulletIntegration {
+    namespace Test {
+        namespace {
 
-struct DebugDrawTest: TestSuite::Tester {
-    explicit DebugDrawTest();
+            struct DebugDrawTest : TestSuite::Tester {
+                explicit DebugDrawTest();
 
-    void constructNoInit();
-    void constructCopy();
+                void constructNoInit();
+                void constructCopy();
 
-    void debugMode();
-};
+                void debugMode();
+            };
 
-DebugDrawTest::DebugDrawTest() {
-    addTests({&DebugDrawTest::constructNoInit,
-              &DebugDrawTest::constructCopy,
-              &DebugDrawTest::debugMode});
-}
+            DebugDrawTest::DebugDrawTest()
+            {
+                addTests({ &DebugDrawTest::constructNoInit, &DebugDrawTest::constructCopy,
+                    &DebugDrawTest::debugMode });
+            }
 
-void DebugDrawTest::constructNoInit() {
-    {
-        DebugDraw debugDraw{NoCreate};
-    }
+            void DebugDrawTest::constructNoInit()
+            {
+                {
+                    DebugDraw debugDraw { NoCreate };
+                }
 
-    CORRADE_VERIFY(true);
-}
+                CORRADE_VERIFY(true);
+            }
 
-void DebugDrawTest::constructCopy() {
-    CORRADE_VERIFY(!std::is_constructible<DebugDraw, const DebugDraw&>{});
-    CORRADE_VERIFY(!std::is_assignable<DebugDraw, const DebugDraw&>{});
-}
+            void DebugDrawTest::constructCopy()
+            {
+                CORRADE_VERIFY(!std::is_constructible<DebugDraw, const DebugDraw&> {});
+                CORRADE_VERIFY(!std::is_assignable<DebugDraw, const DebugDraw&> {});
+            }
 
-void DebugDrawTest::debugMode() {
-    std::ostringstream out;
+            void DebugDrawTest::debugMode()
+            {
+                std::ostringstream out;
 
-    Debug(&out) << DebugDraw::Mode::DrawAabb << DebugDraw::Mode(0xbaadcafe);
-    CORRADE_COMPARE(out.str(), "BulletIntegration::DebugDraw::Mode::DrawAabb BulletIntegration::DebugDraw::Mode(0xbaadcafe)\n");
-}
+                Debug(&out) << DebugDraw::Mode::DrawAabb << DebugDraw::Mode(0xbaadcafe);
+                CORRADE_COMPARE(out.str(),
+                    "BulletIntegration::DebugDraw::Mode::DrawAabb "
+                    "BulletIntegration::DebugDraw::Mode(0xbaadcafe)\n");
+            }
 
-}}}}
+        } // namespace
+    } // namespace Test
+} // namespace BulletIntegration
+} // namespace Magnum
 
 CORRADE_TEST_MAIN(Magnum::BulletIntegration::Test::DebugDrawTest)

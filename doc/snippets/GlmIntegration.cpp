@@ -23,12 +23,13 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#include "Magnum/GlmIntegration/Integration.h"
 #include "Magnum/Magnum.h"
 #include "Magnum/Math/Matrix3.h"
-#include "Magnum/GlmIntegration/Integration.h"
 
 #if GLM_VERSION < 96
-#define GLM_FORCE_RADIANS /* Otherwise 0.9.5 spits a lot of loud messages :/ */
+#define GLM_FORCE_RADIANS /* Otherwise 0.9.5 spits a lot of loud messages :/ \
+                           */
 #endif
 #include "Magnum/GlmIntegration/GtcIntegration.h"
 
@@ -40,65 +41,65 @@
 using namespace Magnum;
 using namespace Magnum::Math::Literals;
 
-int main() {
+int main()
 {
+    {
 /* The include is already above, so doing it again here should be harmless */
 /* [namespace] */
 #include <Magnum/GlmIntegration/Integration.h>
 
-glm::vec3 a{1.0f, 2.0f, 3.0f};
-Vector3 b(a);
+        glm::vec3 a { 1.0f, 2.0f, 3.0f };
+        Vector3 b(a);
 
-auto c = Matrix4::rotation(35.0_degf, Vector3(a));
-/* [namespace] */
-static_cast<void>(c);
-}
+        auto c = Matrix4::rotation(35.0_degf, Vector3(a));
+        /* [namespace] */
+        static_cast<void>(c);
+    }
 
-{
+    {
 /* The include is already above, so doing it again here should be harmless */
 /* [Integration] */
 #include <Magnum/GlmIntegration/Integration.h>
 
-glm::vec3 a{1.0f, 2.0f, 3.0f};
-Vector3 b(a);
+        glm::vec3 a { 1.0f, 2.0f, 3.0f };
+        Vector3 b(a);
 
-glm::mat3 c = glm::mat3(Matrix3::rotation(35.0_degf));
+        glm::mat3 c = glm::mat3(Matrix3::rotation(35.0_degf));
 
-Debug{} << glm::lowp_ivec3{1, 42, -3}; // prints ivec3(1, 42, -3)
-/* [Integration] */
-static_cast<void>(b);
-static_cast<void>(c);
-}
+        Debug {} << glm::lowp_ivec3 { 1, 42, -3 }; // prints ivec3(1, 42, -3)
+        /* [Integration] */
+        static_cast<void>(b);
+        static_cast<void>(c);
+    }
 
 #if GLM_VERSION >= 97
-{
+    {
 /* The include is already above, so doing it again here should be harmless */
 /* [GtcIntegration] */
 #include <Magnum/GlmIntegration/GtcIntegration.h>
 
-Quaterniond a = Quaterniond::rotation(35.0_deg, Vector3d::xAxis());
-glm::dquat b(a);
+        Quaterniond a = Quaterniond::rotation(35.0_deg, Vector3d::xAxis());
+        glm::dquat b(a);
 
-Debug{} << glm::mediump_quat{4.0f, 1.0f, 2.0f, 3.0f};
-    // prints quat(4.000000, {1.000000, 2.000000, 3.000000})
-/* [GtcIntegration] */
-static_cast<void>(b);
-}
+        Debug {} << glm::mediump_quat { 4.0f, 1.0f, 2.0f, 3.0f };
+        // prints quat(4.000000, {1.000000, 2.000000, 3.000000})
+        /* [GtcIntegration] */
+        static_cast<void>(b);
+    }
 
-{
+    {
 /* The include is already above, so doing it again here should be harmless */
 /* [GtxIntegration] */
 #include <Magnum/GlmIntegration/GtxIntegration.h>
 
-DualQuaternion a = DualQuaternion::translation({1.0f, 2.0f, 3.0f});
-glm::dualquat b(a);
+        DualQuaternion a = DualQuaternion::translation({ 1.0f, 2.0f, 3.0f });
+        glm::dualquat b(a);
 
-Debug{} << glm::highp_ddualquat{{4.0, 1.0, 2.0, 3.0},
-                                {8.0, 5.0, 6.0, 7.0}};
-    // prints ddualquat((4.000000, {1.000000, 2.000000, 3.000000}),
-    //                  (8.000000, {5.000000, 6.000000, 7.000000}))
-/* [GtxIntegration] */
-static_cast<void>(b);
-}
+        Debug {} << glm::highp_ddualquat { { 4.0, 1.0, 2.0, 3.0 }, { 8.0, 5.0, 6.0, 7.0 } };
+        // prints ddualquat((4.000000, {1.000000, 2.000000, 3.000000}),
+        //                  (8.000000, {5.000000, 6.000000, 7.000000}))
+        /* [GtxIntegration] */
+        static_cast<void>(b);
+    }
 #endif
 }

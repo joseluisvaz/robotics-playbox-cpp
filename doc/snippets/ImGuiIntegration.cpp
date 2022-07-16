@@ -24,74 +24,77 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <imgui.h>
 #include <Corrade/Containers/StringView.h>
 #include <Corrade/Utility/Resource.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/Math/Color.h>
+#include <imgui.h>
 
-#include "Magnum/ImGuiIntegration/Integration.h"
 #include "Magnum/ImGuiIntegration/Context.h"
+#include "Magnum/ImGuiIntegration/Integration.h"
 
 using namespace Magnum;
 
-int main() {
+int main()
 {
+    {
 /* The include is already above, so doing it again here should be harmless */
 /* [Integration] */
 #include <Magnum/ImGuiIntegration/Integration.h>
 
-ImVec2 a{20.0f, 50.0f};
-Vector2 b(a);
+        ImVec2 a { 20.0f, 50.0f };
+        Vector2 b(a);
 
-using namespace Math::Literals;
-ImColor c = ImColor(0xff9391_rgbf);
-/* [Integration] */
-static_cast<void>(b);
-static_cast<void>(c);
-}
+        using namespace Math::Literals;
+        ImColor c = ImColor(0xff9391_rgbf);
+        /* [Integration] */
+        static_cast<void>(b);
+        static_cast<void>(c);
+    }
 
-{
-/* [Context-usage] */
-ImGuiIntegration::Context imgui{{640, 480}};
+    {
+        /* [Context-usage] */
+        ImGuiIntegration::Context imgui { { 640, 480 } };
 
-// ...
-/* [Context-usage] */
-}
+        // ...
+        /* [Context-usage] */
+    }
 
-{
-/* [Context-usage-state-imgui-only] */
-GL::Renderer::enable(GL::Renderer::Feature::Blending);
-GL::Renderer::enable(GL::Renderer::Feature::ScissorTest);
-GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
-    GL::Renderer::BlendEquation::Add);
-GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
-    GL::Renderer::BlendFunction::OneMinusSourceAlpha);
-/* [Context-usage-state-imgui-only] */
-}
-{
-/* [Context-custom-fonts] */
-ImGui::CreateContext();
+    {
+        /* [Context-usage-state-imgui-only] */
+        GL::Renderer::enable(GL::Renderer::Feature::Blending);
+        GL::Renderer::enable(GL::Renderer::Feature::ScissorTest);
+        GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
+            GL::Renderer::BlendEquation::Add);
+        GL::Renderer::setBlendFunction(
+            GL::Renderer::BlendFunction::SourceAlpha,
+            GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+        /* [Context-usage-state-imgui-only] */
+    }
+    {
+        /* [Context-custom-fonts] */
+        ImGui::CreateContext();
 
-ImGui::GetIO().Fonts->AddFontFromFileTTF("SourceSansPro-Regular.ttf", 16.0f);
+        ImGui::GetIO().Fonts->AddFontFromFileTTF("SourceSansPro-Regular.ttf",
+            16.0f);
 
-ImGuiIntegration::Context imgui(*ImGui::GetCurrentContext(), {640, 480});
+        ImGuiIntegration::Context imgui(*ImGui::GetCurrentContext(), { 640, 480 });
 
-// ...
-/* [Context-custom-fonts] */
-}
+        // ...
+        /* [Context-custom-fonts] */
+    }
 
-{
-/* [Context-custom-fonts-resource] */
-Utility::Resource rs{"fonts"};
-Containers::ArrayView<const char> font = rs.getRaw("SourceSansPro-Regular.ttf");
+    {
+        /* [Context-custom-fonts-resource] */
+        Utility::Resource rs { "fonts" };
+        Containers::ArrayView<const char> font = rs.getRaw("SourceSansPro-Regular.ttf");
 
-ImFontConfig fontConfig;
-fontConfig.FontDataOwnedByAtlas = false;
-ImGui::GetIO().Fonts->AddFontFromMemoryTTF(
-    const_cast<char*>(font.data()), font.size(), 16.0f, &fontConfig);
+        ImFontConfig fontConfig;
+        fontConfig.FontDataOwnedByAtlas = false;
+        ImGui::GetIO().Fonts->AddFontFromMemoryTTF(const_cast<char*>(font.data()),
+            font.size(), 16.0f, &fontConfig);
 
-// ...
-/* [Context-custom-fonts-resource] */
-}
+        // ...
+        /* [Context-custom-fonts-resource] */
+    }
 }

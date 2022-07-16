@@ -34,7 +34,8 @@ Provides conversion for the following types. See
 
 | Magnum type                           | Equivalent GLM type               |
 | ------------------------------------- | --------------------------------- |
-| @ref Magnum::DualQuaternion "DualQuaternion", @ref Magnum::DualQuaterniond "DualQuaterniond" | `glm::dualquat`, `glm::ddualquat` |
+| @ref Magnum::DualQuaternion "DualQuaternion", @ref Magnum::DualQuaterniond
+"DualQuaterniond" | `glm::dualquat`, `glm::ddualquat` |
 
 Types with extra qualifiers (such as `glm::mediump_ddualquat`) are treated the
 same as types with no qualifier. Debug output using @ref Corrade::Utility::Debug
@@ -47,57 +48,67 @@ for all types is provided as well. Example usage:
 
 #include <glm/gtx/dual_quaternion.hpp>
 
-#include "Magnum/Math/DualQuaternion.h"
 #include "Magnum/GlmIntegration/GtcIntegration.h"
+#include "Magnum/Math/DualQuaternion.h"
 
 /* Don't list (useless) Magnum and Math namespaces without anything else */
 #ifndef DOXYGEN_GENERATING_OUTPUT
 #if GLM_VERSION < 96 /* Was just two decimals in the old days, now it's 3 */
 namespace glm {
-    /* The types were moved from glm::detail to glm in 0.9.6. Can't be bothered
-       so I'm just making aliases here. */
-    template<class T, glm::precision q> using tdualquat = detail::tdualquat<T, q>;
-}
+/* The types were moved from glm::detail to glm in 0.9.6. Can't be bothered
+   so I'm just making aliases here. */
+template <class T, glm::precision q>
+using tdualquat = detail::tdualquat<T, q>;
+} // namespace glm
 #endif
 
-namespace Magnum { namespace Math { namespace Implementation {
+namespace Magnum {
+namespace Math {
+    namespace Implementation {
 
-/* Dual quaternion */
+        /* Dual quaternion */
 
-template<class T,
-    #if GLM_VERSION < 990
-    glm::precision
-    #else
-    glm::qualifier /* thanks, GLM */
-    #endif
-q> struct DualQuaternionConverter<T, glm::tdualquat<T, q>> {
-    static DualQuaternion<T> from(const glm::tdualquat<T, q>& other) {
-        return {Quaternion<T>(other.real), Quaternion<T>(other.dual)};
-    }
+        template <class T,
+#if GLM_VERSION < 990
+            glm::precision
+#else
+            glm::qualifier /* thanks, GLM */
+#endif
+                q>
+        struct DualQuaternionConverter<T, glm::tdualquat<T, q>> {
+            static DualQuaternion<T> from(const glm::tdualquat<T, q>& other)
+            {
+                return { Quaternion<T>(other.real), Quaternion<T>(other.dual) };
+            }
 
-    static glm::tdualquat<T, q> to(const DualQuaternion<T>& other) {
-        return {glm::tquat<T, q>(other.real()), glm::tquat<T, q>(other.dual())};
-    }
-};
+            static glm::tdualquat<T, q> to(const DualQuaternion<T>& other)
+            {
+                return { glm::tquat<T, q>(other.real()), glm::tquat<T, q>(other.dual()) };
+            }
+        };
 
-}}}
+    } // namespace Implementation
+} // namespace Math
+} // namespace Magnum
 #endif
 
 #if !defined(CORRADE_NO_DEBUG) && (defined(DOXYGEN_GENERATING_OUTPUT) || GLM_VERSION >= 97)
 namespace glm {
-    /**
-     * @brief Debug output operator for GLM dual quaternion types
-     *
-     * Uses `glm::to_string()` internally. Available since GLM 0.9.7.
-     */
-    template<class T,
-        #if GLM_VERSION < 990
-        glm::precision
-        #else
-        glm::qualifier /* thanks, GLM */
-        #endif
-    q> Corrade::Utility::Debug& operator<<(Corrade::Utility::Debug& debug, const tdualquat<T, q>& value);
-}
+/**
+ * @brief Debug output operator for GLM dual quaternion types
+ *
+ * Uses `glm::to_string()` internally. Available since GLM 0.9.7.
+ */
+template <class T,
+#if GLM_VERSION < 990
+    glm::precision
+#else
+    glm::qualifier /* thanks, GLM */
+#endif
+        q>
+Corrade::Utility::Debug& operator<<(Corrade::Utility::Debug& debug,
+    const tdualquat<T, q>& value);
+} // namespace glm
 #endif
 
 #endif

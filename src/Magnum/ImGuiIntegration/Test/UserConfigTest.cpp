@@ -28,29 +28,34 @@
 
 #include <imgui.h>
 
-namespace Magnum { namespace ImGuiIntegration { namespace Test { namespace {
+namespace Magnum {
+namespace ImGuiIntegration {
+    namespace Test {
+        namespace {
 
-struct UserConfigTest: TestSuite::Tester {
-    explicit UserConfigTest();
+            struct UserConfigTest : TestSuite::Tester {
+                explicit UserConfigTest();
 
-    void test();
-};
+                void test();
+            };
 
-UserConfigTest::UserConfigTest() {
-    addTests({&UserConfigTest::test});
-}
+            UserConfigTest::UserConfigTest() { addTests({ &UserConfigTest::test }); }
 
-void UserConfigTest::test() {
-    bool included =
-        #ifdef Magnum_ImGuiIntegration_Test_UserConfigTest_h
-        true
-        #else
-        false
-        #endif
-        ;
-    CORRADE_FAIL_IF(!included, "UserConfigTest.h not included");
-}
+            void UserConfigTest::test()
+            {
+                bool included =
+#ifdef Magnum_ImGuiIntegration_Test_UserConfigTest_h
+                    true
+#else
+                    false
+#endif
+                    ;
+                CORRADE_FAIL_IF(!included, "UserConfigTest.h not included");
+            }
 
-}}}}
+        } // namespace
+    } // namespace Test
+} // namespace ImGuiIntegration
+} // namespace Magnum
 
 CORRADE_TEST_MAIN(Magnum::ImGuiIntegration::Test::UserConfigTest)

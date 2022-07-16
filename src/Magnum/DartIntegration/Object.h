@@ -27,7 +27,8 @@
 */
 
 /** @file
- * @brief Class @ref Magnum::DartIntegration::Object, struct @ref Magnum::DartIntegration::DrawData
+ * @brief Class @ref Magnum::DartIntegration::Object, struct @ref
+ * Magnum::DartIntegration::DrawData
  */
 
 #include <Corrade/Containers/Array.h>
@@ -39,96 +40,114 @@
 
 #include "Magnum/DartIntegration/visibility.h"
 
-namespace dart { namespace dynamics {
+namespace dart {
+namespace dynamics {
     class BodyNode;
     class ShapeNode;
-}}
+} // namespace dynamics
+} // namespace dart
 
-namespace Magnum { namespace DartIntegration {
+namespace Magnum {
+namespace DartIntegration {
 
-/**
-@brief Shape draw data
-
-@see @ref Object::drawData()
-@experimental
-*/
-struct DrawData {
     /**
-     * @brief Constructor
-     * @param meshes            Meshes
-     * @param materials         Material data
-     * @param textures          Textures
-     * @param scaling           Object scaling
-     *
-     * Used internally by @ref Object.
-     */
-    explicit DrawData(Containers::Array<GL::Mesh> meshes, Containers::Array<Trade::PhongMaterialData> materials, Containers::Array<Containers::Optional<GL::Texture2D>> textures, const Vector3& scaling);
+    @brief Shape draw data
 
-    /** @brief Copying is not allowed */
-    DrawData(const DrawData&) = delete;
+    @see @ref Object::drawData()
+    @experimental
+    */
+    struct DrawData {
+        /**
+         * @brief Constructor
+         * @param meshes            Meshes
+         * @param materials         Material data
+         * @param textures          Textures
+         * @param scaling           Object scaling
+         *
+         * Used internally by @ref Object.
+         */
+        explicit DrawData(
+            Containers::Array<GL::Mesh> meshes,
+            Containers::Array<Trade::PhongMaterialData> materials,
+            Containers::Array<Containers::Optional<GL::Texture2D>> textures,
+            const Vector3& scaling);
 
-    /** @brief Move constructor */
-    DrawData(DrawData&&) noexcept = default;
+        /** @brief Copying is not allowed */
+        DrawData(const DrawData&) = delete;
 
-    /** @brief Copying is not allowed */
-    DrawData& operator=(const DrawData&) = delete;
+        /** @brief Move constructor */
+        DrawData(DrawData&&) noexcept = default;
 
-    /** @brief Move assignment */
-    DrawData& operator=(DrawData&&) noexcept = default;
+        /** @brief Copying is not allowed */
+        DrawData& operator=(const DrawData&) = delete;
 
-    ~DrawData();
+        /** @brief Move assignment */
+        DrawData& operator=(DrawData&&) noexcept = default;
 
-    /** @brief Meshes */
-    Containers::Array<GL::Mesh> meshes;
+        ~DrawData();
 
-    /** @brief Material data */
-    Containers::Array<Trade::PhongMaterialData> materials;
+        /** @brief Meshes */
+        Containers::Array<GL::Mesh> meshes;
 
-    /** @brief Textures */
-    Containers::Array<Containers::Optional<GL::Texture2D>> textures;
+        /** @brief Material data */
+        Containers::Array<Trade::PhongMaterialData> materials;
 
-    /** @brief Scaling */
-    Vector3 scaling;
-};
+        /** @brief Textures */
+        Containers::Array<Containers::Optional<GL::Texture2D>> textures;
 
-/**
-@brief DART Physics BodyNode or ShapeNode
+        /** @brief Scaling */
+        Vector3 scaling;
+    };
 
-Encapsulates `BodyNode` or `ShapeNode` as a @ref SceneGraph feature.
+    /**
+    @brief DART Physics BodyNode or ShapeNode
 
-@section DartIntegration-Object-usage Usage
+    Encapsulates `BodyNode` or `ShapeNode` as a @ref SceneGraph feature.
 
-Common usage is to create a @ref DartIntegration::Object to share
-transformation with a DART `BodyNode` or `ShapeNode` by passing a pointer to
-its constructor:
+    @section DartIntegration-Object-usage Usage
 
-@snippet DartIntegration.cpp Object-bodynode
+    Common usage is to create a @ref DartIntegration::Object to share
+    transformation with a DART `BodyNode` or `ShapeNode` by passing a pointer to
+    its constructor:
 
-or
+    @snippet DartIntegration.cpp Object-bodynode
 
-@snippet DartIntegration.cpp Object-shapenode
+    or
 
-Only the DART body/node can affect the transformation of the Magnum object and
-not the other way around. To get the latest DART transformation, you should
-update the object with @ref update().
+    @snippet DartIntegration.cpp Object-shapenode
 
-@experimental
-*/
-class MAGNUM_DARTINTEGRATION_EXPORT Object: public SceneGraph::AbstractBasicFeature3D<Float> {
+    Only the DART body/node can affect the transformation of the Magnum object and
+    not the other way around. To get the latest DART transformation, you should
+    update the object with @ref update().
+
+    @experimental
+    */
+    class MAGNUM_DARTINTEGRATION_EXPORT Object
+        : public SceneGraph::AbstractBasicFeature3D<Float> {
     public:
         /**
          * @brief Constructor
-         * @param object    SceneGraph::Object this @ref DartIntegration::Object belongs to
+         * @param object    SceneGraph::Object this @ref DartIntegration::Object
+         * belongs to
          * @param node      DART `ShapeNode` to connect with
          */
-        template<class T> Object(T& object, dart::dynamics::ShapeNode* node = nullptr): Object{object, object, node, nullptr} {}
+        template <class T>
+        Object(T& object, dart::dynamics::ShapeNode* node = nullptr)
+            : Object { object, object, node, nullptr }
+        {
+        }
 
         /**
          * @brief Constructor
-         * @param object    SceneGraph::Object this @ref DartIntegration::Object belongs to
+         * @param object    SceneGraph::Object this @ref DartIntegration::Object
+         * belongs to
          * @param body      DART `BodyNode` to connect with
          */
-        template<class T> Object(T& object, dart::dynamics::BodyNode* body = nullptr): Object{object, object, nullptr, body} {}
+        template <class T>
+        Object(T& object, dart::dynamics::BodyNode* body = nullptr)
+            : Object { object, object, nullptr, body }
+        {
+        }
 
         /**
          * @brief Get transformation from DART
@@ -147,7 +166,8 @@ class MAGNUM_DARTINTEGRATION_EXPORT Object: public SceneGraph::AbstractBasicFeat
          * @brief Clear update flag
          * @return Reference to self (for method chaining)
          */
-        Object& clearUpdateFlag() {
+        Object& clearUpdateFlag()
+        {
             _updated = false;
             return *this;
         }
@@ -165,17 +185,22 @@ class MAGNUM_DARTINTEGRATION_EXPORT Object: public SceneGraph::AbstractBasicFeat
         dart::dynamics::BodyNode* bodyNode() { return _body; }
 
     private:
-        explicit Object(SceneGraph::AbstractBasicObject3D<Float>& object, SceneGraph::AbstractBasicTranslationRotation3D<Float>& transformation, dart::dynamics::ShapeNode* node, dart::dynamics::BodyNode* body);
+        explicit Object(
+            SceneGraph::AbstractBasicObject3D<Float>& object,
+            SceneGraph::AbstractBasicTranslationRotation3D<Float>& transformation,
+            dart::dynamics::ShapeNode* node, dart::dynamics::BodyNode* body);
 
-        bool MAGNUM_DARTINTEGRATION_LOCAL extractDrawData(Trade::AbstractImporter* importer = nullptr);
+        bool MAGNUM_DARTINTEGRATION_LOCAL
+        extractDrawData(Trade::AbstractImporter* importer = nullptr);
 
         SceneGraph::AbstractBasicTranslationRotation3D<Float>& _transformation;
         dart::dynamics::ShapeNode* _node;
         dart::dynamics::BodyNode* _body;
         Containers::Optional<DrawData> _drawData;
         bool _updated, _updatedMesh;
-};
+    };
 
-}}
+} // namespace DartIntegration
+} // namespace Magnum
 
 #endif

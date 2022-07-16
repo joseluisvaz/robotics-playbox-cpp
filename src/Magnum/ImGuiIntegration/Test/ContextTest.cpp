@@ -27,34 +27,42 @@
 
 #include "Magnum/ImGuiIntegration/Context.h"
 
-namespace Magnum { namespace ImGuiIntegration { namespace Test { namespace {
+namespace Magnum {
+namespace ImGuiIntegration {
+    namespace Test {
+        namespace {
 
-struct ContextTest: TestSuite::Tester {
-    explicit ContextTest();
+            struct ContextTest : TestSuite::Tester {
+                explicit ContextTest();
 
-    void constructNoCreate();
-    void constructCopy();
-};
+                void constructNoCreate();
+                void constructCopy();
+            };
 
-ContextTest::ContextTest() {
-    addTests({&ContextTest::constructNoCreate,
-              &ContextTest::constructCopy});
-}
+            ContextTest::ContextTest()
+            {
+                addTests({ &ContextTest::constructNoCreate, &ContextTest::constructCopy });
+            }
 
-void ContextTest::constructNoCreate() {
-    {
-        Context context{NoCreate};
-        CORRADE_COMPARE(context.context(), nullptr);
-    }
+            void ContextTest::constructNoCreate()
+            {
+                {
+                    Context context { NoCreate };
+                    CORRADE_COMPARE(context.context(), nullptr);
+                }
 
-    CORRADE_VERIFY(true);
-}
+                CORRADE_VERIFY(true);
+            }
 
-void ContextTest::constructCopy() {
-    CORRADE_VERIFY(!std::is_constructible<Context, const Context&>{});
-    CORRADE_VERIFY(!std::is_assignable<Context, const Context&>{});
-}
+            void ContextTest::constructCopy()
+            {
+                CORRADE_VERIFY(!std::is_constructible<Context, const Context&> {});
+                CORRADE_VERIFY(!std::is_assignable<Context, const Context&> {});
+            }
 
-}}}}
+        } // namespace
+    } // namespace Test
+} // namespace ImGuiIntegration
+} // namespace Magnum
 
 CORRADE_TEST_MAIN(Magnum::ImGuiIntegration::Test::ContextTest)

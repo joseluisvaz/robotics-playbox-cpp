@@ -40,32 +40,33 @@
 
 #include "Magnum/BulletIntegration/Integration.h"
 
-namespace Magnum { namespace BulletIntegration {
+namespace Magnum {
+namespace BulletIntegration {
 
-/**
-@brief Bullet physics debug visualization
+    /**
+    @brief Bullet physics debug visualization
 
-This class implements `btIDebugDraw`, which allows rendering a visualization
-of a Bullet physics world for debugging purposes.
+    This class implements `btIDebugDraw`, which allows rendering a visualization
+    of a Bullet physics world for debugging purposes.
 
-@section BulletIntegration-DebugDraw-usage Usage
+    @section BulletIntegration-DebugDraw-usage Usage
 
-Set up an instance and attach it to Bullet world:
+    Set up an instance and attach it to Bullet world:
 
-@snippet BulletIntegration.cpp DebugDraw-usage
+    @snippet BulletIntegration.cpp DebugDraw-usage
 
-Then, at every frame, call this:
+    Then, at every frame, call this:
 
-@snippet BulletIntegration.cpp DebugDraw-usage-per-frame
-*/
-class MAGNUM_BULLETINTEGRATION_EXPORT DebugDraw: public btIDebugDraw {
+    @snippet BulletIntegration.cpp DebugDraw-usage-per-frame
+    */
+    class MAGNUM_BULLETINTEGRATION_EXPORT DebugDraw : public btIDebugDraw {
     public:
         /**
          * @brief Debug mode
          *
          * @see @ref Modes, @ref setMode()
          */
-        enum class Mode: Int {
+        enum class Mode : Int {
             /** Disable debug rendering */
             NoDebug = DBG_NoDebug,
 
@@ -114,14 +115,14 @@ class MAGNUM_BULLETINTEGRATION_EXPORT DebugDraw: public btIDebugDraw {
             /** Draw normals */
             DrawNormals = DBG_DrawNormals,
 
-            #if BT_BULLET_VERSION >= 284
+#if BT_BULLET_VERSION >= 284
             /**
              * Draw frames
              *
              * @note Supported since Bullet 2.83.5.
              */
             DrawFrames = DBG_DrawFrames
-            #endif
+#endif
         };
 
         /**
@@ -168,14 +169,16 @@ class MAGNUM_BULLETINTEGRATION_EXPORT DebugDraw: public btIDebugDraw {
         /** @brief Debug mode */
         Modes mode() const { return _mode; }
 
-        #ifdef MAGNUM_BUILD_DEPRECATED
+#ifdef MAGNUM_BUILD_DEPRECATED
         /** @brief @copybrief mode()
          * @m_deprecated_since{2018,10} Use @ref mode() instead.
          */
-        CORRADE_DEPRECATED("use mode() instead") Modes debugMode() const {
+        CORRADE_DEPRECATED("use mode() instead")
+        Modes debugMode() const
+        {
             return mode();
         }
-        #endif
+#endif
 
         /**
          * @brief Set debug mode
@@ -183,13 +186,15 @@ class MAGNUM_BULLETINTEGRATION_EXPORT DebugDraw: public btIDebugDraw {
          *
          * By default, nothing is enabled.
          */
-        DebugDraw& setMode(Modes mode) {
+        DebugDraw& setMode(Modes mode)
+        {
             _mode = mode;
             return *this;
         }
 
         /** @brief Set transformation projection matrix used for rendering */
-        DebugDraw& setTransformationProjectionMatrix(const Matrix4& matrix) {
+        DebugDraw& setTransformationProjectionMatrix(const Matrix4& matrix)
+        {
             _transformationProjectionMatrix = matrix;
             return *this;
         }
@@ -197,19 +202,23 @@ class MAGNUM_BULLETINTEGRATION_EXPORT DebugDraw: public btIDebugDraw {
     private:
         void setDebugMode(int debugMode) override;
         int getDebugMode() const override;
-        void drawLine(const btVector3& from, const btVector3& to, const btVector3& color) override;
-        void drawLine(const btVector3& from, const btVector3& to, const btVector3& fromColor, const btVector3& toColor) override;
-        void drawContactPoint(const btVector3& pointOnB, const btVector3& normalOnB, btScalar distance, int lifeTime, const btVector3& color) override;
-        void reportErrorWarning(const char *warningString) override;
+        void drawLine(const btVector3& from, const btVector3& to,
+            const btVector3& color) override;
+        void drawLine(const btVector3& from, const btVector3& to,
+            const btVector3& fromColor, const btVector3& toColor) override;
+        void drawContactPoint(const btVector3& pointOnB, const btVector3& normalOnB,
+            btScalar distance, int lifeTime,
+            const btVector3& color) override;
+        void reportErrorWarning(const char* warningString) override;
         void draw3dText(const btVector3& location, const char* textString) override;
         void flushLines()
-            /* See comment in drawLine() for detailed rant */
-            #if BT_BULLET_VERSION >= 284
+/* See comment in drawLine() for detailed rant */
+#if BT_BULLET_VERSION >= 284
             override
-            #endif
+#endif
             ;
 
-        Modes _mode{};
+        Modes _mode {};
 
         Matrix4 _transformationProjectionMatrix;
         Shaders::VertexColorGL3D _shader;
@@ -217,13 +226,15 @@ class MAGNUM_BULLETINTEGRATION_EXPORT DebugDraw: public btIDebugDraw {
         GL::Buffer _buffer;
         GL::Mesh _mesh;
         Containers::Array<Vector3> _bufferData;
-};
+    };
 
-CORRADE_ENUMSET_OPERATORS(DebugDraw::Modes)
+    CORRADE_ENUMSET_OPERATORS(DebugDraw::Modes)
 
-/** @debugoperatorenum{Magnum::BulletIntegration::DebugDraw::Mode} */
-MAGNUM_BULLETINTEGRATION_EXPORT Debug& operator<<(Debug& debug, DebugDraw::Mode value);
+    /** @debugoperatorenum{Magnum::BulletIntegration::DebugDraw::Mode} */
+    MAGNUM_BULLETINTEGRATION_EXPORT Debug& operator<<(Debug& debug,
+        DebugDraw::Mode value);
 
-}}
+} // namespace BulletIntegration
+} // namespace Magnum
 
 #endif

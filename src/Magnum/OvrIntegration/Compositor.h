@@ -27,50 +27,55 @@
 */
 
 /** @file
- * @brief Class @ref Magnum::OvrIntegration::Layer, @ref Magnum::OvrIntegration::HeadLockableLayer, @ref Magnum::OvrIntegration::LayerEyeFov, @ref Magnum::OvrIntegration::LayerQuad, @ref Magnum::OvrIntegration::Compositor, enum @ref Magnum::OvrIntegration::LayerType
+ * @brief Class @ref Magnum::OvrIntegration::Layer, @ref
+ * Magnum::OvrIntegration::HeadLockableLayer, @ref
+ * Magnum::OvrIntegration::LayerEyeFov, @ref Magnum::OvrIntegration::LayerQuad,
+ * @ref Magnum::OvrIntegration::Compositor, enum @ref
+ * Magnum::OvrIntegration::LayerType
  */
 
-#include <memory>
-#include <vector>
 #include <Magnum/Magnum.h>
 #include <OVR_CAPI.h>
+#include <memory>
+#include <vector>
 
-#include "Magnum/OvrIntegration/visibility.h"
 #include "Magnum/OvrIntegration/OvrIntegration.h"
+#include "Magnum/OvrIntegration/visibility.h"
 
-namespace Magnum { namespace OvrIntegration {
-
-/**
-@brief Layer type
-
-@see @ref Layer, @ref Compositor::addLayer()
-*/
-enum class LayerType: Int {
-    /**
-     * Described by `ovrLayerEyeFov`.
-     * @see @ref LayerEyeFov, @ref Compositor::addLayerEyeFov()
-     */
-    EyeFov = ovrLayerType_EyeFov,
+namespace Magnum {
+namespace OvrIntegration {
 
     /**
-     * Described by `ovrLayerQuad`.
-     * @see @ref LayerQuad, @ref Compositor::addLayerQuad()
-     */
-    Quad = ovrLayerType_Quad,
+    @brief Layer type
+
+    @see @ref Layer, @ref Compositor::addLayer()
+    */
+    enum class LayerType : Int {
+        /**
+         * Described by `ovrLayerEyeFov`.
+         * @see @ref LayerEyeFov, @ref Compositor::addLayerEyeFov()
+         */
+        EyeFov = ovrLayerType_EyeFov,
+
+        /**
+         * Described by `ovrLayerQuad`.
+         * @see @ref LayerQuad, @ref Compositor::addLayerQuad()
+         */
+        Quad = ovrLayerType_Quad,
+
+        /**
+         * Described by `ovrLayerEyeMatrix`. Currently not supported.
+         */
+        EyeMatrix = ovrLayerType_EyeMatrix,
+    };
 
     /**
-     * Described by `ovrLayerEyeMatrix`. Currently not supported.
-     */
-    EyeMatrix = ovrLayerType_EyeMatrix,
-};
+    @brief Wrapper around `ovrLayerHeader`
 
-/**
-@brief Wrapper around `ovrLayerHeader`
-
-If you need to be able to change layer specific data, use @ref LayerEyeFov or
-@ref LayerQuad instead.
-*/
-class MAGNUM_OVRINTEGRATION_EXPORT Layer {
+    If you need to be able to change layer specific data, use @ref LayerEyeFov or
+    @ref LayerQuad instead.
+    */
+    class MAGNUM_OVRINTEGRATION_EXPORT Layer {
     public:
         /**
          * @brief Contructor
@@ -90,8 +95,9 @@ class MAGNUM_OVRINTEGRATION_EXPORT Layer {
          *
          * High quality mode costs performance, but looks better.
          */
-        Layer& setHighQuality(bool highQuality) {
-            if(highQuality) {
+        Layer& setHighQuality(bool highQuality)
+        {
+            if (highQuality) {
                 _layer.Header.Flags |= ovrLayerFlag_HighQuality;
             } else {
                 _layer.Header.Flags &= ~ovrLayerFlag_HighQuality;
@@ -102,7 +108,8 @@ class MAGNUM_OVRINTEGRATION_EXPORT Layer {
         /**
          * @brief Whether this layer is processed in high quality
          */
-        bool isHighQuality() const {
+        bool isHighQuality() const
+        {
             return (_layer.Header.Flags & ovrLayerFlag_HighQuality);
         }
 
@@ -113,33 +120,32 @@ class MAGNUM_OVRINTEGRATION_EXPORT Layer {
         Layer& setEnabled(bool enabled);
 
         /** @brief Type of this layer */
-        LayerType layerType() const {
-            return _type;
-        }
+        LayerType layerType() const { return _type; }
 
         /** @brief The underlying `ovrLayerHeader` */
-        const ovrLayerHeader& layerHeader() const {
-            return _layer.Header;
-        }
+        const ovrLayerHeader& layerHeader() const { return _layer.Header; }
 
-    #ifndef DOXYGEN_GENERATING_OUTPUT
+#ifndef DOXYGEN_GENERATING_OUTPUT
     protected:
-    #else
+#else
     private:
-    #endif
+#endif
         ovrLayer_Union _layer;
 
     private:
         const LayerType _type;
 
         friend class Compositor;
-};
+    };
 
-/** @brief Superclass for layers which can be locked relative to the HMD */
-class MAGNUM_OVRINTEGRATION_EXPORT HeadLockableLayer: public Layer {
+    /** @brief Superclass for layers which can be locked relative to the HMD */
+    class MAGNUM_OVRINTEGRATION_EXPORT HeadLockableLayer : public Layer {
     public:
         /** @brief Constructor */
-        explicit HeadLockableLayer(LayerType type): Layer(type) {}
+        explicit HeadLockableLayer(LayerType type)
+            : Layer(type)
+        {
+        }
 
         /**
          * @brief Set whether to lock this layer to the players head
@@ -148,8 +154,9 @@ class MAGNUM_OVRINTEGRATION_EXPORT HeadLockableLayer: public Layer {
          * The surface will move relative to the HMD rather than to the
          * sensor/torso, remaining still while the head moves.
          */
-        HeadLockableLayer& setHeadLocked(bool headLocked) {
-            if(headLocked) {
+        HeadLockableLayer& setHeadLocked(bool headLocked)
+        {
+            if (headLocked) {
                 _layer.Header.Flags |= ovrLayerFlag_HeadLocked;
             } else {
                 _layer.Header.Flags &= ~ovrLayerFlag_HeadLocked;
@@ -160,13 +167,14 @@ class MAGNUM_OVRINTEGRATION_EXPORT HeadLockableLayer: public Layer {
         /**
          * @brief Whether this layer is locked to the players head
          */
-        bool isHeadLocked() const {
+        bool isHeadLocked() const
+        {
             return (_layer.Header.Flags & ovrLayerFlag_HeadLocked);
         }
-};
+    };
 
-/** @brief Wrapper around `ovrLayerEveFov` */
-class MAGNUM_OVRINTEGRATION_EXPORT LayerEyeFov: public HeadLockableLayer {
+    /** @brief Wrapper around `ovrLayerEveFov` */
+    class MAGNUM_OVRINTEGRATION_EXPORT LayerEyeFov : public HeadLockableLayer {
     public:
         /** @brief Constructor */
         explicit LayerEyeFov();
@@ -200,10 +208,10 @@ class MAGNUM_OVRINTEGRATION_EXPORT LayerEyeFov: public HeadLockableLayer {
          * @return Reference to self (for method chaining)
          */
         LayerEyeFov& setFov(const Session& session);
-};
+    };
 
-/** @brief Wrapper around `ovrLayerQuad` */
-class MAGNUM_OVRINTEGRATION_EXPORT LayerQuad: public HeadLockableLayer {
+    /** @brief Wrapper around `ovrLayerQuad` */
+    class MAGNUM_OVRINTEGRATION_EXPORT LayerQuad : public HeadLockableLayer {
     public:
         /** @brief Constructor */
         explicit LayerQuad();
@@ -237,53 +245,54 @@ class MAGNUM_OVRINTEGRATION_EXPORT LayerQuad: public HeadLockableLayer {
          * @return Reference to self (for method chaining)
          */
         LayerQuad& setQuadSize(const Vector2& size);
-};
+    };
 
-/**
-@brief Compositor
+    /**
+    @brief Compositor
 
-Wraps compositing related functions of LibOVR.
+    Wraps compositing related functions of LibOVR.
 
-@section OvrIntegration-Compositor-usage Usage
+    @section OvrIntegration-Compositor-usage Usage
 
-The compositor handles distortion, chromatic abberation, timewarp and sending
-images to a HMD's display.
+    The compositor handles distortion, chromatic abberation, timewarp and sending
+    images to a HMD's display.
 
-The compositor may contain a set of layers with different sizes and different
-properties. See @ref LayerEyeFov and @ref LayerQuad.
+    The compositor may contain a set of layers with different sizes and different
+    properties. See @ref LayerEyeFov and @ref LayerQuad.
 
-Setup of a distortion layer may look as follows:
+    Setup of a distortion layer may look as follows:
 
-@code{.cpp}
-// setup TextureSwapChains etc
-Context context;
-Session& session = // ...
-std::unique_ptr<TextureSwapChain> textureChain[2] = // ...
-Vector2i textureSize[2] = // ...
+    @code{.cpp}
+    // setup TextureSwapChains etc
+    Context context;
+    Session& session = // ...
+    std::unique_ptr<TextureSwapChain> textureChain[2] = // ...
+    Vector2i textureSize[2] = // ...
 
-// setup compositor layers
-LayerEyeFov& layer = Context::get().compositor().addLayerEyeFov();
-layer.setFov(session.get());
-layer.setHighQuality(true);
+    // setup compositor layers
+    LayerEyeFov& layer = Context::get().compositor().addLayerEyeFov();
+    layer.setFov(session.get());
+    layer.setHighQuality(true);
 
-for(Int eye = 0; eye < 2; ++eye) {
-    layer.setColorTexture(eye, *textureChain[eye]);
-    layer.setViewport(eye, {{}, textureSize[eye]});
-}
-@endcode
+    for(Int eye = 0; eye < 2; ++eye) {
+        layer.setColorTexture(eye, *textureChain[eye]);
+        layer.setViewport(eye, {{}, textureSize[eye]});
+    }
+    @endcode
 
-After that you need to render every frame by first rendering to the texture
-swap chains and then submitting the compositor frame via @ref Compositor::submitFrame().
+    After that you need to render every frame by first rendering to the texture
+    swap chains and then submitting the compositor frame via @ref
+    Compositor::submitFrame().
 
-@code{.cpp}
-layer.setRenderPoses(session);
+    @code{.cpp}
+    layer.setRenderPoses(session);
 
-Context::get().compositor().submitFrame(session);
-@endcode
+    Context::get().compositor().submitFrame(session);
+    @endcode
 
-@see @ref Session, @ref TextureSwapChain, @ref Context::compositor()
-*/
-class MAGNUM_OVRINTEGRATION_EXPORT Compositor {
+    @see @ref Session, @ref TextureSwapChain, @ref Context::compositor()
+    */
+    class MAGNUM_OVRINTEGRATION_EXPORT Compositor {
     public:
         /** @brief Copying is not allowed */
         Compositor(const Compositor&) = delete;
@@ -326,10 +335,10 @@ class MAGNUM_OVRINTEGRATION_EXPORT Compositor {
         Compositor& submitFrame(Session& session);
 
     private:
-        #ifndef DOXYGEN_GENERATING_OUTPUT
+#ifndef DOXYGEN_GENERATING_OUTPUT
         /* Doxygen copies the description from Magnum::Context here. Ugh. */
         friend class Context;
-        #endif
+#endif
 
         explicit Compositor();
 
@@ -337,8 +346,9 @@ class MAGNUM_OVRINTEGRATION_EXPORT Compositor {
 
         std::vector<const ovrLayerHeader*> _layers;
         std::vector<std::unique_ptr<Layer>> _wrappedLayers;
-};
+    };
 
-}}
+} // namespace OvrIntegration
+} // namespace Magnum
 
 #endif

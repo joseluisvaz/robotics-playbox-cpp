@@ -30,19 +30,20 @@
 
 using namespace Magnum;
 
-int main() {
+int main()
 {
+    {
 /* The include is already above, so doing it again here should be harmless */
 /* [Integration] */
 #include <Magnum/OvrIntegration/Integration.h>
 
-ovrVector3f a{20.0f, 50.0f, -1.0f};
-Vector3 b(a);
+        ovrVector3f a { 20.0f, 50.0f, -1.0f };
+        Vector3 b(a);
 
-using namespace Math::Literals;
-auto c = ovrPosef(DualQuaternion::rotation(15.0_degf, Vector3::xAxis()));
-/* [Integration] */
-static_cast<void>(b);
-static_cast<void>(c);
-}
+        using namespace Math::Literals;
+        auto c = ovrPosef(DualQuaternion::rotation(15.0_degf, Vector3::xAxis()));
+        /* [Integration] */
+        static_cast<void>(b);
+        static_cast<void>(c);
+    }
 }

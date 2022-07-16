@@ -30,13 +30,15 @@
  * @brief Forward declarations for the @ref Magnum::DartIntegration namespace
  */
 
-namespace Magnum { namespace DartIntegration {
+namespace Magnum {
+namespace DartIntegration {
 
 #ifndef DOXYGEN_GENERATING_OUTPUT
-class Object;
-class World;
+    class Object;
+    class World;
 #endif
 
-}}
+} // namespace DartIntegration
+} // namespace Magnum
 
 #endif

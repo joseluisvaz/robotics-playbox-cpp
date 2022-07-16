@@ -34,8 +34,8 @@
 #include "Magnum/configure.h"
 
 #ifdef MAGNUM_BUILD_DEPRECATED
-#include "Magnum/OvrIntegration/Integration.h"
 #include "Corrade/Utility/Macros.h"
+#include "Magnum/OvrIntegration/Integration.h"
 CORRADE_DEPRECATED_FILE("use Magnum/OvrIntegration/Integration.h instead")
 #else
 #error use Magnum/OvrIntegration/Integration.h instead

@@ -40,60 +40,72 @@
 #include "Magnum/BulletIntegration/MotionState.h"
 
 #ifdef BT_USE_DOUBLE_PRECISION
-#include <Magnum/SceneGraph/Object.hpp>
 #include <Magnum/SceneGraph/AbstractFeature.hpp>
 #include <Magnum/SceneGraph/MatrixTransformation3D.hpp>
+#include <Magnum/SceneGraph/Object.hpp>
 #endif
 
-namespace Magnum { namespace BulletIntegration { namespace Test { namespace {
+namespace Magnum {
+namespace BulletIntegration {
+    namespace Test {
+        namespace {
 
-using namespace Math::Literals;
+            using namespace Math::Literals;
 
-typedef SceneGraph::Object<SceneGraph::BasicMatrixTransformation3D<btScalar>> Object3D;
-typedef SceneGraph::Scene<SceneGraph::BasicMatrixTransformation3D<btScalar>> Scene3D;
+            typedef SceneGraph::Object<SceneGraph::BasicMatrixTransformation3D<btScalar>>
+                Object3D;
+            typedef SceneGraph::Scene<SceneGraph::BasicMatrixTransformation3D<btScalar>>
+                Scene3D;
 
-struct MotionStateTest: TestSuite::Tester {
-    explicit MotionStateTest();
+            struct MotionStateTest : TestSuite::Tester {
+                explicit MotionStateTest();
 
-    void test();
-};
+                void test();
+            };
 
-MotionStateTest::MotionStateTest() {
-    addTests({&MotionStateTest::test});
-}
+            MotionStateTest::MotionStateTest() { addTests({ &MotionStateTest::test }); }
 
-void MotionStateTest::test() {
-    /* Setup Bullet Physics */
-    btDefaultCollisionConfiguration collisionConfig;
-    btCollisionDispatcher dispatcher{&collisionConfig};
-    btDbvtBroadphase broadphase;
-    btDiscreteDynamicsWorld btWorld{&dispatcher, &broadphase, nullptr, &collisionConfig};
-    btWorld.setGravity(btVector3{btScalar(0.0), btScalar(0.0), btScalar(0.0)});
+            void MotionStateTest::test()
+            {
+                /* Setup Bullet Physics */
+                btDefaultCollisionConfiguration collisionConfig;
+                btCollisionDispatcher dispatcher { &collisionConfig };
+                btDbvtBroadphase broadphase;
+                btDiscreteDynamicsWorld btWorld { &dispatcher, &broadphase, nullptr,
+                    &collisionConfig };
+                btWorld.setGravity(btVector3 { btScalar(0.0), btScalar(0.0), btScalar(0.0) });
 
-    /* Setup scene graph */
-    Scene3D scene;
-    Object3D object{&scene};
+                /* Setup scene graph */
+                Scene3D scene;
+                Object3D object { &scene };
 
-    auto transformation = Math::Matrix4<btScalar>::translation({btScalar(1.0), btScalar(2.0), btScalar(3.0)})*Math::Matrix4<btScalar>::rotationX(Math::Deg<btScalar>{btScalar(45.0)});
+                auto transformation = Math::Matrix4<btScalar>::translation(
+                                          { btScalar(1.0), btScalar(2.0), btScalar(3.0) })
+                    * Math::Matrix4<btScalar>::rotationX(Math::Deg<btScalar> { btScalar(45.0) });
 
-    /* Setup rigid body which will receive the motion state */
-    MotionState motionState{object};
-    btSphereShape collisionShape{btScalar(0.0)};
-    btRigidBody rigidBody(btScalar(1.0), &motionState.btMotionState(), &collisionShape);
-    btWorld.addRigidBody(&rigidBody);
+                /* Setup rigid body which will receive the motion state */
+                MotionState motionState { object };
+                btSphereShape collisionShape { btScalar(0.0) };
+                btRigidBody rigidBody(btScalar(1.0), &motionState.btMotionState(),
+                    &collisionShape);
+                btWorld.addRigidBody(&rigidBody);
 
-    /* Rigid body should have no transformation initially */
-    CORRADE_COMPARE(Math::Matrix4<btScalar>{rigidBody.getCenterOfMassTransform()}, Math::Matrix4<btScalar>{});
+                /* Rigid body should have no transformation initially */
+                CORRADE_COMPARE(Math::Matrix4<btScalar> { rigidBody.getCenterOfMassTransform() },
+                    Math::Matrix4<btScalar> {});
 
-    /* Reset transformation of rigid body transformation */
-    rigidBody.setWorldTransform(btTransform{transformation});
+                /* Reset transformation of rigid body transformation */
+                rigidBody.setWorldTransform(btTransform { transformation });
 
-    /* Motion state will get updated through btWorld */
-    btWorld.stepSimulation(btScalar(1.0));
+                /* Motion state will get updated through btWorld */
+                btWorld.stepSimulation(btScalar(1.0));
 
-    CORRADE_COMPARE(object.transformationMatrix(), transformation);
-}
+                CORRADE_COMPARE(object.transformationMatrix(), transformation);
+            }
 
-}}}}
+        } // namespace
+    } // namespace Test
+} // namespace BulletIntegration
+} // namespace Magnum
 
 CORRADE_TEST_MAIN(Magnum::BulletIntegration::Test::MotionStateTest)

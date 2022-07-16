@@ -24,6 +24,17 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+#include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/String.h>
+#include <Corrade/Containers/StringStl.h>
+#include <Corrade/PluginManager/Manager.h>
+#include <Corrade/TestSuite/Tester.h>
+#include <Corrade/Utility/Path.h>
+#include <Magnum/Math/Color.h>
+#include <Magnum/Trade/AbstractImporter.h>
+#include <Magnum/Trade/ImageData.h>
+#include <Magnum/Trade/PhongMaterialData.h>
+#include <Magnum/Trade/TextureData.h>
 #include <assimp/defs.h> /* in assimp 3.0, version.h is missing this include for ASSIMP_API */
 #include <assimp/version.h>
 #include <dart/dynamics/BallJoint.hpp>
@@ -40,526 +51,646 @@
 #include <dart/dynamics/PlaneShape.hpp>
 #include <dart/dynamics/RevoluteJoint.hpp>
 #include <dart/dynamics/ShapeNode.hpp>
+#include <dart/dynamics/Skeleton.hpp>
 #include <dart/dynamics/SoftBodyNode.hpp>
 #include <dart/dynamics/SoftMeshShape.hpp>
 #include <dart/dynamics/SphereShape.hpp>
-#include <dart/dynamics/Skeleton.hpp>
 #include <dart/dynamics/WeldJoint.hpp>
-#include <Corrade/Containers/Optional.h>
-#include <Corrade/Containers/String.h>
-#include <Corrade/Containers/StringStl.h>
-#include <Corrade/PluginManager/Manager.h>
-#include <Corrade/TestSuite/Tester.h>
-#include <Corrade/Utility/Path.h>
-#include <Magnum/Math/Color.h>
-#include <Magnum/Trade/AbstractImporter.h>
-#include <Magnum/Trade/ImageData.h>
-#include <Magnum/Trade/PhongMaterialData.h>
-#include <Magnum/Trade/TextureData.h>
 
 #include "Magnum/DartIntegration/ConvertShapeNode.h"
 
-#include "Magnum/DartIntegration/Test/configure.h"
 #include "Magnum/DartIntegration/Test/common.h"
+#include "Magnum/DartIntegration/Test/configure.h"
 
 #define DART_URDF (MAGNUM_DART_URDF_FOUND > 0 && DART_MAJOR_VERSION >= 6)
 #if DART_URDF
-    #if DART_MAJOR_VERSION == 6
-        #include <dart/utils/urdf/urdf.hpp>
-    #else
-        #include <dart/io/urdf/urdf.hpp>
-    #endif
+#if DART_MAJOR_VERSION == 6
+#include <dart/utils/urdf/urdf.hpp>
+#else
+#include <dart/io/urdf/urdf.hpp>
+#endif
 #endif
 
-namespace Magnum { namespace DartIntegration { namespace Test { namespace {
-
-struct ConvertShapeNodeTest: TestSuite::Tester {
-    explicit ConvertShapeNodeTest();
-
-    void basicShapes();
-    void assimpImporter();
-    void unsupportedShapes();
-    void pendulum();
-    void soft();
-    void urdf();
-    void multiMesh();
-    void texture();
-
-    private:
-        PluginManager::Manager<Trade::AbstractImporter> _manager;
-};
-
-ConvertShapeNodeTest::ConvertShapeNodeTest() {
-    addTests({&ConvertShapeNodeTest::basicShapes,
-              &ConvertShapeNodeTest::assimpImporter,
-              &ConvertShapeNodeTest::unsupportedShapes,
-              &ConvertShapeNodeTest::pendulum,
-              &ConvertShapeNodeTest::soft,
-              #if DART_URDF
-              &ConvertShapeNodeTest::urdf,
-              &ConvertShapeNodeTest::multiMesh,
-              &ConvertShapeNodeTest::texture
-              #endif
-              });
-}
-
-using namespace Math::Literals;
-
-void ConvertShapeNodeTest::basicShapes() {
-    {
-        /* BoxShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("BoxShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("BoxShapeBody")).second;
-
-        std::shared_ptr<dart::dynamics::BoxShape> box(new dart::dynamics::BoxShape(Eigen::Vector3d(1., 1., 1.)));
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(box);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(shapeDataAll);
-    } {
-        /* CapsuleShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("CapsuleShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("CapsuleShapeBody")).second;
-
-        std::shared_ptr<dart::dynamics::CapsuleShape> capsule(new dart::dynamics::CapsuleShape(1., 1.));
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(capsule);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(shapeDataAll);
-    } {
-        /* ConeShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("ConeShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("ConeShapeBody")).second;
-
-        std::shared_ptr<dart::dynamics::ConeShape> cone(new dart::dynamics::ConeShape(1., 1.));
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(cone);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(shapeDataAll);
-    } {
-        /* CylinderShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("CylinderShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("CylinderShapeBody")).second;
-
-        std::shared_ptr<dart::dynamics::CylinderShape> cylinder(new dart::dynamics::CylinderShape(1., 1.));
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(cylinder);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(shapeDataAll);
-    } {
-        /* EllipsoidShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("EllipsoidShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("EllipsoidShapeBody")).second;
-
-        std::shared_ptr<dart::dynamics::EllipsoidShape> ellipsoid(new dart::dynamics::EllipsoidShape(Eigen::Vector3d(1., 1., 1.)));
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(ellipsoid);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(shapeDataAll);
-    } {
-        /* SphereShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("SphereShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("SphereShapeBody")).second;
-
-        std::shared_ptr<dart::dynamics::SphereShape> sphere(new dart::dynamics::SphereShape(1.));
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(sphere);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(shapeDataAll);
-    }
-}
-
-void ConvertShapeNodeTest::assimpImporter() {
-    {
-        /* MeshShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("MeshShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("MeshShapeBody")).second;
-
-        /* pass nullptr as the mesh because we are not going to use it */
-        std::shared_ptr<dart::dynamics::MeshShape> mesh(new dart::dynamics::MeshShape(Eigen::Vector3d(1., 1., 1.), nullptr));
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(mesh);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, nullptr);
-        CORRADE_VERIFY(!shapeDataAll);
-    } {
-        /* load AssimpImporter */
-        Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
-        CORRADE_VERIFY(importer);
-        /* MeshShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("MeshShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("MeshShapeBody")).second;
-
-        aiScene* noMeshScene = new aiScene;
-        std::shared_ptr<dart::dynamics::MeshShape> mesh(new dart::dynamics::MeshShape(Eigen::Vector3d(1., 1., 1.), noMeshScene));
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(mesh);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
-        CORRADE_VERIFY(!shapeDataAll);
-    }
-
-    #if DART_URDF
-    #if DART_MAJOR_VERSION == 6
-    dart::utils::DartLoader loader;
-    #else
-    dart::io::DartLoader loader;
-    #endif
-    {
-        Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
-        CORRADE_VERIFY(importer);
-
-        const std::string filename = Utility::Path::join(DARTINTEGRATION_TEST_DIR, "urdf/test.urdf");
-        auto tmp_skel = loader.parseSkeleton(filename);
-
-        auto shapeNode = tmp_skel->getBodyNode(0)->getShapeNodesWith<dart::dynamics::VisualAspect>()[0];
-        const aiScene* assimpScene = std::static_pointer_cast<dart::dynamics::MeshShape>(shapeNode->getShape())->getMesh();
-        CORRADE_VERIFY(assimpScene);
-
-        /* change mesh primitive type in order to produce failure */
-        aiMesh* mesh = assimpScene->mMeshes[0];
-        mesh->mPrimitiveTypes = aiPrimitiveType::aiPrimitiveType_POLYGON;
-
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
-        CORRADE_VERIFY(!shapeDataAll);
-    } {
-        Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
-        CORRADE_VERIFY(importer);
-
-        const std::string filename = Utility::Path::join(DARTINTEGRATION_TEST_DIR, "urdf/test.urdf");
-        auto tmp_skel = loader.parseSkeleton(filename);
-
-        auto shapeNode = tmp_skel->getBodyNode(0)->getShapeNodesWith<dart::dynamics::VisualAspect>()[0];
-        auto meshShape = std::static_pointer_cast<dart::dynamics::MeshShape>(shapeNode->getShape());
-
-        /* check dart::dynamics::MeshShape::SHAPE_COLOR */
-        meshShape->setColorMode(dart::dynamics::MeshShape::SHAPE_COLOR);
-
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
-        CORRADE_VERIFY(shapeDataAll);
-
-        /* check dart::dynamics::MeshShape::COLOR_INDEX when no colors available */
-        meshShape->setColorMode(dart::dynamics::MeshShape::COLOR_INDEX);
-
-        shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
-        CORRADE_VERIFY(shapeDataAll);
-
-        /* check dart::dynamics::MeshShape::COLOR_INDEX with colors */
-        const aiScene* assimpScene = meshShape->getMesh();
-        aiMesh* mesh = assimpScene->mMeshes[0];
-        /* add one color to aiMesh */
-        mesh->mColors[0] = new aiColor4D[mesh->mNumVertices];
-
-        meshShape->setColorMode(dart::dynamics::MeshShape::COLOR_INDEX);
-        /* set color index higher than the one available */
-        meshShape->setColorIndex(1);
-
-        shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
-        CORRADE_VERIFY(shapeDataAll);
-    }
-    #endif
-}
-
-void ConvertShapeNodeTest::unsupportedShapes() {
-    {
-        /* LineSegmentShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("LineSegmentShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("LineSegmentShapeBody")).second;
-
-        std::shared_ptr<dart::dynamics::LineSegmentShape> line(new dart::dynamics::LineSegmentShape());
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(line);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(!shapeDataAll);
-    } {
-        /* MultiSphereConvexHullShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("MultiSphereConvexHullShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("MultiSphereConvexHullShapeBody")).second;
-
-        std::shared_ptr<dart::dynamics::MultiSphereConvexHullShape> multiSphere(new dart::dynamics::MultiSphereConvexHullShape(std::vector<std::pair<double, Eigen::Vector3d>>()));
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(multiSphere);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(!shapeDataAll);
-    } {
-        /* PlaneShape */
-        dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("PlaneShape");
-
-        dart::dynamics::BodyNodePtr bn = tmpSkel->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
-            nullptr, dart::dynamics::WeldJoint::Properties(), dart::dynamics::BodyNode::AspectProperties("PlaneShapeBody")).second;
-
-        std::shared_ptr<dart::dynamics::PlaneShape> plane(new dart::dynamics::PlaneShape(Eigen::Vector3d(1., 1., 1.), 1.));
-        auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect, dart::dynamics::CollisionAspect, dart::dynamics::DynamicsAspect>(plane);
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(!shapeDataAll);
-    }
-}
-
-void ConvertShapeNodeTest::pendulum() {
-    /* Create an empty Skeleton with the name "pendulum" */
-    std::string name = "pendulum";
-    dart::dynamics::SkeletonPtr pendulum = dart::dynamics::Skeleton::create(name);
-
-    /* Add each body to the last BodyNode in the pendulum */
-    dart::dynamics::BodyNode* bn = makeRootBody(pendulum, "body1");
-    bn = addBody(pendulum, bn, "body2");
-    bn = addBody(pendulum, bn, "body3");
-    bn = addBody(pendulum, bn, "body4");
-    bn = addBody(pendulum, bn, "body5");
-
-    /* Set the initial joint positions so that the pendulum
-       starts to swing right away */
-    pendulum->getDof(1)->setPosition(Double(Radd(120.0_deg)));
-    pendulum->getDof(2)->setPosition(Double(Radd(20.0_deg)));
-    pendulum->getDof(3)->setPosition(Double(Radd(-50.0_deg)));
-
-    for(auto& shapeNode: bn->getShapeNodesWith<dart::dynamics::VisualAspect>()) {
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(shapeDataAll);
-        auto shapeDataMaterial = convertShapeNode(*shapeNode, ConvertShapeType::Material);
-        CORRADE_VERIFY(shapeDataMaterial);
-        auto shapeDataPrimitive = convertShapeNode(*shapeNode, ConvertShapeType::Primitive);
-        CORRADE_VERIFY(shapeDataPrimitive);
-        auto shapeDataMesh = convertShapeNode(*shapeNode, ConvertShapeType::Mesh);
-        CORRADE_VERIFY(shapeDataMesh);
-
-        CORRADE_COMPARE(shapeDataAll->meshes.size(), 1);
-
-        CORRADE_COMPARE(shapeDataMaterial->meshes.size(), 0);
-
-        CORRADE_COMPARE(shapeDataPrimitive->meshes.size(), 0);
-        CORRADE_COMPARE(shapeDataPrimitive->materials.size(), 0);
-
-        CORRADE_COMPARE(shapeDataMesh->meshes.size(), 1);
-        CORRADE_COMPARE(shapeDataMesh->materials.size(), 0);
-
-        CORRADE_COMPARE(shapeDataAll->materials.size(), 1);
-        CORRADE_COMPARE(shapeDataAll->materials.size(), shapeDataMaterial->materials.size());
-        CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(), shapeDataMaterial->materials[0].diffuseColor());
-
-        CORRADE_COMPARE(shapeDataAll->scaling, shapeDataPrimitive->scaling);
-
-        CORRADE_COMPARE(shapeDataAll->textures.size(), 0);
-        CORRADE_COMPARE(shapeDataAll->textures.size(), shapeDataMaterial->textures.size());
-    }
-}
-
-void ConvertShapeNodeTest::soft() {
-    /* Create a soft body node */
-    auto soft = dart::dynamics::Skeleton::create("soft");
-    auto bn = addSoftBody<dart::dynamics::WeldJoint>(soft, "soft box");
-
-    for(auto& shapeNode: bn->getShapeNodesWith<dart::dynamics::VisualAspect>()) {
-        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
-        CORRADE_VERIFY(shapeDataAll);
-        auto shapeDataMaterial = convertShapeNode(*shapeNode, ConvertShapeType::Material);
-        CORRADE_VERIFY(shapeDataMaterial);
-        auto shapeDataPrimitive = convertShapeNode(*shapeNode, ConvertShapeType::Primitive);
-        CORRADE_VERIFY(shapeDataPrimitive);
-        auto shapeDataMesh = convertShapeNode(*shapeNode, ConvertShapeType::Mesh);
-        CORRADE_VERIFY(shapeDataMesh);
-
-        CORRADE_COMPARE(shapeDataAll->meshes.size(), 1);
-
-        CORRADE_COMPARE(shapeDataMaterial->meshes.size(), 0);
-
-        CORRADE_COMPARE(shapeDataPrimitive->meshes.size(), 0);
-        CORRADE_COMPARE(shapeDataPrimitive->materials.size(), 0);
-
-        CORRADE_COMPARE(shapeDataMesh->meshes.size(), 1);
-        CORRADE_COMPARE(shapeDataMesh->materials.size(), 0);
-
-        CORRADE_COMPARE(shapeDataAll->materials.size(), 1);
-        CORRADE_COMPARE(shapeDataAll->materials.size(), shapeDataMaterial->materials.size());
-        CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(), shapeDataMaterial->materials[0].diffuseColor());
-
-        CORRADE_COMPARE(shapeDataAll->scaling, shapeDataPrimitive->scaling);
-
-        CORRADE_COMPARE(shapeDataAll->textures.size(), 0);
-        CORRADE_COMPARE(shapeDataAll->textures.size(), shapeDataMaterial->textures.size());
-    }
-}
-
+namespace Magnum {
+namespace DartIntegration {
+    namespace Test {
+        namespace {
+
+            struct ConvertShapeNodeTest : TestSuite::Tester {
+                explicit ConvertShapeNodeTest();
+
+                void basicShapes();
+                void assimpImporter();
+                void unsupportedShapes();
+                void pendulum();
+                void soft();
+                void urdf();
+                void multiMesh();
+                void texture();
+
+            private:
+                PluginManager::Manager<Trade::AbstractImporter> _manager;
+            };
+
+            ConvertShapeNodeTest::ConvertShapeNodeTest()
+            {
+                addTests({
+                    &ConvertShapeNodeTest::basicShapes, &ConvertShapeNodeTest::assimpImporter,
+                        &ConvertShapeNodeTest::unsupportedShapes,
+                        &ConvertShapeNodeTest::pendulum, &ConvertShapeNodeTest::soft,
 #if DART_URDF
-void ConvertShapeNodeTest::urdf() {
-    #if DART_MAJOR_VERSION == 6
-    dart::utils::DartLoader loader;
-    #else
-    dart::io::DartLoader loader;
-    #endif
-
-    Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
-    CORRADE_VERIFY(importer);
-
-    const UnsignedInt assimpVersion = aiGetVersionMajor()*100 + aiGetVersionMinor();
-
-    const std::string filename = Utility::Path::join(DARTINTEGRATION_TEST_DIR, "urdf/test.urdf");
-    auto tmpSkel = loader.parseSkeleton(filename);
-    CORRADE_VERIFY(tmpSkel);
-
-    for(auto& bn: tmpSkel->getBodyNodes()) {
-        for(auto& shapeNode: bn->getShapeNodesWith<dart::dynamics::VisualAspect>()) {
-            auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
-            CORRADE_VERIFY(shapeDataAll);
-            auto shapeDataMaterial = convertShapeNode(*shapeNode, ConvertShapeType::Material, importer.get());
-            CORRADE_VERIFY(shapeDataMaterial);
-            auto shapeDataPrimitive = convertShapeNode(*shapeNode, ConvertShapeType::Primitive, importer.get());
-            CORRADE_VERIFY(shapeDataPrimitive);
-            auto shapeDataMesh = convertShapeNode(*shapeNode, ConvertShapeType::Mesh, importer.get());
-            CORRADE_VERIFY(shapeDataMesh);
-
-            CORRADE_COMPARE(shapeDataAll->meshes.size(), 1);
-
-            CORRADE_COMPARE(shapeDataMaterial->meshes.size(), 0);
-
-            CORRADE_COMPARE(shapeDataPrimitive->meshes.size(), 0);
-            CORRADE_COMPARE(shapeDataPrimitive->materials.size(), 0);
-
-            CORRADE_COMPARE(shapeDataMesh->meshes.size(), 1);
-            CORRADE_COMPARE(shapeDataMesh->materials.size(), 0);
-
-            CORRADE_COMPARE(shapeDataAll->materials.size(), 1);
-            CORRADE_COMPARE(shapeDataAll->materials.size(), shapeDataMaterial->materials.size());
-            CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(), shapeDataMaterial->materials[0].diffuseColor());
-            /* ASS IMP WHAT?! WHY 3.2 is different from 3.0 and 4.0?! (Also,
-               see the AssimpImporterTest::materialStlWhiteAmbientPatch() test
-               in magnum-plugins.) */
-            if(assimpVersion == 302) {
-                CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(), (Vector3{0.6f, 0.6f, 0.6f}));
-                CORRADE_COMPARE(shapeDataMaterial->materials[0].diffuseColor(), (Vector3{0.6f, 0.6f, 0.6f}));
-            } else {
-                #if DART_MAJOR_VERSION*100 + DART_MINOR_VERSION >= 609
-                if(shapeNode->getName() == "base_link_ShapeNode_0") {
-                    CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(), 0x000000_srgbf);
-                    CORRADE_COMPARE(shapeDataMaterial->materials[0].diffuseColor(), 0x000000_srgbf);
-                } else {
-                    CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(), (Vector3{0.792157f, 0.819608f, 0.933333f}));
-                    CORRADE_COMPARE(shapeDataMaterial->materials[0].diffuseColor(), (Vector3{0.792157f, 0.819608f, 0.933333f}));
-                }
-                #else
-                CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(), 0xffffff_srgbf);
-                CORRADE_COMPARE(shapeDataMaterial->materials[0].diffuseColor(), 0xffffff_srgbf);
-                #endif
+                        &ConvertShapeNodeTest::urdf, &ConvertShapeNodeTest::multiMesh,
+                        &ConvertShapeNodeTest::texture
+#endif
+                });
             }
 
-            CORRADE_COMPARE(shapeDataAll->scaling, shapeDataPrimitive->scaling);
+            using namespace Math::Literals;
 
-            CORRADE_COMPARE(shapeDataAll->textures.size(), 0);
-            CORRADE_COMPARE(shapeDataAll->textures.size(), shapeDataMaterial->textures.size());
-        }
-    }
-}
+            void ConvertShapeNodeTest::basicShapes()
+            {
+                {
+                    /* BoxShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("BoxShape");
 
-void ConvertShapeNodeTest::multiMesh() {
-    /** @todo Possibly works with earlier versions (definitely not 3.0) */
-    const UnsignedInt assimpVersion = aiGetVersionMajor()*100 + aiGetVersionMinor();
-    if(assimpVersion < 302)
-        CORRADE_SKIP("Current version of Assimp would not work on this test.");
-    #if DART_MAJOR_VERSION == 6
-    dart::utils::DartLoader loader;
-    #else
-    dart::io::DartLoader loader;
-    #endif
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties("BoxShapeBody"))
+                                                         .second;
 
-    Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
-    CORRADE_VERIFY(importer);
+                    std::shared_ptr<dart::dynamics::BoxShape> box(
+                        new dart::dynamics::BoxShape(Eigen::Vector3d(1., 1., 1.)));
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(box);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(shapeDataAll);
+                }
+                {
+                    /* CapsuleShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("CapsuleShape");
 
-    const std::string filename = Utility::Path::join(DARTINTEGRATION_TEST_DIR, "urdf/test_multi_mesh.urdf");
-    auto tmp_skel = loader.parseSkeleton(filename);
-    CORRADE_VERIFY(tmp_skel);
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties("CapsuleShapeBody"))
+                                                         .second;
 
-    for(auto& bn: tmp_skel->getBodyNodes()) {
-        for(auto& shapeNode: bn->getShapeNodesWith<dart::dynamics::VisualAspect>()) {
-            auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
-            CORRADE_VERIFY(shapeDataAll);
-            auto shapeDataMaterial = convertShapeNode(*shapeNode, ConvertShapeType::Material, importer.get());
-            CORRADE_VERIFY(shapeDataMaterial);
-            auto shapeDataPrimitive = convertShapeNode(*shapeNode, ConvertShapeType::Primitive, importer.get());
-            CORRADE_VERIFY(shapeDataPrimitive);
-            auto shapeDataMesh = convertShapeNode(*shapeNode, ConvertShapeType::Mesh, importer.get());
-            CORRADE_VERIFY(shapeDataMesh);
+                    std::shared_ptr<dart::dynamics::CapsuleShape> capsule(
+                        new dart::dynamics::CapsuleShape(1., 1.));
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(capsule);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(shapeDataAll);
+                }
+                {
+                    /* ConeShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("ConeShape");
 
-            CORRADE_COMPARE(shapeDataAll->meshes.size(), 2);
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties("ConeShapeBody"))
+                                                         .second;
 
-            CORRADE_COMPARE(shapeDataMaterial->meshes.size(), 0);
+                    std::shared_ptr<dart::dynamics::ConeShape> cone(
+                        new dart::dynamics::ConeShape(1., 1.));
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(cone);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(shapeDataAll);
+                }
+                {
+                    /* CylinderShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("CylinderShape");
 
-            CORRADE_COMPARE(shapeDataPrimitive->meshes.size(), 0);
-            CORRADE_COMPARE(shapeDataPrimitive->materials.size(), 0);
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties("CylinderShapeBody"))
+                                                         .second;
 
-            CORRADE_COMPARE(shapeDataMesh->meshes.size(), 2);
-            CORRADE_COMPARE(shapeDataMesh->materials.size(), 0);
+                    std::shared_ptr<dart::dynamics::CylinderShape> cylinder(
+                        new dart::dynamics::CylinderShape(1., 1.));
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(cylinder);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(shapeDataAll);
+                }
+                {
+                    /* EllipsoidShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("EllipsoidShape");
 
-            CORRADE_COMPARE(shapeDataAll->materials.size(), 2);
-            CORRADE_COMPARE(shapeDataAll->materials.size(), shapeDataMaterial->materials.size());
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties(
+                                                                 "EllipsoidShapeBody"))
+                                                         .second;
 
-            CORRADE_COMPARE(shapeDataAll->scaling, shapeDataPrimitive->scaling);
+                    std::shared_ptr<dart::dynamics::EllipsoidShape> ellipsoid(
+                        new dart::dynamics::EllipsoidShape(Eigen::Vector3d(1., 1., 1.)));
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(ellipsoid);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(shapeDataAll);
+                }
+                {
+                    /* SphereShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("SphereShape");
 
-            CORRADE_COMPARE(shapeDataAll->textures.size(), 0);
-            CORRADE_COMPARE(shapeDataAll->textures.size(), shapeDataMaterial->textures.size());
-        }
-    }
-}
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties("SphereShapeBody"))
+                                                         .second;
 
-void ConvertShapeNodeTest::texture() {
-    /** @todo Possibly works with earlier versions (definitely not 3.0) */
-    const UnsignedInt assimpVersion = aiGetVersionMajor()*100 + aiGetVersionMinor();
-    if(assimpVersion < 302)
-        CORRADE_SKIP("Current version of Assimp would not work on this test.");
+                    std::shared_ptr<dart::dynamics::SphereShape> sphere(
+                        new dart::dynamics::SphereShape(1.));
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(sphere);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(shapeDataAll);
+                }
+            }
 
-    #if DART_MAJOR_VERSION == 6
-    dart::utils::DartLoader loader;
-    #else
-    dart::io::DartLoader loader;
-    #endif
+            void ConvertShapeNodeTest::assimpImporter()
+            {
+                {
+                    /* MeshShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("MeshShape");
 
-    Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
-    CORRADE_VERIFY(importer);
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties("MeshShapeBody"))
+                                                         .second;
 
-    const std::string filename = Utility::Path::join(DARTINTEGRATION_TEST_DIR, "urdf/test_texture.urdf");
-    auto tmp_skel = loader.parseSkeleton(filename);
-    CORRADE_VERIFY(tmp_skel);
+                    /* pass nullptr as the mesh because we are not going to use it */
+                    std::shared_ptr<dart::dynamics::MeshShape> mesh(
+                        new dart::dynamics::MeshShape(Eigen::Vector3d(1., 1., 1.), nullptr));
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(mesh);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, nullptr);
+                    CORRADE_VERIFY(!shapeDataAll);
+                }
+                {
+                    /* load AssimpImporter */
+                    Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
+                    CORRADE_VERIFY(importer);
+                    /* MeshShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("MeshShape");
 
-    for(auto& bn: tmp_skel->getBodyNodes()) {
-        for(auto& shapeNode: bn->getShapeNodesWith<dart::dynamics::VisualAspect>()) {
-            auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
-            CORRADE_VERIFY(shapeDataAll);
-            auto shapeDataMaterial = convertShapeNode(*shapeNode, ConvertShapeType::Material, importer.get());
-            CORRADE_VERIFY(shapeDataMaterial);
-            auto shapeDataPrimitive = convertShapeNode(*shapeNode, ConvertShapeType::Primitive, importer.get());
-            CORRADE_VERIFY(shapeDataPrimitive);
-            auto shapeDataMesh = convertShapeNode(*shapeNode, ConvertShapeType::Mesh, importer.get());
-            CORRADE_VERIFY(shapeDataMesh);
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties("MeshShapeBody"))
+                                                         .second;
 
-            CORRADE_COMPARE(shapeDataAll->meshes.size(), 1);
+                    aiScene* noMeshScene = new aiScene;
+                    std::shared_ptr<dart::dynamics::MeshShape> mesh(
+                        new dart::dynamics::MeshShape(Eigen::Vector3d(1., 1., 1.),
+                            noMeshScene));
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(mesh);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
+                    CORRADE_VERIFY(!shapeDataAll);
+                }
 
-            CORRADE_COMPARE(shapeDataMaterial->meshes.size(), 0);
+#if DART_URDF
+#if DART_MAJOR_VERSION == 6
+                dart::utils::DartLoader loader;
+#else
+                dart::io::DartLoader loader;
+#endif
+                {
+                    Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
+                    CORRADE_VERIFY(importer);
 
-            CORRADE_COMPARE(shapeDataPrimitive->meshes.size(), 0);
-            CORRADE_COMPARE(shapeDataPrimitive->materials.size(), 0);
+                    const std::string filename = Utility::Path::join(DARTINTEGRATION_TEST_DIR, "urdf/test.urdf");
+                    auto tmp_skel = loader.parseSkeleton(filename);
 
-            CORRADE_COMPARE(shapeDataMesh->meshes.size(), 1);
-            CORRADE_COMPARE(shapeDataMesh->materials.size(), 0);
+                    auto shapeNode = tmp_skel->getBodyNode(0)
+                                         ->getShapeNodesWith<dart::dynamics::VisualAspect>()[0];
+                    const aiScene* assimpScene = std::static_pointer_cast<dart::dynamics::MeshShape>(
+                        shapeNode->getShape())
+                                                     ->getMesh();
+                    CORRADE_VERIFY(assimpScene);
 
-            CORRADE_COMPARE(shapeDataAll->materials.size(), 1);
-            CORRADE_COMPARE(shapeDataAll->materials.size(), shapeDataMaterial->materials.size());
+                    /* change mesh primitive type in order to produce failure */
+                    aiMesh* mesh = assimpScene->mMeshes[0];
+                    mesh->mPrimitiveTypes = aiPrimitiveType::aiPrimitiveType_POLYGON;
 
-            CORRADE_COMPARE(shapeDataAll->scaling, shapeDataPrimitive->scaling);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
+                    CORRADE_VERIFY(!shapeDataAll);
+                }
+                {
+                    Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
+                    CORRADE_VERIFY(importer);
 
-            CORRADE_COMPARE(shapeDataAll->textures.size(), 1);
-            CORRADE_COMPARE(shapeDataAll->textures.size(), shapeDataMaterial->textures.size());
-        }
-    }
-}
+                    const std::string filename = Utility::Path::join(DARTINTEGRATION_TEST_DIR, "urdf/test.urdf");
+                    auto tmp_skel = loader.parseSkeleton(filename);
+
+                    auto shapeNode = tmp_skel->getBodyNode(0)
+                                         ->getShapeNodesWith<dart::dynamics::VisualAspect>()[0];
+                    auto meshShape = std::static_pointer_cast<dart::dynamics::MeshShape>(
+                        shapeNode->getShape());
+
+                    /* check dart::dynamics::MeshShape::SHAPE_COLOR */
+                    meshShape->setColorMode(dart::dynamics::MeshShape::SHAPE_COLOR);
+
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
+                    CORRADE_VERIFY(shapeDataAll);
+
+                    /* check dart::dynamics::MeshShape::COLOR_INDEX when no colors available */
+                    meshShape->setColorMode(dart::dynamics::MeshShape::COLOR_INDEX);
+
+                    shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
+                    CORRADE_VERIFY(shapeDataAll);
+
+                    /* check dart::dynamics::MeshShape::COLOR_INDEX with colors */
+                    const aiScene* assimpScene = meshShape->getMesh();
+                    aiMesh* mesh = assimpScene->mMeshes[0];
+                    /* add one color to aiMesh */
+                    mesh->mColors[0] = new aiColor4D[mesh->mNumVertices];
+
+                    meshShape->setColorMode(dart::dynamics::MeshShape::COLOR_INDEX);
+                    /* set color index higher than the one available */
+                    meshShape->setColorIndex(1);
+
+                    shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
+                    CORRADE_VERIFY(shapeDataAll);
+                }
+#endif
+            }
+
+            void ConvertShapeNodeTest::unsupportedShapes()
+            {
+                {
+                    /* LineSegmentShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("LineSegmentShape");
+
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties(
+                                                                 "LineSegmentShapeBody"))
+                                                         .second;
+
+                    std::shared_ptr<dart::dynamics::LineSegmentShape> line(
+                        new dart::dynamics::LineSegmentShape());
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(line);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(!shapeDataAll);
+                }
+                {
+                    /* MultiSphereConvexHullShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("MultiSphereConvexHullShape");
+
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties(
+                                                                 "MultiSphereConvexHullShapeBody"))
+                                                         .second;
+
+                    std::shared_ptr<dart::dynamics::MultiSphereConvexHullShape> multiSphere(
+                        new dart::dynamics::MultiSphereConvexHullShape(
+                            std::vector<std::pair<double, Eigen::Vector3d>>()));
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(multiSphere);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(!shapeDataAll);
+                }
+                {
+                    /* PlaneShape */
+                    dart::dynamics::SkeletonPtr tmpSkel = dart::dynamics::Skeleton::create("PlaneShape");
+
+                    dart::dynamics::BodyNodePtr bn = tmpSkel
+                                                         ->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(
+                                                             nullptr, dart::dynamics::WeldJoint::Properties(),
+                                                             dart::dynamics::BodyNode::AspectProperties("PlaneShapeBody"))
+                                                         .second;
+
+                    std::shared_ptr<dart::dynamics::PlaneShape> plane(
+                        new dart::dynamics::PlaneShape(Eigen::Vector3d(1., 1., 1.), 1.));
+                    auto shapeNode = bn->createShapeNodeWith<dart::dynamics::VisualAspect,
+                        dart::dynamics::CollisionAspect,
+                        dart::dynamics::DynamicsAspect>(plane);
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(!shapeDataAll);
+                }
+            }
+
+            void ConvertShapeNodeTest::pendulum()
+            {
+                /* Create an empty Skeleton with the name "pendulum" */
+                std::string name = "pendulum";
+                dart::dynamics::SkeletonPtr pendulum = dart::dynamics::Skeleton::create(name);
+
+                /* Add each body to the last BodyNode in the pendulum */
+                dart::dynamics::BodyNode* bn = makeRootBody(pendulum, "body1");
+                bn = addBody(pendulum, bn, "body2");
+                bn = addBody(pendulum, bn, "body3");
+                bn = addBody(pendulum, bn, "body4");
+                bn = addBody(pendulum, bn, "body5");
+
+                /* Set the initial joint positions so that the pendulum
+                   starts to swing right away */
+                pendulum->getDof(1)->setPosition(Double(Radd(120.0_deg)));
+                pendulum->getDof(2)->setPosition(Double(Radd(20.0_deg)));
+                pendulum->getDof(3)->setPosition(Double(Radd(-50.0_deg)));
+
+                for (auto& shapeNode :
+                    bn->getShapeNodesWith<dart::dynamics::VisualAspect>()) {
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(shapeDataAll);
+                    auto shapeDataMaterial = convertShapeNode(*shapeNode, ConvertShapeType::Material);
+                    CORRADE_VERIFY(shapeDataMaterial);
+                    auto shapeDataPrimitive = convertShapeNode(*shapeNode, ConvertShapeType::Primitive);
+                    CORRADE_VERIFY(shapeDataPrimitive);
+                    auto shapeDataMesh = convertShapeNode(*shapeNode, ConvertShapeType::Mesh);
+                    CORRADE_VERIFY(shapeDataMesh);
+
+                    CORRADE_COMPARE(shapeDataAll->meshes.size(), 1);
+
+                    CORRADE_COMPARE(shapeDataMaterial->meshes.size(), 0);
+
+                    CORRADE_COMPARE(shapeDataPrimitive->meshes.size(), 0);
+                    CORRADE_COMPARE(shapeDataPrimitive->materials.size(), 0);
+
+                    CORRADE_COMPARE(shapeDataMesh->meshes.size(), 1);
+                    CORRADE_COMPARE(shapeDataMesh->materials.size(), 0);
+
+                    CORRADE_COMPARE(shapeDataAll->materials.size(), 1);
+                    CORRADE_COMPARE(shapeDataAll->materials.size(),
+                        shapeDataMaterial->materials.size());
+                    CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(),
+                        shapeDataMaterial->materials[0].diffuseColor());
+
+                    CORRADE_COMPARE(shapeDataAll->scaling, shapeDataPrimitive->scaling);
+
+                    CORRADE_COMPARE(shapeDataAll->textures.size(), 0);
+                    CORRADE_COMPARE(shapeDataAll->textures.size(),
+                        shapeDataMaterial->textures.size());
+                }
+            }
+
+            void ConvertShapeNodeTest::soft()
+            {
+                /* Create a soft body node */
+                auto soft = dart::dynamics::Skeleton::create("soft");
+                auto bn = addSoftBody<dart::dynamics::WeldJoint>(soft, "soft box");
+
+                for (auto& shapeNode :
+                    bn->getShapeNodesWith<dart::dynamics::VisualAspect>()) {
+                    auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All);
+                    CORRADE_VERIFY(shapeDataAll);
+                    auto shapeDataMaterial = convertShapeNode(*shapeNode, ConvertShapeType::Material);
+                    CORRADE_VERIFY(shapeDataMaterial);
+                    auto shapeDataPrimitive = convertShapeNode(*shapeNode, ConvertShapeType::Primitive);
+                    CORRADE_VERIFY(shapeDataPrimitive);
+                    auto shapeDataMesh = convertShapeNode(*shapeNode, ConvertShapeType::Mesh);
+                    CORRADE_VERIFY(shapeDataMesh);
+
+                    CORRADE_COMPARE(shapeDataAll->meshes.size(), 1);
+
+                    CORRADE_COMPARE(shapeDataMaterial->meshes.size(), 0);
+
+                    CORRADE_COMPARE(shapeDataPrimitive->meshes.size(), 0);
+                    CORRADE_COMPARE(shapeDataPrimitive->materials.size(), 0);
+
+                    CORRADE_COMPARE(shapeDataMesh->meshes.size(), 1);
+                    CORRADE_COMPARE(shapeDataMesh->materials.size(), 0);
+
+                    CORRADE_COMPARE(shapeDataAll->materials.size(), 1);
+                    CORRADE_COMPARE(shapeDataAll->materials.size(),
+                        shapeDataMaterial->materials.size());
+                    CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(),
+                        shapeDataMaterial->materials[0].diffuseColor());
+
+                    CORRADE_COMPARE(shapeDataAll->scaling, shapeDataPrimitive->scaling);
+
+                    CORRADE_COMPARE(shapeDataAll->textures.size(), 0);
+                    CORRADE_COMPARE(shapeDataAll->textures.size(),
+                        shapeDataMaterial->textures.size());
+                }
+            }
+
+#if DART_URDF
+            void ConvertShapeNodeTest::urdf()
+            {
+#if DART_MAJOR_VERSION == 6
+                dart::utils::DartLoader loader;
+#else
+                dart::io::DartLoader loader;
 #endif
 
-}}}}
+                Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
+                CORRADE_VERIFY(importer);
+
+                const UnsignedInt assimpVersion = aiGetVersionMajor() * 100 + aiGetVersionMinor();
+
+                const std::string filename = Utility::Path::join(DARTINTEGRATION_TEST_DIR, "urdf/test.urdf");
+                auto tmpSkel = loader.parseSkeleton(filename);
+                CORRADE_VERIFY(tmpSkel);
+
+                for (auto& bn : tmpSkel->getBodyNodes()) {
+                    for (auto& shapeNode :
+                        bn->getShapeNodesWith<dart::dynamics::VisualAspect>()) {
+                        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
+                        CORRADE_VERIFY(shapeDataAll);
+                        auto shapeDataMaterial = convertShapeNode(
+                            *shapeNode, ConvertShapeType::Material, importer.get());
+                        CORRADE_VERIFY(shapeDataMaterial);
+                        auto shapeDataPrimitive = convertShapeNode(
+                            *shapeNode, ConvertShapeType::Primitive, importer.get());
+                        CORRADE_VERIFY(shapeDataPrimitive);
+                        auto shapeDataMesh = convertShapeNode(*shapeNode, ConvertShapeType::Mesh, importer.get());
+                        CORRADE_VERIFY(shapeDataMesh);
+
+                        CORRADE_COMPARE(shapeDataAll->meshes.size(), 1);
+
+                        CORRADE_COMPARE(shapeDataMaterial->meshes.size(), 0);
+
+                        CORRADE_COMPARE(shapeDataPrimitive->meshes.size(), 0);
+                        CORRADE_COMPARE(shapeDataPrimitive->materials.size(), 0);
+
+                        CORRADE_COMPARE(shapeDataMesh->meshes.size(), 1);
+                        CORRADE_COMPARE(shapeDataMesh->materials.size(), 0);
+
+                        CORRADE_COMPARE(shapeDataAll->materials.size(), 1);
+                        CORRADE_COMPARE(shapeDataAll->materials.size(),
+                            shapeDataMaterial->materials.size());
+                        CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(),
+                            shapeDataMaterial->materials[0].diffuseColor());
+                        /* ASS IMP WHAT?! WHY 3.2 is different from 3.0 and 4.0?! (Also,
+                           see the AssimpImporterTest::materialStlWhiteAmbientPatch() test
+                           in magnum-plugins.) */
+                        if (assimpVersion == 302) {
+                            CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(),
+                                (Vector3 { 0.6f, 0.6f, 0.6f }));
+                            CORRADE_COMPARE(shapeDataMaterial->materials[0].diffuseColor(),
+                                (Vector3 { 0.6f, 0.6f, 0.6f }));
+                        } else {
+#if DART_MAJOR_VERSION * 100 + DART_MINOR_VERSION >= 609
+                            if (shapeNode->getName() == "base_link_ShapeNode_0") {
+                                CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(),
+                                    0x000000_srgbf);
+                                CORRADE_COMPARE(shapeDataMaterial->materials[0].diffuseColor(),
+                                    0x000000_srgbf);
+                            } else {
+                                CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(),
+                                    (Vector3 { 0.792157f, 0.819608f, 0.933333f }));
+                                CORRADE_COMPARE(shapeDataMaterial->materials[0].diffuseColor(),
+                                    (Vector3 { 0.792157f, 0.819608f, 0.933333f }));
+                            }
+#else
+                            CORRADE_COMPARE(shapeDataAll->materials[0].diffuseColor(),
+                                0xffffff_srgbf);
+                            CORRADE_COMPARE(shapeDataMaterial->materials[0].diffuseColor(),
+                                0xffffff_srgbf);
+#endif
+                        }
+
+                        CORRADE_COMPARE(shapeDataAll->scaling, shapeDataPrimitive->scaling);
+
+                        CORRADE_COMPARE(shapeDataAll->textures.size(), 0);
+                        CORRADE_COMPARE(shapeDataAll->textures.size(),
+                            shapeDataMaterial->textures.size());
+                    }
+                }
+            }
+
+            void ConvertShapeNodeTest::multiMesh()
+            {
+                /** @todo Possibly works with earlier versions (definitely not 3.0) */
+                const UnsignedInt assimpVersion = aiGetVersionMajor() * 100 + aiGetVersionMinor();
+                if (assimpVersion < 302)
+                    CORRADE_SKIP("Current version of Assimp would not work on this test.");
+#if DART_MAJOR_VERSION == 6
+                dart::utils::DartLoader loader;
+#else
+                dart::io::DartLoader loader;
+#endif
+
+                Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
+                CORRADE_VERIFY(importer);
+
+                const std::string filename = Utility::Path::join(DARTINTEGRATION_TEST_DIR,
+                    "urdf/test_multi_mesh.urdf");
+                auto tmp_skel = loader.parseSkeleton(filename);
+                CORRADE_VERIFY(tmp_skel);
+
+                for (auto& bn : tmp_skel->getBodyNodes()) {
+                    for (auto& shapeNode :
+                        bn->getShapeNodesWith<dart::dynamics::VisualAspect>()) {
+                        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
+                        CORRADE_VERIFY(shapeDataAll);
+                        auto shapeDataMaterial = convertShapeNode(
+                            *shapeNode, ConvertShapeType::Material, importer.get());
+                        CORRADE_VERIFY(shapeDataMaterial);
+                        auto shapeDataPrimitive = convertShapeNode(
+                            *shapeNode, ConvertShapeType::Primitive, importer.get());
+                        CORRADE_VERIFY(shapeDataPrimitive);
+                        auto shapeDataMesh = convertShapeNode(*shapeNode, ConvertShapeType::Mesh, importer.get());
+                        CORRADE_VERIFY(shapeDataMesh);
+
+                        CORRADE_COMPARE(shapeDataAll->meshes.size(), 2);
+
+                        CORRADE_COMPARE(shapeDataMaterial->meshes.size(), 0);
+
+                        CORRADE_COMPARE(shapeDataPrimitive->meshes.size(), 0);
+                        CORRADE_COMPARE(shapeDataPrimitive->materials.size(), 0);
+
+                        CORRADE_COMPARE(shapeDataMesh->meshes.size(), 2);
+                        CORRADE_COMPARE(shapeDataMesh->materials.size(), 0);
+
+                        CORRADE_COMPARE(shapeDataAll->materials.size(), 2);
+                        CORRADE_COMPARE(shapeDataAll->materials.size(),
+                            shapeDataMaterial->materials.size());
+
+                        CORRADE_COMPARE(shapeDataAll->scaling, shapeDataPrimitive->scaling);
+
+                        CORRADE_COMPARE(shapeDataAll->textures.size(), 0);
+                        CORRADE_COMPARE(shapeDataAll->textures.size(),
+                            shapeDataMaterial->textures.size());
+                    }
+                }
+            }
+
+            void ConvertShapeNodeTest::texture()
+            {
+                /** @todo Possibly works with earlier versions (definitely not 3.0) */
+                const UnsignedInt assimpVersion = aiGetVersionMajor() * 100 + aiGetVersionMinor();
+                if (assimpVersion < 302)
+                    CORRADE_SKIP("Current version of Assimp would not work on this test.");
+
+#if DART_MAJOR_VERSION == 6
+                dart::utils::DartLoader loader;
+#else
+                dart::io::DartLoader loader;
+#endif
+
+                Containers::Pointer<Trade::AbstractImporter> importer = _manager.loadAndInstantiate("AssimpImporter");
+                CORRADE_VERIFY(importer);
+
+                const std::string filename = Utility::Path::join(DARTINTEGRATION_TEST_DIR, "urdf/test_texture.urdf");
+                auto tmp_skel = loader.parseSkeleton(filename);
+                CORRADE_VERIFY(tmp_skel);
+
+                for (auto& bn : tmp_skel->getBodyNodes()) {
+                    for (auto& shapeNode :
+                        bn->getShapeNodesWith<dart::dynamics::VisualAspect>()) {
+                        auto shapeDataAll = convertShapeNode(*shapeNode, ConvertShapeType::All, importer.get());
+                        CORRADE_VERIFY(shapeDataAll);
+                        auto shapeDataMaterial = convertShapeNode(
+                            *shapeNode, ConvertShapeType::Material, importer.get());
+                        CORRADE_VERIFY(shapeDataMaterial);
+                        auto shapeDataPrimitive = convertShapeNode(
+                            *shapeNode, ConvertShapeType::Primitive, importer.get());
+                        CORRADE_VERIFY(shapeDataPrimitive);
+                        auto shapeDataMesh = convertShapeNode(*shapeNode, ConvertShapeType::Mesh, importer.get());
+                        CORRADE_VERIFY(shapeDataMesh);
+
+                        CORRADE_COMPARE(shapeDataAll->meshes.size(), 1);
+
+                        CORRADE_COMPARE(shapeDataMaterial->meshes.size(), 0);
+
+                        CORRADE_COMPARE(shapeDataPrimitive->meshes.size(), 0);
+                        CORRADE_COMPARE(shapeDataPrimitive->materials.size(), 0);
+
+                        CORRADE_COMPARE(shapeDataMesh->meshes.size(), 1);
+                        CORRADE_COMPARE(shapeDataMesh->materials.size(), 0);
+
+                        CORRADE_COMPARE(shapeDataAll->materials.size(), 1);
+                        CORRADE_COMPARE(shapeDataAll->materials.size(),
+                            shapeDataMaterial->materials.size());
+
+                        CORRADE_COMPARE(shapeDataAll->scaling, shapeDataPrimitive->scaling);
+
+                        CORRADE_COMPARE(shapeDataAll->textures.size(), 1);
+                        CORRADE_COMPARE(shapeDataAll->textures.size(),
+                            shapeDataMaterial->textures.size());
+                    }
+                }
+            }
+#endif
+
+        } // namespace
+    } // namespace Test
+} // namespace DartIntegration
+} // namespace Magnum
 
 CORRADE_TEST_MAIN(Magnum::DartIntegration::Test::ConvertShapeNodeTest)

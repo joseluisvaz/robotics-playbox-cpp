@@ -26,98 +26,120 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/TestSuite/Tester.h>
 #include <Magnum/Magnum.h>
 #include <Magnum/Math/Matrix4.h>
+#include <sstream>
 
 #include "Magnum/BulletIntegration/Integration.h"
 
-namespace Magnum { namespace BulletIntegration { namespace Test { namespace {
+namespace Magnum {
+namespace BulletIntegration {
+    namespace Test {
+        namespace {
 
-struct IntegrationTest: TestSuite::Tester {
-    explicit IntegrationTest();
+            struct IntegrationTest : TestSuite::Tester {
+                explicit IntegrationTest();
 
-    void vector();
-    void matrix3();
-    void matrix4();
-    void quaternion();
-};
+                void vector();
+                void matrix3();
+                void matrix4();
+                void quaternion();
+            };
 
-IntegrationTest::IntegrationTest() {
-    addTests({&IntegrationTest::vector,
-              &IntegrationTest::matrix3,
-              &IntegrationTest::matrix4,
-              &IntegrationTest::quaternion});
+            IntegrationTest::IntegrationTest()
+            {
+                addTests({ &IntegrationTest::vector, &IntegrationTest::matrix3,
+                    &IntegrationTest::matrix4, &IntegrationTest::quaternion });
 
-    #ifdef BT_USE_DOUBLE_PRECISION
-    Debug{} << "Using Bullet with BT_USE_DOUBLE_PRECISION enabled";
-    #endif
-}
+#ifdef BT_USE_DOUBLE_PRECISION
+                Debug {} << "Using Bullet with BT_USE_DOUBLE_PRECISION enabled";
+#endif
+            }
 
-void IntegrationTest::vector() {
-    Math::Vector3<btScalar> a{btScalar(1.0), btScalar(2.0), btScalar(3.0)};
-    btVector3 b{btScalar(1.0), btScalar(2.0), btScalar(3.0)};
+            void IntegrationTest::vector()
+            {
+                Math::Vector3<btScalar> a { btScalar(1.0), btScalar(2.0), btScalar(3.0) };
+                btVector3 b { btScalar(1.0), btScalar(2.0), btScalar(3.0) };
 
-    CORRADE_COMPARE(Math::Vector3<btScalar>{b}, a);
-    /* Clang can't handle {} (huh?) */
-    CORRADE_VERIFY(btVector3(a) == b);
-}
+                CORRADE_COMPARE(Math::Vector3<btScalar> { b }, a);
+                /* Clang can't handle {} (huh?) */
+                CORRADE_VERIFY(btVector3(a) == b);
+            }
 
-void IntegrationTest::matrix3() {
-    /* Magnum is column-major */
-    const Math::Matrix3x3<btScalar> a{
-        Math::Vector3<btScalar>{btScalar( 0.133333333333333), btScalar(0.933333333333333), btScalar(-0.333333333333333)},
-        Math::Vector3<btScalar>{btScalar(-0.666666666666667), btScalar(0.333333333333333), btScalar( 0.666666666666667)},
-        Math::Vector3<btScalar>{btScalar( 0.733333333333333), btScalar(0.133333333333333), btScalar( 0.666666666666667)}
-    };
+            void IntegrationTest::matrix3()
+            {
+                /* Magnum is column-major */
+                const Math::Matrix3x3<btScalar> a {
+                    Math::Vector3<btScalar> { btScalar(0.133333333333333),
+                        btScalar(0.933333333333333),
+                        btScalar(-0.333333333333333) },
+                    Math::Vector3<btScalar> { btScalar(-0.666666666666667),
+                        btScalar(0.333333333333333),
+                        btScalar(0.666666666666667) },
+                    Math::Vector3<btScalar> { btScalar(0.733333333333333),
+                        btScalar(0.133333333333333),
+                        btScalar(0.666666666666667) }
+                };
 
-    /* Bullet is row-major */
-    const btMatrix3x3 b{
-        btScalar( 0.133333333333333), btScalar(-0.666666666666667), btScalar(0.733333333333333),
-        btScalar( 0.933333333333333), btScalar( 0.333333333333333), btScalar(0.133333333333333),
-        btScalar(-0.333333333333333), btScalar( 0.666666666666667), btScalar(0.666666666666667)
-    };
+                /* Bullet is row-major */
+                const btMatrix3x3 b {
+                    btScalar(0.133333333333333), btScalar(-0.666666666666667),
+                    btScalar(0.733333333333333), btScalar(0.933333333333333),
+                    btScalar(0.333333333333333), btScalar(0.133333333333333),
+                    btScalar(-0.333333333333333), btScalar(0.666666666666667),
+                    btScalar(0.666666666666667)
+                };
 
-    CORRADE_COMPARE(Math::Matrix3x3<btScalar>{b}, a);
+                CORRADE_COMPARE(Math::Matrix3x3<btScalar> { b }, a);
 
-    /* Comparing directly fails on floating-point inaccuracies, need to use
-       fuzzy compare */
-    const btMatrix3x3 btA = btMatrix3x3(a);
-    const btScalar* pa = &btA[0][0];
-    const btScalar* pb = &b[0][0];
-    for(std::size_t i = 0; i < 9; ++i, ++pb, ++pa)
-        CORRADE_COMPARE(*pa, *pb);
+                /* Comparing directly fails on floating-point inaccuracies, need to use
+                   fuzzy compare */
+                const btMatrix3x3 btA = btMatrix3x3(a);
+                const btScalar* pa = &btA[0][0];
+                const btScalar* pb = &b[0][0];
+                for (std::size_t i = 0; i < 9; ++i, ++pb, ++pa)
+                    CORRADE_COMPARE(*pa, *pb);
 
-    /* To be extra sure, verify that conversion to quaternion gives the same
-       result */
-    btQuaternion q;
-    b.getRotation(q);
-    CORRADE_COMPARE(Math::Quaternion<btScalar>::fromMatrix(a), Math::Quaternion<btScalar>{q});
-}
+                /* To be extra sure, verify that conversion to quaternion gives the same
+                   result */
+                btQuaternion q;
+                b.getRotation(q);
+                CORRADE_COMPARE(Math::Quaternion<btScalar>::fromMatrix(a),
+                    Math::Quaternion<btScalar> { q });
+            }
 
-void IntegrationTest::matrix4() {
-    const auto rotation = Math::Quaternion<btScalar>{{btScalar(1.0), btScalar(2.0), btScalar(3.0)}, btScalar(4.0)}.normalized();
-    constexpr Math::Vector3<btScalar> translation{btScalar(1.0), btScalar(2.0), btScalar(3.0)};
+            void IntegrationTest::matrix4()
+            {
+                const auto rotation = Math::Quaternion<btScalar> { { btScalar(1.0), btScalar(2.0), btScalar(3.0) },
+                    btScalar(4.0) }
+                                          .normalized();
+                constexpr Math::Vector3<btScalar> translation { btScalar(1.0), btScalar(2.0),
+                    btScalar(3.0) };
 
-    const auto a = Math::Matrix4<btScalar>::from(rotation.toMatrix(), translation);
-    const btTransform b{btQuaternion{rotation}, btVector3{translation}};
+                const auto a = Math::Matrix4<btScalar>::from(rotation.toMatrix(), translation);
+                const btTransform b { btQuaternion { rotation }, btVector3 { translation } };
 
-    CORRADE_COMPARE(Math::Matrix4<btScalar>{b}, a);
+                CORRADE_COMPARE(Math::Matrix4<btScalar> { b }, a);
 
-    const btTransform btA = btTransform(a);
-    CORRADE_COMPARE(Math::Quaternion<btScalar>{btA.getRotation()}, rotation);
-    CORRADE_COMPARE(Math::Vector3<btScalar>{btA.getOrigin()}, translation);
-}
+                const btTransform btA = btTransform(a);
+                CORRADE_COMPARE(Math::Quaternion<btScalar> { btA.getRotation() }, rotation);
+                CORRADE_COMPARE(Math::Vector3<btScalar> { btA.getOrigin() }, translation);
+            }
 
-void IntegrationTest::quaternion() {
-    Math::Quaternion<btScalar> a{{btScalar(1.0), btScalar(2.0), btScalar(3.0)}, btScalar(4.0)};
-    btQuaternion b{btScalar(1.0), btScalar(2.0), btScalar(3.0), btScalar(4.0)};
+            void IntegrationTest::quaternion()
+            {
+                Math::Quaternion<btScalar> a { { btScalar(1.0), btScalar(2.0), btScalar(3.0) },
+                    btScalar(4.0) };
+                btQuaternion b { btScalar(1.0), btScalar(2.0), btScalar(3.0), btScalar(4.0) };
 
-    CORRADE_COMPARE(Math::Quaternion<btScalar>{b}, a);
-    CORRADE_VERIFY(btQuaternion{a} == b);
-}
+                CORRADE_COMPARE(Math::Quaternion<btScalar> { b }, a);
+                CORRADE_VERIFY(btQuaternion { a } == b);
+            }
 
-}}}}
+        } // namespace
+    } // namespace Test
+} // namespace BulletIntegration
+} // namespace Magnum
 
 CORRADE_TEST_MAIN(Magnum::BulletIntegration::Test::IntegrationTest)

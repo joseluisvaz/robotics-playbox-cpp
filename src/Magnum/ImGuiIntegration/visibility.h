@@ -34,18 +34,18 @@
 
 #ifndef DOXYGEN_GENERATING_OUTPUT
 #ifndef MAGNUM_IMGUIINTEGRATION_BUILD_STATIC
-    #if defined(MagnumImGuiIntegration_EXPORTS) || defined(MagnumImGuiIntegrationTestLib_EXPORTS)
-        #define MAGNUM_IMGUIINTEGRATION_EXPORT CORRADE_VISIBILITY_EXPORT
-        /* From imconfig.h to export ImGui symbols */
-        #define IMGUI_API CORRADE_VISIBILITY_EXPORT
-    #else
-        #define MAGNUM_IMGUIINTEGRATION_EXPORT CORRADE_VISIBILITY_IMPORT
-        /* From imconfig.h to import ImGui symbols */
-        #define IMGUI_API CORRADE_VISIBILITY_IMPORT
-    #endif
+#if defined(MagnumImGuiIntegration_EXPORTS) || defined(MagnumImGuiIntegrationTestLib_EXPORTS)
+#define MAGNUM_IMGUIINTEGRATION_EXPORT CORRADE_VISIBILITY_EXPORT
+/* From imconfig.h to export ImGui symbols */
+#define IMGUI_API CORRADE_VISIBILITY_EXPORT
 #else
-    #define MAGNUM_IMGUIINTEGRATION_EXPORT CORRADE_VISIBILITY_STATIC
-    #define IMGUI_API CORRADE_VISIBILITY_STATIC
+#define MAGNUM_IMGUIINTEGRATION_EXPORT CORRADE_VISIBILITY_IMPORT
+/* From imconfig.h to import ImGui symbols */
+#define IMGUI_API CORRADE_VISIBILITY_IMPORT
+#endif
+#else
+#define MAGNUM_IMGUIINTEGRATION_EXPORT CORRADE_VISIBILITY_STATIC
+#define IMGUI_API CORRADE_VISIBILITY_STATIC
 #endif
 #else
 #define MAGNUM_IMGUIINTEGRATION_EXPORT

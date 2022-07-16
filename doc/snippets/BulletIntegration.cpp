@@ -23,9 +23,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <btBulletDynamicsCommon.h>
-#include <Magnum/SceneGraph/Object.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
+#include <Magnum/SceneGraph/Object.h>
+#include <btBulletDynamicsCommon.h>
 
 #include "Magnum/BulletIntegration/DebugDraw.h"
 #include "Magnum/BulletIntegration/MotionState.h"
@@ -34,7 +34,8 @@
 
 using namespace Magnum;
 
-int main() {
+int main()
+{
 #ifdef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
@@ -42,47 +43,46 @@ int main() {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-{
-Matrix4 projection, transformation;
-/* [DebugDraw-usage] */
-btDynamicsWorld* btWorld;
-BulletIntegration::DebugDraw debugDraw;
+    {
+        Matrix4 projection, transformation;
+        /* [DebugDraw-usage] */
+        btDynamicsWorld* btWorld;
+        BulletIntegration::DebugDraw debugDraw;
 
-debugDraw.setMode(BulletIntegration::DebugDraw::Mode::DrawWireframe|
-                  BulletIntegration::DebugDraw::Mode::DrawConstraints);
-btWorld->setDebugDrawer(&debugDraw);
-/* [DebugDraw-usage] */
+        debugDraw.setMode(BulletIntegration::DebugDraw::Mode::DrawWireframe | BulletIntegration::DebugDraw::Mode::DrawConstraints);
+        btWorld->setDebugDrawer(&debugDraw);
+        /* [DebugDraw-usage] */
 
-/* [DebugDraw-usage-per-frame] */
-debugDraw.setTransformationProjectionMatrix(projection*transformation);
-btWorld->debugDrawWorld();
-/* [DebugDraw-usage-per-frame] */
-}
+        /* [DebugDraw-usage-per-frame] */
+        debugDraw.setTransformationProjectionMatrix(projection * transformation);
+        btWorld->debugDrawWorld();
+        /* [DebugDraw-usage-per-frame] */
+    }
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
 
 #ifndef BT_USE_DOUBLE_PRECISION
-{
+    {
 /* The include is already above, so doing it again here should be harmless */
 /* [Integration] */
 #include <Magnum/BulletIntegration/Integration.h>
 
-DOXYGEN_ELLIPSIS()
+        DOXYGEN_ELLIPSIS()
 
-btVector3 a{20.0f, 50.0f, -1.0f};
-Vector3 b(a);
+        btVector3 a { 20.0f, 50.0f, -1.0f };
+        Vector3 b(a);
 
-using namespace Math::Literals;
-auto c = btQuaternion(Quaternion::rotation(15.0_degf, Vector3::xAxis()));
-/* [Integration] */
-static_cast<void>(b);
-static_cast<void>(c);
-}
+        using namespace Math::Literals;
+        auto c = btQuaternion(Quaternion::rotation(15.0_degf, Vector3::xAxis()));
+        /* [Integration] */
+        static_cast<void>(b);
+        static_cast<void>(c);
+    }
 #endif
 
 #ifndef BT_USE_DOUBLE_PRECISION
-{
+    {
 #ifdef __clang__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
@@ -90,31 +90,30 @@ static_cast<void>(c);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-/* [MotionState-usage] */
-btDynamicsWorld* btWorld;
-SceneGraph::Object<SceneGraph::MatrixTransformation3D> object;
+        /* [MotionState-usage] */
+        btDynamicsWorld* btWorld;
+        SceneGraph::Object<SceneGraph::MatrixTransformation3D> object;
 
-auto motionState = new BulletIntegration::MotionState{object};
-auto collisionShape = new btBoxShape{{0.5f, 0.5f, 0.5f}};
-auto rigidBody = new btRigidBody{20.0f, &motionState->btMotionState(), collisionShape};
-btWorld->addRigidBody(rigidBody);
-/* [MotionState-usage] */
+        auto motionState = new BulletIntegration::MotionState { object };
+        auto collisionShape = new btBoxShape { { 0.5f, 0.5f, 0.5f } };
+        auto rigidBody = new btRigidBody { 20.0f, &motionState->btMotionState(), collisionShape };
+        btWorld->addRigidBody(rigidBody);
+        /* [MotionState-usage] */
 
-/* [MotionState-kinematic] */
-rigidBody->setCollisionFlags(rigidBody->getCollisionFlags()|
-    btCollisionObject::CF_KINEMATIC_OBJECT);
-/* [MotionState-kinematic] */
+        /* [MotionState-kinematic] */
+        rigidBody->setCollisionFlags(rigidBody->getCollisionFlags() | btCollisionObject::CF_KINEMATIC_OBJECT);
+        /* [MotionState-kinematic] */
 
-/* [MotionState-update] */
-rigidBody->setWorldTransform(btTransform(object.transformationMatrix()));
-/* [MotionState-update] */
+        /* [MotionState-update] */
+        rigidBody->setWorldTransform(btTransform(object.transformationMatrix()));
+        /* [MotionState-update] */
 
-/* [MotionState-usage-after] */
-rigidBody->setMotionState(&motionState->btMotionState());
+        /* [MotionState-usage-after] */
+        rigidBody->setMotionState(&motionState->btMotionState());
 /* [MotionState-usage-after] */
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
-}
+    }
 #endif
 }

@@ -23,109 +23,117 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-#include <sstream>
 #include <Corrade/TestSuite/Tester.h>
 #include <Corrade/Utility/DebugStl.h>
+#include <sstream>
 
 #include "Magnum/Magnum.h"
 
 #include <glm/fwd.hpp>
 #if GLM_VERSION < 96
-#define GLM_FORCE_RADIANS /* Otherwise 0.9.5 spits a lot of loud messages :/ */
+#define GLM_FORCE_RADIANS /* Otherwise 0.9.5 spits a lot of loud messages :/ \
+                           */
 #endif
 #if GLM_VERSION >= 990
 #define GLM_ENABLE_EXPERIMENTAL /* WTF, GLM! */
 #endif
 #include "Magnum/GlmIntegration/GtxIntegration.h"
 
-namespace Magnum { namespace GlmIntegration { namespace Test { namespace {
+namespace Magnum {
+namespace GlmIntegration {
+    namespace Test {
+        namespace {
 
-struct GtxIntegrationTest: TestSuite::Tester {
-    explicit GtxIntegrationTest();
+            struct GtxIntegrationTest : TestSuite::Tester {
+                explicit GtxIntegrationTest();
 
-    void dualquat();
-    void ddualquat();
+                void dualquat();
+                void ddualquat();
 
-    void debugDualQuat();
-};
+                void debugDualQuat();
+            };
 
-GtxIntegrationTest::GtxIntegrationTest() {
-    addTests({&GtxIntegrationTest::dualquat,
-              &GtxIntegrationTest::ddualquat,
+            GtxIntegrationTest::GtxIntegrationTest()
+            {
+                addTests({ &GtxIntegrationTest::dualquat, &GtxIntegrationTest::ddualquat,
 
-              &GtxIntegrationTest::debugDualQuat});
-}
+                    &GtxIntegrationTest::debugDualQuat });
+            }
 
-void GtxIntegrationTest::dualquat() {
-    DualQuaternion a{{{1.0f, 2.0f, 3.0f}, 4.0f},
-                     {{5.0f, 6.0f, 7.0f}, 8.0f}};
-    #if GLM_VERSION*10 + GLM_VERSION_REVISION < 952
-    /* In < 0.9.5.2 it is ambiguous (vec3 vs quat as second parameter) due
-       to initializer list fiasco: https://github.com/g-truc/glm/issues/159.
-       Also, due to the same thing, using {} gives a totally different result
-       compared to (). */
-    glm::dualquat b{glm::quat(4.0f, 1.0f, 2.0f, 3.0f),
-                    glm::quat(8.0f, 5.0f, 6.0f, 7.0f)};
-    #else
-    glm::dualquat b{{4.0f, 1.0f, 2.0f, 3.0f},
-                    {8.0f, 5.0f, 6.0f, 7.0f}};
-    #endif
+            void GtxIntegrationTest::dualquat()
+            {
+                DualQuaternion a { { { 1.0f, 2.0f, 3.0f }, 4.0f }, { { 5.0f, 6.0f, 7.0f }, 8.0f } };
+#if GLM_VERSION * 10 + GLM_VERSION_REVISION < 952
+                /* In < 0.9.5.2 it is ambiguous (vec3 vs quat as second parameter) due
+                   to initializer list fiasco: https://github.com/g-truc/glm/issues/159.
+                   Also, due to the same thing, using {} gives a totally different result
+                   compared to (). */
+                glm::dualquat b { glm::quat(4.0f, 1.0f, 2.0f, 3.0f),
+                    glm::quat(8.0f, 5.0f, 6.0f, 7.0f) };
+#else
+                glm::dualquat b { { 4.0f, 1.0f, 2.0f, 3.0f }, { 8.0f, 5.0f, 6.0f, 7.0f } };
+#endif
 
-    CORRADE_COMPARE(DualQuaternion{b}, a);
-    #if GLM_VERSION < 97
-    /* glm::to_string() for quat is since O.9.7 */
-    CORRADE_VERIFY(glm::dualquat{a} == b);
-    #else
-    CORRADE_COMPARE(glm::dualquat{a}, b);
-    #endif
+                CORRADE_COMPARE(DualQuaternion { b }, a);
+#if GLM_VERSION < 97
+                /* glm::to_string() for quat is since O.9.7 */
+                CORRADE_VERIFY(glm::dualquat { a } == b);
+#else
+                CORRADE_COMPARE(glm::dualquat { a }, b);
+#endif
 
-    CORRADE_COMPARE(DualQuaternion{b}.dual().vector().z(), b.dual.z);
-    CORRADE_COMPARE(glm::dualquat{a}.dual.z, a.dual().vector().z());
-}
+                CORRADE_COMPARE(DualQuaternion { b }.dual().vector().z(), b.dual.z);
+                CORRADE_COMPARE(glm::dualquat { a }.dual.z, a.dual().vector().z());
+            }
 
-void GtxIntegrationTest::ddualquat() {
-    DualQuaterniond a{{{1.0, 2.0, 3.0}, 4.0},
-                      {{5.0, 6.0, 7.0}, 8.0}};
-    #if GLM_VERSION*10 + GLM_VERSION_REVISION < 952
-    /* In < 0.9.5.2 it is ambiguous (vec3 vs quat as second parameter) due
-       to initializer list fiasco: https://github.com/g-truc/glm/issues/159.
-       Also, due to the same thing, using {} gives a totally different result
-       compared to (). */
-    glm::ddualquat b{glm::dquat(4.0, 1.0, 2.0, 3.0),
-                     glm::dquat(8.0, 5.0, 6.0, 7.0)};
-    #else
-    glm::ddualquat b{{4.0, 1.0, 2.0, 3.0},
-                     {8.0, 5.0, 6.0, 7.0}};
-    #endif
+            void GtxIntegrationTest::ddualquat()
+            {
+                DualQuaterniond a { { { 1.0, 2.0, 3.0 }, 4.0 }, { { 5.0, 6.0, 7.0 }, 8.0 } };
+#if GLM_VERSION * 10 + GLM_VERSION_REVISION < 952
+                /* In < 0.9.5.2 it is ambiguous (vec3 vs quat as second parameter) due
+                   to initializer list fiasco: https://github.com/g-truc/glm/issues/159.
+                   Also, due to the same thing, using {} gives a totally different result
+                   compared to (). */
+                glm::ddualquat b { glm::dquat(4.0, 1.0, 2.0, 3.0),
+                    glm::dquat(8.0, 5.0, 6.0, 7.0) };
+#else
+                glm::ddualquat b { { 4.0, 1.0, 2.0, 3.0 }, { 8.0, 5.0, 6.0, 7.0 } };
+#endif
 
-    CORRADE_COMPARE(DualQuaterniond{b}, a);
-    #if GLM_VERSION < 97
-    /* glm::to_string() for quat is since O.9.7 */
-    CORRADE_VERIFY(glm::ddualquat{a} == b);
-    #else
-    CORRADE_COMPARE(glm::ddualquat{a}, b);
-    #endif
+                CORRADE_COMPARE(DualQuaterniond { b }, a);
+#if GLM_VERSION < 97
+                /* glm::to_string() for quat is since O.9.7 */
+                CORRADE_VERIFY(glm::ddualquat { a } == b);
+#else
+                CORRADE_COMPARE(glm::ddualquat { a }, b);
+#endif
 
-    CORRADE_COMPARE(DualQuaterniond{b}.dual().vector().z(), b.dual.z);
-    CORRADE_COMPARE(glm::ddualquat{a}.dual.z, a.dual().vector().z());
-}
+                CORRADE_COMPARE(DualQuaterniond { b }.dual().vector().z(), b.dual.z);
+                CORRADE_COMPARE(glm::ddualquat { a }.dual.z, a.dual().vector().z());
+            }
 
-void GtxIntegrationTest::debugDualQuat() {
-    #if GLM_VERSION < 97
-    CORRADE_SKIP("Not available in GLM < 0.9.7.");
-    #else
-    #if GLM_VERSION <= 990
-    /* https://github.com/g-truc/glm/pull/773 */
-    CORRADE_SKIP("Segfaults in 0.9.9.0 due to a GLM bug.");
-    #endif
+            void GtxIntegrationTest::debugDualQuat()
+            {
+#if GLM_VERSION < 97
+                CORRADE_SKIP("Not available in GLM < 0.9.7.");
+#else
+#if GLM_VERSION <= 990
+                /* https://github.com/g-truc/glm/pull/773 */
+                CORRADE_SKIP("Segfaults in 0.9.9.0 due to a GLM bug.");
+#endif
 
-    std::ostringstream out;
-    Debug{&out} << glm::highp_ddualquat{{4.0, 1.0, 2.0, 3.0},
-                                        {8.0, 5.0, 6.0, 7.0}};
-    CORRADE_COMPARE(out.str(), "ddualquat((4.000000, {1.000000, 2.000000, 3.000000}), (8.000000, {5.000000, 6.000000, 7.000000}))\n");
-    #endif
-}
+                std::ostringstream out;
+                Debug { &out } << glm::highp_ddualquat { { 4.0, 1.0, 2.0, 3.0 },
+                    { 8.0, 5.0, 6.0, 7.0 } };
+                CORRADE_COMPARE(out.str(),
+                    "ddualquat((4.000000, {1.000000, 2.000000, 3.000000}), "
+                    "(8.000000, {5.000000, 6.000000, 7.000000}))\n");
+#endif
+            }
 
-}}}}
+        } // namespace
+    } // namespace Test
+} // namespace GlmIntegration
+} // namespace Magnum
 
 CORRADE_TEST_MAIN(Magnum::GlmIntegration::Test::GtxIntegrationTest)

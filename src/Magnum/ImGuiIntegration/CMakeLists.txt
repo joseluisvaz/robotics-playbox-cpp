@@ -30,7 +30,13 @@
 # property that would have to be set on each target separately.
 set(CMAKE_FOLDER "Magnum/ImGuiIntegration")
 
-find_package(Magnum REQUIRED GL Shaders)
+find_package(Magnum REQUIRED 
+    GL 
+    Shaders 
+    Primitives
+    SceneGraph
+    Shaders
+    Sdl2Application)
 
 # To help Homebrew and other packages, ImGui sources can be cloned to
 # src/MagnumExternal/ImGui and we will use those without any extra effort
@@ -56,6 +62,7 @@ set(MagnumImGuiIntegration_SRCS
 
 set(MagnumImGuiIntegration_HEADERS
     Context.h
+    TrajectoryTypes.hpp
     Context.hpp
     Integration.h
     Widgets.h
@@ -77,9 +84,14 @@ elseif(BUILD_STATIC_PIC)
 endif()
 target_link_libraries(MagnumImGuiIntegration
     PUBLIC
+        Corrade::Main
+        Magnum::Application
         Magnum::GL
+        Magnum::Magnum
+        Magnum::MeshTools
+        Magnum::Primitives
+        Magnum::SceneGraph
         Magnum::Shaders
-        ImGui::ImGui
     PRIVATE
         ImGui::Sources)
 
