@@ -62,7 +62,6 @@ set(MagnumImGuiIntegration_SRCS
 
 set(MagnumImGuiIntegration_HEADERS
     Context.h
-    TrajectoryTypes.hpp
     Context.hpp
     Integration.h
     Widgets.h

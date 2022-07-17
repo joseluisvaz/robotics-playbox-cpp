@@ -41,6 +41,7 @@ endif()
 
 add_subdirectory(Magnum)
 add_subdirectory(MagnumExternal)
+add_subdirectory(gui_application)
 
 # Magnum integration include dir for superprojects
 set(MAGNUMINTEGRATION_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")

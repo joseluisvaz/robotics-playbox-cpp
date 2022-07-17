@@ -19,6 +19,7 @@
 // SOFTWARE
 
 #include <array>
+#include <random>
 
 namespace Magnum::Examples
 {
@@ -63,8 +64,9 @@ using KinematicBicycleTrajectory = Trajectory<KinematicBicycleState>;
 
 struct KinematicBicycle
 {
-  constexpr static double ts = 0.1;
-  constexpr static double one_over_wheelbase = 1.0 / 3.0;
+  constexpr static double ts{0.1};
+  constexpr static double one_over_wheelbase{1.0 / 3.0};
+  constexpr static double steering_max{0.52};
 
   using StateType = KinematicBicycleState;
   using ActionType = KinematicBicycleAction;
@@ -75,8 +77,10 @@ struct KinematicBicycle
 
     new_state.x = state.x + ts * state.speed * std::cos(state.yaw);
     new_state.y = state.y + ts * state.speed * std::sin(state.yaw);
-    new_state.yaw = state.yaw + ts * state.speed * one_over_wheelbase *
-                                    std::tan(state.steering);
+    new_state.yaw =
+        state.yaw +
+        ts * state.speed * one_over_wheelbase *
+            std::tan(std::clamp(state.steering, -steering_max, steering_max));
     new_state.speed = state.speed + ts * state.accel;
     new_state.accel = state.accel + ts * action.jerk;
     new_state.steering = state.steering + ts * action.steering_rate;
@@ -91,34 +95,44 @@ class CEM_MPC
   using ActionType = typename DynamicsT::ActionType;
 
 public:
-  CEM_MPC(const uint16_t num_iters, const uint16_t horizon,
-          const uint16_t population)
+  CEM_MPC() = default;
+  CEM_MPC(const int num_iters, const int horizon, const int population)
       : num_iters_(num_iters), horizon_(horizon), population_(population){};
 
   Trajectory<StateType> rollout(StateType initial_state)
   {
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+
+    // values near the mean are the most likely
+    // standard deviation affects the dispersion of generated values from the
+    // mean
+    std::normal_distribution<> d{0, 1};
+
     auto state = initial_state;
     Trajectory<StateType> trajectory;
 
-    double current_time_s = 0.0;
+    double current_time_s{0.0};
 
     for (size_t i = 0; i < horizon_; ++i)
     {
       ActionType action;
-      action.steering_rate = 0.1;
-      action.jerk = 0.1;
+      action.steering_rate = d(gen);
+      action.jerk = d(gen);
 
       state = DynamicsT::step(state, action);
       trajectory.states.push_back(state);
       trajectory.time.push_back(current_time_s);
+      current_time_s += DynamicsT::ts;
     }
     return trajectory;
   };
 
 private:
-  const int num_iters_;
-  const int horizon_;
-  const int population_;
+  int num_iters_;
+  int horizon_;
+  int population_;
 };
+
 
 } // namespace Magnum::Examples

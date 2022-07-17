@@ -32,6 +32,8 @@
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/ImGui)
     install(FILES
         ImGui/imgui.h
+        ImGui/implot.h
+        ImGui/implot_internal.h
         ImGui/imgui_internal.h
         ImGui/imconfig.h
         ImGui/imstb_textedit.h

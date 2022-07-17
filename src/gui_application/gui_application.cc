@@ -1,27 +1,3 @@
-/*
-    This file is part of Magnum.
-    Original authors — credit is appreciated but not required:
-        2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019,
-        2020, 2021, 2022 — Vladimír Vondruš <mosra@centrum.cz>
-        2018 — scturtle <scturtle@gmail.com>
-    This is free and unencumbered software released into the public domain.
-    Anyone is free to copy, modify, publish, use, compile, sell, or distribute
-    this software, either in source code form or as a compiled binary, for any
-    purpose, commercial or non-commercial, and by any means.
-    In jurisdictions that recognize copyright laws, the author or authors of
-    this software dedicate any and all copyright interest in the software to
-    the public domain. We make this dedication for the benefit of the public
-    at large and to the detriment of our heirs and successors. We intend this
-    dedication to be an overt act of relinquishment in perpetuity of all
-    present and future rights to this software under copyright law.
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-    THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
 #include <Magnum/GL/Buffer.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Mesh.h>
@@ -44,119 +20,58 @@
 #include <Magnum/Shaders/VertexColorGL.h>
 #include <Magnum/Trade/MeshData.h>
 
+#include "gui_application/TrajectoryTypes.hpp"
+#include "gui_application/implot.h"
 #include <Magnum/ImGuiIntegration/Context.hpp>
+#include <algorithm>
 #include <iostream>
+#include <memory>
+
+#include "gui_application/gui_application.hh"
 
 namespace Magnum
 {
 namespace Examples
 {
 
-using Object3D = SceneGraph::Object<SceneGraph::MatrixTransformation3D>;
-using Scene3D = SceneGraph::Scene<SceneGraph::MatrixTransformation3D>;
-
-using namespace Math::Literals;
-
-class MouseInteractionExample : public Platform::Application
+TrajectoryObjects::TrajectoryObjects(Scene3D &scene, const int horizon_points)
 {
-public:
-  explicit MouseInteractionExample(const Arguments &arguments);
+  constexpr double avg_length{SCALE(4.5)};
+  constexpr double avg_width{SCALE(1.75)};
+  constexpr double avg_height{SCALE(1.75)};
+  vehicle_extent_ = Vector3{avg_width, avg_height, avg_length};
 
-private:
-  Float depthAt(const Vector2i &windowPosition);
-  Vector3 unproject(const Vector2i &windowPosition, Float depth) const;
+  for (size_t i{0UL}; i < horizon_points; ++i)
+  {
+    auto cube = std::make_shared<Object3D>(&scene);
+    objects_.emplace_back(std::move(cube));
+  }
+}
 
-  // Mouse handling for the application
-  void viewportEvent(ViewportEvent &event) override;
-  void keyPressEvent(KeyEvent &event) override;
-  void mousePressEvent(MouseEvent &event) override;
-  void mouseReleaseEvent(MouseEvent &event) override;
-  void mouseMoveEvent(MouseMoveEvent &event) override;
-  void mouseScrollEvent(MouseScrollEvent &event) override;
-
-  // Setup Imgui Menu
-  void show_menu();
-
-  // Draw event
-  void drawEvent() override;
-
-  ImGuiIntegration::Context _imgui{NoCreate};
-  Shaders::VertexColorGL3D _vertexColorShader{NoCreate};
-  Shaders::FlatGL3D _flatShader{NoCreate};
-  GL::Mesh _mesh{NoCreate}, _grid{NoCreate}, _origin_axis{NoCreate};
-
-  Scene3D _scene;
-  SceneGraph::DrawableGroup3D _drawables;
-  Object3D *_cameraObject;
-  SceneGraph::Camera3D *_camera;
-
-  Float _lastDepth;
-  Vector2i _lastPosition{-1};
-  Vector3 _rotationPoint, _translationPoint;
-};
-
-class VertexColorDrawable : public SceneGraph::Drawable3D
+const std::vector<std::shared_ptr<Object3D>> &
+TrajectoryObjects::get_objects() const
 {
-public:
-  explicit VertexColorDrawable(Object3D &object,
-                               Shaders::VertexColorGL3D &shader, GL::Mesh &mesh,
-                               SceneGraph::DrawableGroup3D &drawables)
-      : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
-  {
-  }
+  return objects_;
+}
 
-  void draw(const Matrix4 &transformation, SceneGraph::Camera3D &camera)
-  {
-    _shader
-        .setTransformationProjectionMatrix(camera.projectionMatrix() *
-                                           transformation)
-        .draw(_mesh);
-  }
-
-private:
-  Shaders::VertexColorGL3D &_shader;
-  GL::Mesh &_mesh;
-};
-
-class FlatDrawable : public SceneGraph::Drawable3D
+const Vector3 &TrajectoryObjects::get_vehicle_extent() const
 {
-public:
-  explicit FlatDrawable(Object3D &object, Shaders::FlatGL3D &shader,
-                        GL::Mesh &mesh, SceneGraph::DrawableGroup3D &drawables)
-      : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
-  {
-  }
+  return vehicle_extent_;
+}
 
-  void draw(const Matrix4 &transformation, SceneGraph::Camera3D &camera)
-  {
-    _shader.setColor(0x747474_rgbf)
-        .setTransformationProjectionMatrix(camera.projectionMatrix() *
-                                           transformation)
-        .draw(_mesh);
-  }
-
-private:
-  Shaders::FlatGL3D &_shader;
-  GL::Mesh &_mesh;
-};
-
-MouseInteractionExample::MouseInteractionExample(const Arguments &arguments)
+SandboxExample::SandboxExample(const Arguments &arguments)
     : Platform::Application{arguments, NoCreate}
 {
-
-  // auto cem_mpc = CEM_MPC<KinematicBicycle>(10U, 100U, 10U);
-  // auto initial_state = KinematicBicycle::StateType{};
-  // initial_state.x = 1.0;
-  // initial_state.y = 1.0;
-  // auto trajectory = cem_mpc.rollout(initial_state);
 
   /* Setup window */
   {
     const Vector2 dpiScaling = this->dpiScaling({});
     Configuration conf;
-    conf.setTitle("Magnum 3D Fluid Simulation Example")
+    conf.setTitle("Robotics Sandbox")
         .setSize(conf.size(), dpiScaling)
-        .setWindowFlags(Configuration::WindowFlag::Resizable);
+        .setWindowFlags(Configuration::WindowFlag::Resizable |
+                        Configuration::WindowFlag::Maximized |
+                        Configuration::WindowFlag::Tooltip);
     GLConfiguration glConf;
     glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
     if (!tryCreate(conf, glConf))
@@ -167,11 +82,11 @@ MouseInteractionExample::MouseInteractionExample(const Arguments &arguments)
 
   /* Setup ImGui, load a better font */
   {
-    // ImGui::CreateContext();
-    // ImGui::StyleColorsDark();
 
     _imgui = ImGuiIntegration::Context(Vector2{windowSize()} / dpiScaling(),
                                        windowSize(), framebufferSize());
+    ImPlot::CreateContext();
+    ImGui::StyleColorsDark();
 
     /* Setup proper blending to be used by ImGui */
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
@@ -186,22 +101,22 @@ MouseInteractionExample::MouseInteractionExample(const Arguments &arguments)
   _flatShader = Shaders::FlatGL3D{};
   GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 
-  /* Cube mesh */
   _mesh = MeshTools::compile(Primitives::cubeWireframe());
+  constexpr int horizon = 100;
+  mpc_ =
+      CEM_MPC<KinematicBicycle>(100 /* iters */, horizon, 100 /* population */);
 
-  auto cube = new Object3D{&_scene};
-  new VertexColorDrawable{*cube, _vertexColorShader, _mesh, _drawables};
-  for (size_t i{0UL}; i < 5UL; ++i)
+  trajectory_objects_ = TrajectoryObjects(_scene, horizon);
+  for (auto &object : trajectory_objects_.get_objects())
   {
-    auto cube = new Object3D{&_scene};
-    cube->rotateY(45.0_degf).translate(Vector3(0.0f, 0.0f, 10.0f));
-    new VertexColorDrawable{*cube, _vertexColorShader, _mesh, _drawables};
+    new VertexColorDrawable{*object, _vertexColorShader, _mesh, _drawables};
   }
+  this->runCEM();
 
   /* Grid */
   _grid = MeshTools::compile(Primitives::grid3DWireframe({15, 15}));
   auto grid = new Object3D{&_scene};
-  (*grid).rotateX(90.0_degf).scale(Vector3{8.0f});
+  (*grid).rotateX(90.0_degf).scale(Vector3{15.0f});
   new FlatDrawable{*grid, _flatShader, _grid, _drawables};
 
   /* Origin Axis */
@@ -212,10 +127,8 @@ MouseInteractionExample::MouseInteractionExample(const Arguments &arguments)
 
   /* Set up the camera */
   _cameraObject = new Object3D{&_scene};
-  (*_cameraObject)
-      .translate(Vector3::zAxis(5.0f))
-      .rotateX(-15.0_degf)
-      .rotateY(30.0_degf);
+  this->resetCameraPosition();
+
   _camera = new SceneGraph::Camera3D{*_cameraObject};
   _camera->setProjectionMatrix(Matrix4::perspectiveProjection(
       45.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 100.0f));
@@ -228,7 +141,7 @@ MouseInteractionExample::MouseInteractionExample(const Arguments &arguments)
                0.5f;
 }
 
-Float MouseInteractionExample::depthAt(const Vector2i &windowPosition)
+Float SandboxExample::depthAt(const Vector2i &windowPosition)
 {
   /* First scale the position from being relative to window size to being
      relative to framebuffer size as those two can be different on HiDPI
@@ -250,8 +163,8 @@ Float MouseInteractionExample::depthAt(const Vector2i &windowPosition)
   return Math::min<Float>(data.pixels<Float>().asContiguous());
 }
 
-Vector3 MouseInteractionExample::unproject(const Vector2i &windowPosition,
-                                           Float depth) const
+Vector3 SandboxExample::unproject(const Vector2i &windowPosition,
+                                  Float depth) const
 {
   /* We have to take window size, not framebuffer size, since the position is
      in window coordinates and the two can be different on HiDPI systems */
@@ -270,7 +183,7 @@ Vector3 MouseInteractionExample::unproject(const Vector2i &windowPosition,
   return _camera->projectionMatrix().inverted().transformPoint(in);
 }
 
-void MouseInteractionExample::viewportEvent(ViewportEvent &event)
+void SandboxExample::viewportEvent(ViewportEvent &event)
 {
   /* Resize the main framebuffer */
   GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
@@ -283,7 +196,7 @@ void MouseInteractionExample::viewportEvent(ViewportEvent &event)
   _camera->setViewport(event.framebufferSize());
 }
 
-void MouseInteractionExample::keyPressEvent(KeyEvent &event)
+void SandboxExample::keyPressEvent(KeyEvent &event)
 {
   if (_imgui.handleKeyPressEvent(event))
     return;
@@ -330,7 +243,7 @@ void MouseInteractionExample::keyPressEvent(KeyEvent &event)
   }
 }
 
-void MouseInteractionExample::mousePressEvent(MouseEvent &event)
+void SandboxExample::mousePressEvent(MouseEvent &event)
 {
   if (_imgui.handleMousePressEvent(event))
     return;
@@ -354,7 +267,7 @@ void MouseInteractionExample::mousePressEvent(MouseEvent &event)
   }
 }
 
-void MouseInteractionExample::mouseMoveEvent(MouseMoveEvent &event)
+void SandboxExample::mouseMoveEvent(MouseMoveEvent &event)
 {
   if (_imgui.handleMouseMoveEvent(event))
     return;
@@ -387,7 +300,7 @@ void MouseInteractionExample::mouseMoveEvent(MouseMoveEvent &event)
   redraw();
 }
 
-void MouseInteractionExample::mouseScrollEvent(MouseScrollEvent &event)
+void SandboxExample::mouseScrollEvent(MouseScrollEvent &event)
 {
   if (_imgui.handleMouseScrollEvent(event))
   {
@@ -418,13 +331,13 @@ void MouseInteractionExample::mouseScrollEvent(MouseScrollEvent &event)
   redraw();
 }
 
-void MouseInteractionExample::mouseReleaseEvent(MouseEvent &event)
+void SandboxExample::mouseReleaseEvent(MouseEvent &event)
 {
   if (_imgui.handleMouseReleaseEvent(event))
     return;
 }
 
-void MouseInteractionExample::drawEvent()
+void SandboxExample::drawEvent()
 {
   GL::defaultFramebuffer.clear(GL::FramebufferClear::Color |
                                GL::FramebufferClear::Depth);
@@ -463,15 +376,12 @@ void MouseInteractionExample::drawEvent()
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
   }
-
   swapBuffers();
-  //_timeline.nextFrame();
-
   /* Run next frame immediately */
   redraw();
 }
 
-void MouseInteractionExample::show_menu()
+void SandboxExample::show_menu()
 {
   ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowBgAlpha(0.5f);
@@ -479,13 +389,81 @@ void MouseInteractionExample::show_menu()
 
   if (ImGui::Button("Reset scene"))
   {
-
+    resetCameraPosition();
+    redraw();
   }
 
+  if (ImGui::Button("Run MPC"))
+  {
+    runCEM();
+    redraw();
+  }
+
+  // const auto getter_fn = [](const KinematicBicycleState& state)P
+
+  const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
+  {
+    if (ImPlot::BeginPlot(title))
+    {
+      std::vector<double> values;
+      std::transform(this->_trajectory.states.begin(),
+                     this->_trajectory.states.end(), std::back_inserter(values),
+                     getter_fn);
+      ImPlot::SetupAxes("time[s]", value_name);
+      ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+      ImPlot::PlotLine(value_name, this->_trajectory.time.data(), values.data(),
+                       values.size());
+      ImPlot::EndPlot();
+    }
+  };
+
+  make_plot("Speed Plot", "speed[mps]",
+            [](const KinematicBicycleState &state) { return state.speed; });
+  make_plot("Accel Plot", "accel[mpss]",
+            [](const KinematicBicycleState &state) { return state.accel; });
+  // make_plot("Jerk Plot", "jerk[mpsss]",
+  //           [](const KinematicBicycleState &state) { return state.accel; });
+  make_plot("Yaw Plot", "yaw[rad]",
+            [](const KinematicBicycleState &state) { return state.yaw; });
+  make_plot("Steering Plot", "steering[rad]",
+            [](const KinematicBicycleState &state) { return state.steering; });
+
   ImGui::End();
+}
+
+void SandboxExample::resetCameraPosition()
+{
+  if (!_cameraObject)
+  {
+    return;
+  }
+  (*_cameraObject)
+      .resetTransformation()
+      .translate(Vector3::zAxis(SCALE(100.0f)))
+      .rotateX(-15.0_degf)
+      .rotateY(30.0_degf);
+}
+
+void SandboxExample::runCEM()
+{
+  KinematicBicycleState state;
+  state.speed = 5.0;
+  _trajectory = mpc_.rollout(state);
+
+  assert(trajectory_objects_.get_objects().size() == _trajectory.states.size());
+  for (size_t i{0UL}; i < _trajectory.states.size(); ++i)
+  {
+    auto &state = _trajectory.states.at(i);
+    auto &object = trajectory_objects_.get_objects().at(i);
+    (*object)
+        .resetTransformation()
+        .scale(trajectory_objects_.get_vehicle_extent())
+        .rotateY(Rad(state.yaw))
+        .translate(Vector3(SCALE(state.y), 0.0f, SCALE(state.x)));
+  }
 }
 
 } // namespace Examples
 } // namespace Magnum
 
-MAGNUM_APPLICATION_MAIN(Magnum::Examples::MouseInteractionExample)
+MAGNUM_APPLICATION_MAIN(Magnum::Examples::SandboxExample)
