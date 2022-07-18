@@ -103,8 +103,8 @@ SandboxExample::SandboxExample(const Arguments &arguments)
 
   _mesh = MeshTools::compile(Primitives::cubeWireframe());
   constexpr int horizon = 100;
-  mpc_ =
-      CEM_MPC<KinematicBicycle>(100 /* iters */, horizon, 100 /* population */);
+  mpc_ = CEM_MPC<EigenKinematicBicycle>(100 /* iters */, horizon,
+                                        100 /* population */);
 
   trajectory_objects_ = TrajectoryObjects(_scene, horizon);
   for (auto &object : trajectory_objects_.get_objects())
@@ -353,6 +353,11 @@ void SandboxExample::drawEvent()
     stopTextInput();
   }
 
+  if (is_running_)
+  {
+    runCEM();
+  }
+
   _camera->draw(_drawables);
 
   // Set Imgui drawables
@@ -395,38 +400,40 @@ void SandboxExample::show_menu()
 
   if (ImGui::Button("Run MPC"))
   {
-    runCEM();
+    is_running_ = is_running_ ? false : true;
     redraw();
   }
 
-  // const auto getter_fn = [](const KinematicBicycleState& state)P
+  // // const auto getter_fn = [](const KinematicBicycleState& state)P
 
-  const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
-  {
-    if (ImPlot::BeginPlot(title))
-    {
-      std::vector<double> values;
-      std::transform(this->_trajectory.states.begin(),
-                     this->_trajectory.states.end(), std::back_inserter(values),
-                     getter_fn);
-      ImPlot::SetupAxes("time[s]", value_name);
-      ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-      ImPlot::PlotLine(value_name, this->_trajectory.time.data(), values.data(),
-                       values.size());
-      ImPlot::EndPlot();
-    }
-  };
+  // const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
+  // {
+  //   if (ImPlot::BeginPlot(title))
+  //   {
+  //     std::vector<double> values;
+  //     std::transform(this->_trajectory.states.begin(),
+  //                    this->_trajectory.states.end(),
+  //                    std::back_inserter(values), getter_fn);
+  //     ImPlot::SetupAxes("time[s]", value_name);
+  //     ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+  //     ImPlot::PlotLine(value_name, this->_trajectory.time.data(),
+  //     values.data(),
+  //                      values.size());
+  //     ImPlot::EndPlot();
+  //   }
+  // };
 
-  make_plot("Speed Plot", "speed[mps]",
-            [](const KinematicBicycleState &state) { return state.speed; });
-  make_plot("Accel Plot", "accel[mpss]",
-            [](const KinematicBicycleState &state) { return state.accel; });
-  // make_plot("Jerk Plot", "jerk[mpsss]",
+  // make_plot("Speed Plot", "speed[mps]",
+  //           [](const KinematicBicycleState &state) { return state.speed; });
+  // make_plot("Accel Plot", "accel[mpss]",
   //           [](const KinematicBicycleState &state) { return state.accel; });
-  make_plot("Yaw Plot", "yaw[rad]",
-            [](const KinematicBicycleState &state) { return state.yaw; });
-  make_plot("Steering Plot", "steering[rad]",
-            [](const KinematicBicycleState &state) { return state.steering; });
+  // // make_plot("Jerk Plot", "jerk[mpsss]",
+  // //           [](const KinematicBicycleState &state) { return state.accel;
+  // }); make_plot("Yaw Plot", "yaw[rad]",
+  //           [](const KinematicBicycleState &state) { return state.yaw; });
+  // make_plot("Steering Plot", "steering[rad]",
+  //           [](const KinematicBicycleState &state) { return state.steering;
+  //           });
 
   ImGui::End();
 }
@@ -446,20 +453,22 @@ void SandboxExample::resetCameraPosition()
 
 void SandboxExample::runCEM()
 {
-  KinematicBicycleState state;
-  state.speed = 5.0;
-  _trajectory = mpc_.rollout(state);
+  EigenState state = EigenState::Zero();
+  state[3] = 5.0;
 
-  assert(trajectory_objects_.get_objects().size() == _trajectory.states.size());
-  for (size_t i{0UL}; i < _trajectory.states.size(); ++i)
+  EigenTrajectory &trajectory = mpc_.rollout(state);
+
+  assert(trajectory_objects_.get_objects().size() == trajectory.states.cols());
+
+  for (int i = 0; i < trajectory.states.cols(); ++i)
   {
-    auto &state = _trajectory.states.at(i);
+    EigenState new_state = trajectory.states.col(i);
     auto &object = trajectory_objects_.get_objects().at(i);
     (*object)
         .resetTransformation()
         .scale(trajectory_objects_.get_vehicle_extent())
-        .rotateY(Rad(state.yaw))
-        .translate(Vector3(SCALE(state.y), 0.0f, SCALE(state.x)));
+        .rotateY(Rad(new_state[2]))
+        .translate(Vector3(SCALE(new_state[1]), 0.0f, SCALE(new_state[0])));
   }
 }
 

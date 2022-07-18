@@ -18,11 +18,48 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE
 
+#include <Eigen/Dense>
 #include <array>
 #include <random>
 
 namespace Magnum::Examples
 {
+
+using namespace Eigen;
+
+constexpr int state_size = 6;
+constexpr int action_size = 2;
+using EigenState = Vector<float, state_size>;
+using EigenAction = Vector<float, action_size>;
+
+using EigenStateSequence = Matrix<float, state_size, Dynamic>;
+using EigenActionSequence = Matrix<float, action_size, Dynamic>;
+
+struct EigenTrajectory
+{
+  std::vector<float> times{};
+  EigenStateSequence states;
+  EigenActionSequence actions;
+};
+
+struct EigenKinematicBicycle
+{
+  constexpr static float ts{0.1};
+  constexpr static float one_over_wheelbase{1.0 / 3.0};
+  constexpr static float steering_max{0.52};
+
+  static void step(const Ref<EigenState> &state, const Ref<EigenAction> &action,
+                   Ref<EigenState> new_state)
+  {
+    new_state[0] = state[0] + ts * state[3] * std::cos(state[2]);
+    new_state[1] = state[1] + ts * state[3] * std::sin(state[2]);
+    new_state[2] =
+        state[2] + ts * state[3] * one_over_wheelbase * std::tan(state[5]);
+    new_state[3] = state[3] + ts * state[4];
+    new_state[4] = state[4] + ts * action[0];
+    new_state[5] = state[5] + ts * action[1];
+  }
+};
 
 struct KinematicBicycleState
 {
@@ -88,18 +125,71 @@ struct KinematicBicycle
   }
 };
 
+// template <typename DynamicsT>
+// class CEM_MPC
+// {
+//   using StateType = typename DynamicsT::StateType;
+//   using ActionType = typename DynamicsT::ActionType;
+
+// public:
+//   CEM_MPC() = default;
+//   CEM_MPC(const int num_iters, const int horizon, const int population)
+//       : num_iters_(num_iters), horizon_(horizon), population_(population){};
+
+//   Trajectory<StateType> rollout(StateType initial_state)
+//   {
+//     std::random_device rd{};
+//     std::mt19937 gen{rd()};
+
+//     // values near the mean are the most likely
+//     // standard deviation affects the dispersion of generated values from the
+//     // mean
+//     std::normal_distribution<> d{0, 1};
+
+//     auto state = initial_state;
+//     Trajectory<StateType> trajectory;
+
+//     double current_time_s{0.0};
+
+//     for (size_t i = 0; i < horizon_; ++i)
+//     {
+//       ActionType action;
+//       action.steering_rate = d(gen);
+//       action.jerk = d(gen);
+
+//       state = DynamicsT::step(state, action);
+//       trajectory.states.push_back(state);
+//       trajectory.time.push_back(current_time_s);
+//       current_time_s += DynamicsT::ts;
+//     }
+//     return trajectory;
+//   };
+
+// private:
+//   int num_iters_;
+//   int horizon_;
+//   int population_;
+// };
+
 template <typename DynamicsT>
 class CEM_MPC
 {
-  using StateType = typename DynamicsT::StateType;
-  using ActionType = typename DynamicsT::ActionType;
+  // using StateType = typename DynamicsT::StateType;
+  // using ActionType = typename DynamicsT::ActionType;
 
 public:
   CEM_MPC() = default;
   CEM_MPC(const int num_iters, const int horizon, const int population)
-      : num_iters_(num_iters), horizon_(horizon), population_(population){};
+      : num_iters_(num_iters), horizon_(horizon), population_(population)
+  {
+    trajectory_.states.conservativeResize(state_size, horizon_);
+    trajectory_.actions.conservativeResize(action_size, horizon_);
+    trajectory_.states = MatrixXf::Zero(state_size, horizon_);
+    trajectory_.actions = MatrixXf::Zero(action_size, horizon_);
+    trajectory_.times = std::vector<float>(horizon_, 0.0f);
+  };
 
-  Trajectory<StateType> rollout(StateType initial_state)
+  EigenTrajectory &rollout(const Ref<EigenState> &initial_state)
   {
     std::random_device rd{};
     std::mt19937 gen{rd()};
@@ -109,30 +199,29 @@ public:
     // mean
     std::normal_distribution<> d{0, 1};
 
-    auto state = initial_state;
-    Trajectory<StateType> trajectory;
+    EigenState state = initial_state;
 
     double current_time_s{0.0};
-
-    for (size_t i = 0; i < horizon_; ++i)
+    trajectory_.states.col(0) = state; // Set first state
+    for (size_t i = 0; i + 1 < horizon_; ++i)
     {
-      ActionType action;
-      action.steering_rate = d(gen);
-      action.jerk = d(gen);
+      trajectory_.times.at(i) = current_time_s;
+      // Sample actions and immediately put them in the matrix
+      trajectory_.actions.col(i)[0] = d(gen);
+      trajectory_.actions.col(i)[1] = d(gen);
 
-      state = DynamicsT::step(state, action);
-      trajectory.states.push_back(state);
-      trajectory.time.push_back(current_time_s);
+      DynamicsT::step(trajectory_.states.col(i), trajectory_.actions.col(i),
+                      trajectory_.states.col(i + 1));
       current_time_s += DynamicsT::ts;
     }
-    return trajectory;
+    return trajectory_;
   };
 
 private:
   int num_iters_;
   int horizon_;
   int population_;
+  EigenTrajectory trajectory_;
 };
-
 
 } // namespace Magnum::Examples

@@ -10,6 +10,12 @@ find_package(Magnum REQUIRED
     Sdl2Application)
 find_package(Magnum REQUIRED)
 find_package(SDL2 REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+if(NOT TARGET Eigen3::Eigen)
+    add_library(Eigen3::Eigen INTERFACE IMPORTED)
+    set_target_properties(Eigen3::Eigen PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${EIGEN3_INCLUDE_DIR})
+endif()
 
 # GUI test application for quick ability to verify changes w/o having to
 # compile examples as well (and to ensure the template APIs don't get out of
@@ -17,6 +23,8 @@ find_package(SDL2 REQUIRED)
 find_package(Corrade REQUIRED Main)
 find_package(Magnum REQUIRED Sdl2Application)
 
+
+#******** Add ImPlot
 add_library(ImPlot ${SHARED_OR_STATIC} 
     implot.cpp
     implot_items.cpp
@@ -25,10 +33,14 @@ add_library(ImPlot ${SHARED_OR_STATIC}
 )
 target_include_directories(ImPlot PUBLIC
     ${PROJECT_SOURCE_DIR}/src/MagnumExternal/ImGui)
+#END ******** Add ImPlot
 
 add_executable(gui_application WIN32 gui_application.cc gui_application.hh)
 target_compile_features(gui_application PRIVATE cxx_std_17)
 target_link_libraries(gui_application PRIVATE
     MagnumImGuiIntegration
     ImPlot
+    Eigen3::Eigen
     Corrade::Main)
+
+

@@ -95,9 +95,12 @@ private:
   Vector3 _rotationPoint, _translationPoint;
 
   // temp trajectory
-  Trajectory<KinematicBicycleState> _trajectory;
+  EigenTrajectory _trajectory;
   TrajectoryObjects trajectory_objects_;
-  CEM_MPC<KinematicBicycle> mpc_;
+  CEM_MPC<EigenKinematicBicycle> mpc_;
+
+  // flags
+  bool is_running_{false};
 };
 
 class VertexColorDrawable : public SceneGraph::Drawable3D
