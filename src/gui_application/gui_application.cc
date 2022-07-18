@@ -24,6 +24,7 @@
 #include "gui_application/implot.h"
 #include <Magnum/ImGuiIntegration/Context.hpp>
 #include <algorithm>
+#include <easy/profiler.h>
 #include <iostream>
 #include <memory>
 
@@ -62,7 +63,7 @@ const Vector3 &TrajectoryObjects::get_vehicle_extent() const
 SandboxExample::SandboxExample(const Arguments &arguments)
     : Platform::Application{arguments, NoCreate}
 {
-
+  profiler::startListen();
   /* Setup window */
   {
     const Vector2 dpiScaling = this->dpiScaling({});

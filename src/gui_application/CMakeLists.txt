@@ -22,7 +22,7 @@ endif()
 # sync with the apps, as the ContextGLTest has only a mock)
 find_package(Corrade REQUIRED Main)
 find_package(Magnum REQUIRED Sdl2Application)
-
+find_package(easy_profiler REQUIRED)
 
 #******** Add ImPlot
 add_library(ImPlot ${SHARED_OR_STATIC} 
@@ -39,6 +39,7 @@ add_executable(gui_application WIN32 gui_application.cc gui_application.hh)
 target_compile_features(gui_application PRIVATE cxx_std_17)
 target_link_libraries(gui_application PRIVATE
     MagnumImGuiIntegration
+    easy_profiler
     ImPlot
     Eigen3::Eigen
     Corrade::Main)
