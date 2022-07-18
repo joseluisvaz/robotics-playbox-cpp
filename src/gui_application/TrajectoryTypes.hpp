@@ -62,11 +62,32 @@ struct EigenKinematicBicycle
   }
 };
 
+struct NormalRandomVariable
+{
+  NormalRandomVariable() = default;
+  NormalRandomVariable(const EigenActionSequence &mean,
+                       const EigenActionSequence &covar)
+      : mean(mean), transform(covar){};
+
+  EigenActionSequence mean;
+  EigenActionSequence transform;
+
+  EigenActionSequence operator()() const
+  {
+    static std::mt19937 gen{std::random_device{}()};
+    static std::normal_distribution<float> dist;
+
+    return mean.array() +
+           transform.array() *
+               (EigenActionSequence::Zero(mean.rows(), mean.cols())
+                    .unaryExpr([&](auto x) { return dist(gen); })
+                    .array());
+  }
+};
+
 template <typename DynamicsT>
 class CEM_MPC
 {
-  // using StateType = typename DynamicsT::StateType;
-  // using ActionType = typename DynamicsT::ActionType;
 
 public:
   CEM_MPC() = default;
@@ -78,9 +99,13 @@ public:
     trajectory_.states = MatrixXf::Zero(state_size, horizon_);
     trajectory_.actions = MatrixXf::Zero(action_size, horizon_);
     trajectory_.times = std::vector<float>(horizon_, 0.0f);
-    std::random_device rd{};
-    gen = std::mt19937{rd()};
-    d = std::normal_distribution<>{0, 1};
+
+    EigenActionSequence mean = EigenActionSequence::Zero(
+        trajectory_.actions.rows(), trajectory_.actions.cols());
+    EigenActionSequence stddev = EigenActionSequence::Ones(
+        trajectory_.actions.rows(), trajectory_.actions.cols());
+
+    sampler_ = NormalRandomVariable(mean, stddev);
   };
 
   EigenTrajectory &rollout(const Ref<EigenState> &initial_state)
@@ -89,14 +114,15 @@ public:
 
     EigenState state = initial_state;
 
+    EASY_BLOCK("Sampling");
+    trajectory_.actions = sampler_();
+    EASY_END_BLOCK;
+
     double current_time_s{0.0};
     trajectory_.states.col(0) = state; // Set first state
     for (size_t i = 0; i + 1 < horizon_; ++i)
     {
       trajectory_.times.at(i) = current_time_s;
-      // Sample actions and immediately put them in the matrix
-      trajectory_.actions.col(i)[0] = d(gen);
-      trajectory_.actions.col(i)[1] = d(gen);
 
       EASY_BLOCK("Calculating dynamics");
       DynamicsT::step(trajectory_.states.col(i), trajectory_.actions.col(i),
@@ -113,8 +139,7 @@ private:
   int horizon_;
   int population_;
   EigenTrajectory trajectory_;
-  std::mt19937 gen;
-  std::normal_distribution<> d;
+  NormalRandomVariable sampler_;
 };
 
 // struct KinematicBicycleState

@@ -454,23 +454,27 @@ void SandboxExample::resetCameraPosition()
 
 void SandboxExample::runCEM()
 {
+  EASY_FUNCTION(profiler::colors::Red);
+
   EigenState state = EigenState::Zero();
   state[3] = 5.0;
-
   EigenTrajectory &trajectory = mpc_.rollout(state);
 
-  assert(trajectory_objects_.get_objects().size() == trajectory.states.cols());
-
+  EASY_BLOCK("Plotting All");
   for (int i = 0; i < trajectory.states.cols(); ++i)
   {
     EigenState new_state = trajectory.states.col(i);
     auto &object = trajectory_objects_.get_objects().at(i);
+
+    EASY_BLOCK("Plotting");
     (*object)
         .resetTransformation()
         .scale(trajectory_objects_.get_vehicle_extent())
         .rotateY(Rad(new_state[2]))
         .translate(Vector3(SCALE(new_state[1]), 0.0f, SCALE(new_state[0])));
+    EASY_END_BLOCK;
   }
+  EASY_END_BLOCK;
 }
 
 } // namespace Examples
