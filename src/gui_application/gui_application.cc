@@ -389,6 +389,7 @@ void SandboxExample::drawEvent()
 
 void SandboxExample::show_menu()
 {
+  EASY_FUNCTION(profiler::colors::Blue);
   ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowBgAlpha(0.5f);
   ImGui::Begin("Options", nullptr);
@@ -405,36 +406,53 @@ void SandboxExample::show_menu()
     redraw();
   }
 
-  // // const auto getter_fn = [](const KinematicBicycleState& state)P
+  const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
+  {
+    if (ImPlot::BeginPlot(title))
+    {
+      std::vector<float> values;
+      std::transform(this->_trajectory.states.colwise().begin(),
+                     this->_trajectory.states.colwise().end(),
+                     std::back_inserter(values), getter_fn);
+      ImPlot::SetupAxes("time[s]", value_name);
+      ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+      ImPlot::PlotLine(value_name, this->_trajectory.times.data(),
+                       values.data(), values.size());
+      ImPlot::EndPlot();
+    }
+  };
 
-  // const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
-  // {
-  //   if (ImPlot::BeginPlot(title))
-  //   {
-  //     std::vector<double> values;
-  //     std::transform(this->_trajectory.states.begin(),
-  //                    this->_trajectory.states.end(),
-  //                    std::back_inserter(values), getter_fn);
-  //     ImPlot::SetupAxes("time[s]", value_name);
-  //     ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-  //     ImPlot::PlotLine(value_name, this->_trajectory.time.data(),
-  //     values.data(),
-  //                      values.size());
-  //     ImPlot::EndPlot();
-  //   }
-  // };
+  const auto make_action_plot =
+      [this](auto title, auto value_name, auto getter_fn)
+  {
+    if (ImPlot::BeginPlot(title))
+    {
+      std::vector<float> values;
+      std::transform(this->_trajectory.actions.colwise().begin(),
+                     this->_trajectory.actions.colwise().end(),
+                     std::back_inserter(values), getter_fn);
+      ImPlot::SetupAxes("time[s]", value_name);
+      ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+      ImPlot::PlotLine(value_name, this->_trajectory.times.data(),
+                       values.data(), values.size());
+      ImPlot::EndPlot();
+    }
+  };
 
-  // make_plot("Speed Plot", "speed[mps]",
-  //           [](const KinematicBicycleState &state) { return state.speed; });
-  // make_plot("Accel Plot", "accel[mpss]",
-  //           [](const KinematicBicycleState &state) { return state.accel; });
-  // // make_plot("Jerk Plot", "jerk[mpsss]",
-  // //           [](const KinematicBicycleState &state) { return state.accel;
-  // }); make_plot("Yaw Plot", "yaw[rad]",
-  //           [](const KinematicBicycleState &state) { return state.yaw; });
-  // make_plot("Steering Plot", "steering[rad]",
-  //           [](const KinematicBicycleState &state) { return state.steering;
-  //           });
+  EASY_BLOCK("Make plots");
+  make_plot("Speed Plot", "speed[mps]",
+            [](const Ref<EigenState> &state) { return state[3]; });
+  make_plot("Accel Plot", "accel[mpss]",
+            [](const Ref<EigenState> &state) { return state[4]; });
+  make_plot("Yaw Plot", "yaw[rad]",
+            [](const Ref<EigenState> &state) { return state[2]; });
+  make_plot("Steering Plot", "steering[rad]",
+            [](const Ref<EigenState> &state) { return state[5]; });
+  make_action_plot("Jerk Plot", "jerk[mpsss]",
+                   [](const Ref<EigenAction> &action) { return action[0]; });
+  make_action_plot("Steering Rate Plot", "srate[rad/s]",
+                   [](const Ref<EigenAction> &action) { return action[1]; });
+  EASY_END_BLOCK;
 
   ImGui::End();
 }
@@ -459,6 +477,7 @@ void SandboxExample::runCEM()
   EigenState state = EigenState::Zero();
   state[3] = 5.0;
   EigenTrajectory &trajectory = mpc_.rollout(state);
+  _trajectory = trajectory;
 
   EASY_BLOCK("Plotting All");
   for (int i = 0; i < trajectory.states.cols(); ++i)

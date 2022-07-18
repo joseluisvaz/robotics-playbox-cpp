@@ -131,6 +131,9 @@ public:
 
       current_time_s += DynamicsT::ts;
     }
+
+    // Add last time
+    trajectory_.times.at(horizon_ - 1) = current_time_s;
     return trajectory_;
   };
 
