@@ -100,6 +100,17 @@ public:
     trajectory_.actions = MatrixXf::Zero(action_size, horizon_);
     trajectory_.times = std::vector<float>(horizon_, 0.0f);
 
+    for (int i = 0; i < population_; ++i)
+    {
+      EigenTrajectory trajectory;
+      trajectory.states.conservativeResize(state_size, horizon_);
+      trajectory.actions.conservativeResize(action_size, horizon_);
+      trajectory.states = MatrixXf::Zero(state_size, horizon_);
+      trajectory.actions = MatrixXf::Zero(action_size, horizon_);
+      trajectory.times = std::vector<float>(horizon_, 0.0f);
+      candidate_trajectories_.emplace_back(std::move(trajectory));
+    }
+
     EigenActionSequence mean = EigenActionSequence::Zero(
         trajectory_.actions.rows(), trajectory_.actions.cols());
     EigenActionSequence stddev = EigenActionSequence::Ones(
@@ -114,33 +125,38 @@ public:
 
     EigenState state = initial_state;
 
-    EASY_BLOCK("Sampling");
-    trajectory_.actions = sampler_();
-    EASY_END_BLOCK;
-
-    double current_time_s{0.0};
-    trajectory_.states.col(0) = state; // Set first state
-    for (size_t i = 0; i + 1 < horizon_; ++i)
+    for (auto &trajectory : candidate_trajectories_)
     {
-      trajectory_.times.at(i) = current_time_s;
-
-      EASY_BLOCK("Calculating dynamics");
-      DynamicsT::step(trajectory_.states.col(i), trajectory_.actions.col(i),
-                      trajectory_.states.col(i + 1));
+      EASY_BLOCK("Sampling");
+      trajectory.actions = sampler_();
       EASY_END_BLOCK;
 
-      current_time_s += DynamicsT::ts;
+      double current_time_s{0.0};
+      trajectory.states.col(0) = state; // Set first state
+      for (size_t i = 0; i + 1 < horizon_; ++i)
+      {
+        trajectory.times.at(i) = current_time_s;
+
+        EASY_BLOCK("Calculating dynamics");
+        DynamicsT::step(trajectory.states.col(i), trajectory.actions.col(i),
+                        trajectory.states.col(i + 1));
+        EASY_END_BLOCK;
+
+        current_time_s += DynamicsT::ts;
+      }
+
+      // Add last time
+      trajectory.times.at(horizon_ - 1) = current_time_s;
     }
 
-    // Add last time
-    trajectory_.times.at(horizon_ - 1) = current_time_s;
-    return trajectory_;
+    return candidate_trajectories_.at(0);
   };
 
 private:
   int num_iters_;
   int horizon_;
   int population_;
+  std::vector<EigenTrajectory> candidate_trajectories_;
   EigenTrajectory trajectory_;
   NormalRandomVariable sampler_;
 };
