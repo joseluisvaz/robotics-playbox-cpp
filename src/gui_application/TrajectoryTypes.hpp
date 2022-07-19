@@ -25,6 +25,12 @@
 
 namespace Magnum::Examples
 {
+template <typename T, typename A>
+int arg_min(std::vector<T, A> const &vec)
+{
+  return static_cast<int>(
+      std::distance(vec.begin(), std::min_element(vec.begin(), vec.end())));
+}
 
 using namespace Eigen;
 
@@ -49,7 +55,8 @@ struct EigenKinematicBicycle
   constexpr static float one_over_wheelbase{1.0 / 3.0};
   constexpr static float steering_max{0.52};
 
-  static void step(const Ref<EigenState> &state, const Ref<EigenAction> &action,
+  static void step(const Ref<const EigenState> &state,
+                   const Ref<const EigenAction> &action,
                    Ref<EigenState> new_state)
   {
     new_state[0] = state[0] + ts * state[3] * std::cos(state[2]);
@@ -59,6 +66,31 @@ struct EigenKinematicBicycle
     new_state[3] = state[3] + ts * state[4];
     new_state[4] = state[4] + ts * action[0];
     new_state[5] = state[5] + ts * action[1];
+  }
+};
+
+struct CostFunction
+{
+
+  float evaluate_state_action_pair(const Ref<const EigenState> &state,
+                                   const Ref<const EigenAction> &action)
+  {
+
+    return 10000.0 * (state[3] - 5.0) * (state[3] - 5.0) +
+           100000.0 * (state[2] * state[2]) + 1.0 * (state[4] * state[4]) +
+           1.0 * (state[5] - state[5]) + 100.0 * (action[0] - action[0]) +
+           100.0 * (action[1] - action[1]);
+  }
+
+  float operator()(const Ref<const EigenStateSequence> &states,
+                   const Ref<const EigenActionSequence> &actions)
+  {
+    float cost = 0.0;
+    for (int i = 0; i < states.cols(); ++i)
+    {
+      cost += evaluate_state_action_pair(states.col(i), actions.col(i));
+    }
+    return cost;
   }
 };
 
@@ -100,6 +132,8 @@ public:
     trajectory_.actions = MatrixXf::Zero(action_size, horizon_);
     trajectory_.times = std::vector<float>(horizon_, 0.0f);
 
+    costs_ = std::vector<float>(horizon_, 0.0);
+
     for (int i = 0; i < population_; ++i)
     {
       EigenTrajectory trajectory;
@@ -123,10 +157,13 @@ public:
   {
     EASY_FUNCTION(profiler::colors::Magenta);
 
+    CostFunction cost_function;
     EigenState state = initial_state;
 
-    for (auto &trajectory : candidate_trajectories_)
+    for (int j = 0; j < population_; j++)
     {
+
+      auto &trajectory = candidate_trajectories_.at(j);
       EASY_BLOCK("Sampling");
       trajectory.actions = sampler_();
       EASY_END_BLOCK;
@@ -147,9 +184,12 @@ public:
 
       // Add last time
       trajectory.times.at(horizon_ - 1) = current_time_s;
+      costs_.at(j) = cost_function(trajectory.states, trajectory.actions);
     }
 
-    return candidate_trajectories_.at(0);
+    int optimum_idx = arg_min(costs_);
+
+    return candidate_trajectories_.at(optimum_idx);
   };
 
 private:
@@ -159,6 +199,8 @@ private:
   std::vector<EigenTrajectory> candidate_trajectories_;
   EigenTrajectory trajectory_;
   NormalRandomVariable sampler_;
+
+  std::vector<float> costs_;
 };
 
 // struct KinematicBicycleState
