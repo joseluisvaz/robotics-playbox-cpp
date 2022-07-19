@@ -123,24 +123,23 @@ class CEM_MPC
 
 public:
   CEM_MPC() = default;
-  CEM_MPC(const int num_iters, const int horizon, const int population)
-      : num_iters_(num_iters), horizon_(horizon), population_(population)
+  CEM_MPC(const int num_iters, const int horizon, const int population,
+          const int elites)
+      : num_iters_(num_iters), horizon_(horizon), population_(population),
+        elites_(elites)
   {
-    trajectory_.states.conservativeResize(state_size, horizon_);
-    trajectory_.actions.conservativeResize(action_size, horizon_);
-    trajectory_.states = MatrixXf::Zero(state_size, horizon_);
-    trajectory_.actions = MatrixXf::Zero(action_size, horizon_);
+    trajectory_.states = EigenStateSequence::Zero(state_size, horizon_);
+    trajectory_.actions = EigenActionSequence::Zero(action_size, horizon_);
     trajectory_.times = std::vector<float>(horizon_, 0.0f);
 
-    costs_ = std::vector<float>(horizon_, 0.0);
+    costs_index_pair_ = std::vector<std::pair<float, int>>(
+        population_, std::make_pair(0.0f, 0));
 
     for (int i = 0; i < population_; ++i)
     {
       EigenTrajectory trajectory;
-      trajectory.states.conservativeResize(state_size, horizon_);
-      trajectory.actions.conservativeResize(action_size, horizon_);
-      trajectory.states = MatrixXf::Zero(state_size, horizon_);
-      trajectory.actions = MatrixXf::Zero(action_size, horizon_);
+      trajectory.states = EigenStateSequence::Zero(state_size, horizon_);
+      trajectory.actions = EigenActionSequence::Zero(action_size, horizon_);
       trajectory.times = std::vector<float>(horizon_, 0.0f);
       candidate_trajectories_.emplace_back(std::move(trajectory));
     }
@@ -181,26 +180,59 @@ public:
 
         current_time_s += DynamicsT::ts;
       }
-
       // Add last time
       trajectory.times.at(horizon_ - 1) = current_time_s;
-      costs_.at(j) = cost_function(trajectory.states, trajectory.actions);
+      costs_index_pair_.at(j).first =
+          cost_function(trajectory.states, trajectory.actions);
+      costs_index_pair_.at(j).second = j;
     }
 
-    int optimum_idx = arg_min(costs_);
+    std::sort(costs_index_pair_.begin(), costs_index_pair_.end(),
+              [](const auto &lhs, const auto &rhs)
+              { return lhs.first < rhs.first; });
 
-    return candidate_trajectories_.at(optimum_idx);
+    EigenActionSequence mean_actions =
+        EigenActionSequence::Zero(action_size, horizon_);
+    for (int i = 0; i < elites_; ++i)
+    {
+      const auto &elite_index = costs_index_pair_.at(i).second;
+      mean_actions += candidate_trajectories_.at(elite_index).actions;
+    }
+
+    mean_actions = mean_actions / elites_;
+
+    final_trajectory.states = EigenStateSequence::Zero(state_size, horizon_);
+    final_trajectory.actions = EigenActionSequence::Zero(action_size, horizon_);
+    final_trajectory.actions = mean_actions;
+    final_trajectory.times = std::vector<float>(horizon_, 0.0f);
+
+    double current_time_s{0.0};
+    final_trajectory.states.col(0) = state; // Set first state
+    for (size_t i = 0; i + 1 < horizon_; ++i)
+    {
+      final_trajectory.times.at(i) = current_time_s;
+      DynamicsT::step(final_trajectory.states.col(i),
+                      final_trajectory.actions.col(i),
+                      final_trajectory.states.col(i + 1));
+      current_time_s += DynamicsT::ts;
+    }
+    // Add last time
+    final_trajectory.times.at(horizon_ - 1) = current_time_s;
+
+    return final_trajectory;
   };
 
 private:
   int num_iters_;
   int horizon_;
   int population_;
+  int elites_;
   std::vector<EigenTrajectory> candidate_trajectories_;
   EigenTrajectory trajectory_;
+  EigenTrajectory final_trajectory;
   NormalRandomVariable sampler_;
 
-  std::vector<float> costs_;
+  std::vector<std::pair<float, int>> costs_index_pair_;
 };
 
 // struct KinematicBicycleState
