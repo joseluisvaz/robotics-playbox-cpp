@@ -409,6 +409,7 @@ void SandboxExample::show_menu()
 
   const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
   {
+    ImPlot::SetNextAxesToFit();
     if (ImPlot::BeginPlot(title))
     {
       std::vector<float> values;
@@ -426,6 +427,7 @@ void SandboxExample::show_menu()
   const auto make_action_plot =
       [this](auto title, auto value_name, auto getter_fn)
   {
+    ImPlot::SetNextAxesToFit();
     if (ImPlot::BeginPlot(title))
     {
       std::vector<float> values;
@@ -450,9 +452,11 @@ void SandboxExample::show_menu()
   make_plot("Steering Plot", "steering[rad]",
             [](const Ref<EigenState> &state) { return state[5]; });
   make_action_plot("Jerk Plot", "jerk[mpsss]",
-                   [](const Ref<EigenAction> &action) { return action[0]; });
+                   [](const Ref<EigenAction> &action)
+                   { return 0.6 * std::tanh(action[0]); });
   make_action_plot("Steering Rate Plot", "srate[rad/s]",
-                   [](const Ref<EigenAction> &action) { return action[1]; });
+                   [](const Ref<EigenAction> &action)
+                   { return 0.1 * std::tanh(action[1]); });
   EASY_END_BLOCK;
 
   ImGui::End();
@@ -476,8 +480,8 @@ void SandboxExample::runCEM()
   EASY_FUNCTION(profiler::colors::Red);
 
   EigenState state = EigenState::Zero();
-  state[3] = 5.0;
-  EigenTrajectory &trajectory = mpc_.rollout(state);
+  state[3] = 10.0;
+  EigenTrajectory &trajectory = mpc_.execute(state);
   _trajectory = trajectory;
 
   EASY_BLOCK("Plotting All");

@@ -53,7 +53,9 @@ struct EigenKinematicBicycle
 {
   constexpr static float ts{0.1};
   constexpr static float one_over_wheelbase{1.0 / 3.0};
-  constexpr static float steering_max{0.52};
+  constexpr static float max_steering{0.52};
+  constexpr static float max_steering_rate{0.1};
+  constexpr static float max_jerk{0.6};
 
   static void step(const Ref<const EigenState> &state,
                    const Ref<const EigenAction> &action,
@@ -62,10 +64,10 @@ struct EigenKinematicBicycle
     new_state[0] = state[0] + ts * state[3] * std::cos(state[2]);
     new_state[1] = state[1] + ts * state[3] * std::sin(state[2]);
     new_state[2] =
-        state[2] + ts * state[3] * one_over_wheelbase * std::tan(state[5]);
+        std::clamp(state[2] + ts * state[3] * one_over_wheelbase * std::tan(state[5]), -max_steering, max_steering);
     new_state[3] = state[3] + ts * state[4];
-    new_state[4] = state[4] + ts * action[0];
-    new_state[5] = state[5] + ts * action[1];
+    new_state[4] = state[4] + ts * max_jerk * std::tanh(action[0]);
+    new_state[5] = state[5] + ts * max_steering_rate * std::tanh(action[1]);
   }
 };
 
@@ -76,8 +78,8 @@ struct CostFunction
                                    const Ref<const EigenAction> &action)
   {
 
-    return 10000.0 * (state[3] - 5.0) * (state[3] - 5.0) +
-           100000.0 * (state[2] * state[2]) + 1.0 * (state[4] * state[4]) +
+    return 1.0 * (state[3] - 3.0) * (state[3] - 3.0) +
+           1.0 * (state[2] * state[2]) + 1.0 * (state[4] * state[4]) +
            1.0 * (state[5] - state[5]) + 100.0 * (action[0] - action[0]) +
            100.0 * (action[1] - action[1]);
   }
@@ -152,36 +154,32 @@ public:
     sampler_ = NormalRandomVariable(mean, stddev);
   };
 
-  EigenTrajectory &rollout(const Ref<EigenState> &initial_state)
+  void rollout(EigenTrajectory &trajectory)
   {
-    EASY_FUNCTION(profiler::colors::Magenta);
+    EASY_FUNCTION(profiler::colors::Green);
+    double current_time_s{0.0};
+    for (size_t i = 0; i + 1 < horizon_; ++i)
+    {
+      trajectory.times.at(i) = current_time_s;
 
+      DynamicsT::step(trajectory.states.col(i), trajectory.actions.col(i),
+                      trajectory.states.col(i + 1));
+      current_time_s += DynamicsT::ts;
+    }
+    trajectory.times.at(horizon_ - 1) = current_time_s;
+  }
+
+  EigenActionSequence run_cem_iteration(const Ref<EigenState> &initial_state)
+  {
     CostFunction cost_function;
-    EigenState state = initial_state;
 
     for (int j = 0; j < population_; j++)
     {
-
       auto &trajectory = candidate_trajectories_.at(j);
-      EASY_BLOCK("Sampling");
-      trajectory.actions = sampler_();
-      EASY_END_BLOCK;
+      trajectory.states.col(0) = initial_state; // Set first state
+      trajectory.actions = sampler_();          // Sample actions
+      rollout(trajectory);
 
-      double current_time_s{0.0};
-      trajectory.states.col(0) = state; // Set first state
-      for (size_t i = 0; i + 1 < horizon_; ++i)
-      {
-        trajectory.times.at(i) = current_time_s;
-
-        EASY_BLOCK("Calculating dynamics");
-        DynamicsT::step(trajectory.states.col(i), trajectory.actions.col(i),
-                        trajectory.states.col(i + 1));
-        EASY_END_BLOCK;
-
-        current_time_s += DynamicsT::ts;
-      }
-      // Add last time
-      trajectory.times.at(horizon_ - 1) = current_time_s;
       costs_index_pair_.at(j).first =
           cost_function(trajectory.states, trajectory.actions);
       costs_index_pair_.at(j).second = j;
@@ -199,27 +197,23 @@ public:
       mean_actions += candidate_trajectories_.at(elite_index).actions;
     }
 
-    mean_actions = mean_actions / elites_;
+    return mean_actions / elites_;
+  }
 
-    final_trajectory.states = EigenStateSequence::Zero(state_size, horizon_);
-    final_trajectory.actions = EigenActionSequence::Zero(action_size, horizon_);
-    final_trajectory.actions = mean_actions;
-    final_trajectory.times = std::vector<float>(horizon_, 0.0f);
+  EigenTrajectory &execute(const Ref<EigenState> &initial_state)
+  {
+    EASY_FUNCTION(profiler::colors::Magenta);
 
-    double current_time_s{0.0};
-    final_trajectory.states.col(0) = state; // Set first state
-    for (size_t i = 0; i + 1 < horizon_; ++i)
+    for (int i = 0; i < num_iters_; ++i)
     {
-      final_trajectory.times.at(i) = current_time_s;
-      DynamicsT::step(final_trajectory.states.col(i),
-                      final_trajectory.actions.col(i),
-                      final_trajectory.states.col(i + 1));
-      current_time_s += DynamicsT::ts;
+      sampler_.mean = run_cem_iteration(initial_state);
     }
-    // Add last time
-    final_trajectory.times.at(horizon_ - 1) = current_time_s;
 
-    return final_trajectory;
+    trajectory_.states.col(0) = initial_state; // Set first state
+
+    trajectory_.actions = sampler_.mean; // Set mean actions
+    rollout(trajectory_);
+    return trajectory_;
   };
 
 private:
