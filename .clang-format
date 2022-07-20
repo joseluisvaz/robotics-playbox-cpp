@@ -14,5 +14,4 @@ BreakBeforeBraces: Allman
 
 AlwaysBreakTemplateDeclarations: 'Yes'
 AllowShortFunctionsOnASingleLine: Empty
-
-
+ColumnLimit: 120

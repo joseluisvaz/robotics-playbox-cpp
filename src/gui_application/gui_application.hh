@@ -106,8 +106,7 @@ private:
 class VertexColorDrawable : public SceneGraph::Drawable3D
 {
 public:
-  explicit VertexColorDrawable(Object3D &object,
-                               Shaders::VertexColorGL3D &shader, GL::Mesh &mesh,
+  explicit VertexColorDrawable(Object3D &object, Shaders::VertexColorGL3D &shader, GL::Mesh &mesh,
                                SceneGraph::DrawableGroup3D &drawables)
       : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
   {
@@ -115,10 +114,7 @@ public:
 
   void draw(const Matrix4 &transformation, SceneGraph::Camera3D &camera)
   {
-    _shader
-        .setTransformationProjectionMatrix(camera.projectionMatrix() *
-                                           transformation)
-        .draw(_mesh);
+    _shader.setTransformationProjectionMatrix(camera.projectionMatrix() * transformation).draw(_mesh);
   }
 
 private:
@@ -129,8 +125,8 @@ private:
 class FlatDrawable : public SceneGraph::Drawable3D
 {
 public:
-  explicit FlatDrawable(Object3D &object, Shaders::FlatGL3D &shader,
-                        GL::Mesh &mesh, SceneGraph::DrawableGroup3D &drawables)
+  explicit FlatDrawable(Object3D &object, Shaders::FlatGL3D &shader, GL::Mesh &mesh,
+                        SceneGraph::DrawableGroup3D &drawables)
       : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
   {
   }
@@ -139,8 +135,7 @@ public:
   {
     _shader
         .setColor(0x747474_rgbf) // gray color
-        .setTransformationProjectionMatrix(camera.projectionMatrix() *
-                                           transformation)
+        .setTransformationProjectionMatrix(camera.projectionMatrix() * transformation)
         .draw(_mesh);
   }
 
