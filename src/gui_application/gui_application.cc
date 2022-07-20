@@ -105,7 +105,7 @@ SandboxExample::SandboxExample(const Arguments &arguments)
   _mesh = MeshTools::compile(Primitives::cubeWireframe());
   constexpr int horizon = 100;
   mpc_ = CEM_MPC<EigenKinematicBicycle>(/* iters= */ 10, horizon,
-                                        /* population= */ 100,
+                                        /* population= */ 512,
                                         /* elites */ 24);
 
   trajectory_objects_ = TrajectoryObjects(_scene, horizon);

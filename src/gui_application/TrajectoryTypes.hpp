@@ -63,8 +63,9 @@ struct EigenKinematicBicycle
   {
     new_state[0] = state[0] + ts * state[3] * std::cos(state[2]);
     new_state[1] = state[1] + ts * state[3] * std::sin(state[2]);
-    new_state[2] =
-        std::clamp(state[2] + ts * state[3] * one_over_wheelbase * std::tan(state[5]), -max_steering, max_steering);
+    new_state[2] = std::clamp(state[2] + ts * state[3] * one_over_wheelbase *
+                                             std::tan(state[5]),
+                              -max_steering, max_steering);
     new_state[3] = state[3] + ts * state[4];
     new_state[4] = state[4] + ts * max_jerk * std::tanh(action[0]);
     new_state[5] = state[5] + ts * max_steering_rate * std::tanh(action[1]);
@@ -79,7 +80,7 @@ struct CostFunction
   {
 
     return 1.0 * (state[3] - 3.0) * (state[3] - 3.0) +
-           1.0 * (state[2] * state[2]) + 1.0 * (state[4] * state[4]) +
+           10000.0 * (state[2] * state[2]) + 1.0 * (state[4] * state[4]) +
            1.0 * (state[5] - state[5]) + 100.0 * (action[0] - action[0]) +
            100.0 * (action[1] - action[1]);
   }
@@ -169,8 +170,9 @@ public:
     trajectory.times.at(horizon_ - 1) = current_time_s;
   }
 
-  EigenActionSequence run_cem_iteration(const Ref<EigenState> &initial_state)
+  void run_cem_iteration(const Ref<EigenState> &initial_state)
   {
+    EASY_FUNCTION(profiler::colors::Yellow);
     CostFunction cost_function;
 
     for (int j = 0; j < population_; j++)
@@ -197,16 +199,36 @@ public:
       mean_actions += candidate_trajectories_.at(elite_index).actions;
     }
 
-    return mean_actions / elites_;
+    mean_actions = mean_actions / elites_;
+
+    EigenActionSequence stddev =
+        EigenActionSequence::Zero(action_size, horizon_);
+    for (int i = 0; i < elites_; ++i)
+    {
+      const auto &elite_index = costs_index_pair_.at(i).second;
+      EigenActionSequence temp =
+          candidate_trajectories_.at(elite_index).actions - mean_actions;
+      stddev = stddev + temp.cwiseProduct(temp);
+    }
+
+    stddev = (stddev / elites_).cwiseSqrt();
+
+    sampler_.mean = mean_actions;
+    sampler_.transform = stddev;
   }
 
   EigenTrajectory &execute(const Ref<EigenState> &initial_state)
   {
     EASY_FUNCTION(profiler::colors::Magenta);
 
+    sampler_.mean = EigenActionSequence::Zero(trajectory_.actions.rows(),
+                                              trajectory_.actions.cols());
+    sampler_.transform = EigenActionSequence::Ones(trajectory_.actions.rows(),
+                                                   trajectory_.actions.cols());
+
     for (int i = 0; i < num_iters_; ++i)
     {
-      sampler_.mean = run_cem_iteration(initial_state);
+      run_cem_iteration(initial_state);
     }
 
     trajectory_.states.col(0) = initial_state; // Set first state
