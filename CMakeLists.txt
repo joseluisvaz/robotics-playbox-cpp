@@ -48,6 +48,7 @@ project(MagnumIntegration CXX)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/modules/" ${CMAKE_MODULE_PATH})
+set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 find_package(Magnum REQUIRED)
 
 # Parts of the library

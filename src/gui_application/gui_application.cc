@@ -49,8 +49,7 @@ TrajectoryObjects::TrajectoryObjects(Scene3D &scene, const int horizon_points)
   }
 }
 
-const std::vector<std::shared_ptr<Object3D>> &
-TrajectoryObjects::get_objects() const
+const std::vector<std::shared_ptr<Object3D>> &TrajectoryObjects::get_objects() const
 {
   return objects_;
 }
@@ -60,8 +59,7 @@ const Vector3 &TrajectoryObjects::get_vehicle_extent() const
   return vehicle_extent_;
 }
 
-SandboxExample::SandboxExample(const Arguments &arguments)
-    : Platform::Application{arguments, NoCreate}
+SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Application{arguments, NoCreate}
 {
   profiler::startListen();
   /* Setup window */
@@ -70,8 +68,7 @@ SandboxExample::SandboxExample(const Arguments &arguments)
     Configuration conf;
     conf.setTitle("Robotics Sandbox")
         .setSize(conf.size(), dpiScaling)
-        .setWindowFlags(Configuration::WindowFlag::Resizable |
-                        Configuration::WindowFlag::Maximized |
+        .setWindowFlags(Configuration::WindowFlag::Resizable | Configuration::WindowFlag::Maximized |
                         Configuration::WindowFlag::Tooltip);
     GLConfiguration glConf;
     glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
@@ -84,17 +81,14 @@ SandboxExample::SandboxExample(const Arguments &arguments)
   /* Setup ImGui, load a better font */
   {
 
-    _imgui = ImGuiIntegration::Context(Vector2{windowSize()} / dpiScaling(),
-                                       windowSize(), framebufferSize());
+    _imgui = ImGuiIntegration::Context(Vector2{windowSize()} / dpiScaling(), windowSize(), framebufferSize());
     ImPlot::CreateContext();
     ImGui::StyleColorsDark();
 
     /* Setup proper blending to be used by ImGui */
-    GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
-                                   GL::Renderer::BlendEquation::Add);
-    GL::Renderer::setBlendFunction(
-        GL::Renderer::BlendFunction::SourceAlpha,
-        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+    GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
+    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
+                                   GL::Renderer::BlendFunction::OneMinusSourceAlpha);
   }
 
   /* Shaders, renderer setup */
@@ -103,10 +97,10 @@ SandboxExample::SandboxExample(const Arguments &arguments)
   GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 
   _mesh = MeshTools::compile(Primitives::cubeWireframe());
-  constexpr int horizon = 100;
-  mpc_ = CEM_MPC<EigenKinematicBicycle>(/* iters= */ 10, horizon,
-                                        /* population= */ 512,
-                                        /* elites */ 24);
+  constexpr int horizon = 20;
+  mpc_ = CEM_MPC<EigenKinematicBicycle>(/* iters= */ 30, horizon,
+                                        /* population= */ 2048,
+                                        /* elites */ 16);
 
   trajectory_objects_ = TrajectoryObjects(_scene, horizon);
   for (auto &object : trajectory_objects_.get_objects())
@@ -124,23 +118,18 @@ SandboxExample::SandboxExample(const Arguments &arguments)
   /* Origin Axis */
   _origin_axis = MeshTools::compile(Primitives::axis3D());
   auto origin_axis = new Object3D(&_scene);
-  new VertexColorDrawable{*origin_axis, _vertexColorShader, _origin_axis,
-                          _drawables};
+  new VertexColorDrawable{*origin_axis, _vertexColorShader, _origin_axis, _drawables};
 
   /* Set up the camera */
   _cameraObject = new Object3D{&_scene};
   this->resetCameraPosition();
 
   _camera = new SceneGraph::Camera3D{*_cameraObject};
-  _camera->setProjectionMatrix(Matrix4::perspectiveProjection(
-      45.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 100.0f));
+  _camera->setProjectionMatrix(
+      Matrix4::perspectiveProjection(45.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 100.0f));
 
   /* Initialize initial depth to the value at scene center */
-  _lastDepth = ((_camera->projectionMatrix() * _camera->cameraMatrix())
-                    .transformPoint({})
-                    .z() +
-                1.0f) *
-               0.5f;
+  _lastDepth = ((_camera->projectionMatrix() * _camera->cameraMatrix()).transformPoint({}).z() + 1.0f) * 0.5f;
 }
 
 Float SandboxExample::depthAt(const Vector2i &windowPosition)
@@ -148,34 +137,25 @@ Float SandboxExample::depthAt(const Vector2i &windowPosition)
   /* First scale the position from being relative to window size to being
      relative to framebuffer size as those two can be different on HiDPI
      systems */
-  const Vector2i position =
-      windowPosition * Vector2{framebufferSize()} / Vector2{windowSize()};
-  const Vector2i fbPosition{position.x(),
-                            GL::defaultFramebuffer.viewport().sizeY() -
-                                position.y() - 1};
+  const Vector2i position = windowPosition * Vector2{framebufferSize()} / Vector2{windowSize()};
+  const Vector2i fbPosition{position.x(), GL::defaultFramebuffer.viewport().sizeY() - position.y() - 1};
 
-  GL::defaultFramebuffer.mapForRead(
-      GL::DefaultFramebuffer::ReadAttachment::Front);
-  Image2D data = GL::defaultFramebuffer.read(
-      Range2Di::fromSize(fbPosition, Vector2i{1}).padded(Vector2i{2}),
-      {GL::PixelFormat::DepthComponent, GL::PixelType::Float});
+  GL::defaultFramebuffer.mapForRead(GL::DefaultFramebuffer::ReadAttachment::Front);
+  Image2D data = GL::defaultFramebuffer.read(Range2Di::fromSize(fbPosition, Vector2i{1}).padded(Vector2i{2}),
+                                             {GL::PixelFormat::DepthComponent, GL::PixelType::Float});
 
   /* TODO: change to just Math::min<Float>(data.pixels<Float>() when the
      batch functions in Math can handle 2D views */
   return Math::min<Float>(data.pixels<Float>().asContiguous());
 }
 
-Vector3 SandboxExample::unproject(const Vector2i &windowPosition,
-                                  Float depth) const
+Vector3 SandboxExample::unproject(const Vector2i &windowPosition, Float depth) const
 {
   /* We have to take window size, not framebuffer size, since the position is
      in window coordinates and the two can be different on HiDPI systems */
   const Vector2i viewSize = windowSize();
-  const Vector2i viewPosition{windowPosition.x(),
-                              viewSize.y() - windowPosition.y() - 1};
-  const Vector3 in{2 * Vector2{viewPosition} / Vector2{viewSize} -
-                       Vector2{1.0f},
-                   depth * 2.0f - 1.0f};
+  const Vector2i viewPosition{windowPosition.x(), viewSize.y() - windowPosition.y() - 1};
+  const Vector3 in{2 * Vector2{viewPosition} / Vector2{viewSize} - Vector2{1.0f}, depth * 2.0f - 1.0f};
 
   /*
       Use the following to get global coordinates instead of
@@ -191,8 +171,7 @@ void SandboxExample::viewportEvent(ViewportEvent &event)
   GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
 
   /* Relayout ImGui */
-  _imgui.relayout(Vector2{event.windowSize()} / event.dpiScaling(),
-                  event.windowSize(), event.framebufferSize());
+  _imgui.relayout(Vector2{event.windowSize()} / event.dpiScaling(), event.windowSize(), event.framebufferSize());
 
   /* Recompute the camera's projection matrix */
   _camera->setViewport(event.framebufferSize());
@@ -206,28 +185,21 @@ void SandboxExample::keyPressEvent(KeyEvent &event)
   /* Reset the transformation to the original view */
   if (event.key() == KeyEvent::Key::NumZero)
   {
-    (*_cameraObject)
-        .resetTransformation()
-        .translate(Vector3::zAxis(5.0f))
-        .rotateX(-15.0_degf)
-        .rotateY(30.0_degf);
+    (*_cameraObject).resetTransformation().translate(Vector3::zAxis(5.0f)).rotateX(-15.0_degf).rotateY(30.0_degf);
     redraw();
     return;
 
     /* Axis-aligned view */
   }
-  else if (event.key() == KeyEvent::Key::NumOne ||
-           event.key() == KeyEvent::Key::NumThree ||
+  else if (event.key() == KeyEvent::Key::NumOne || event.key() == KeyEvent::Key::NumThree ||
            event.key() == KeyEvent::Key::NumSeven)
   {
     /* Start with current camera translation with the rotation inverted */
     const Vector3 viewTranslation =
-        _cameraObject->transformation().rotationScaling().inverted() *
-        _cameraObject->transformation().translation();
+        _cameraObject->transformation().rotationScaling().inverted() * _cameraObject->transformation().translation();
 
     /* Front/back */
-    const Float multiplier =
-        event.modifiers() & KeyEvent::Modifier::Ctrl ? -1.0f : 1.0f;
+    const Float multiplier = event.modifiers() & KeyEvent::Modifier::Ctrl ? -1.0f : 1.0f;
 
     Matrix4 transformation;
     if (event.key() == KeyEvent::Key::NumSeven) /* Top/bottom */
@@ -239,8 +211,7 @@ void SandboxExample::keyPressEvent(KeyEvent &event)
     else
       CORRADE_INTERNAL_ASSERT_UNREACHABLE();
 
-    _cameraObject->setTransformation(transformation *
-                                     Matrix4::translation(viewTranslation));
+    _cameraObject->setTransformation(transformation * Matrix4::translation(viewTranslation));
     redraw();
   }
 }
@@ -253,8 +224,7 @@ void SandboxExample::mousePressEvent(MouseEvent &event)
   /* Due to compatibility reasons, scroll is also reported as a press event,
      so filter that out. Could be removed once MouseEvent::Button::Wheel is
      gone from Magnum. */
-  if (event.button() != MouseEvent::Button::Left &&
-      event.button() != MouseEvent::Button::Middle)
+  if (event.button() != MouseEvent::Button::Left && event.button() != MouseEvent::Button::Middle)
     return;
 
   const Float currentDepth = depthAt(event.position());
@@ -293,10 +263,8 @@ void SandboxExample::mouseMoveEvent(MouseMoveEvent &event)
   }
   else
   {
-    _cameraObject->transformLocal(Matrix4::translation(_rotationPoint) *
-                                  Matrix4::rotationX(-0.01_radf * delta.y()) *
-                                  Matrix4::rotationY(-0.01_radf * delta.x()) *
-                                  Matrix4::translation(-_rotationPoint));
+    _cameraObject->transformLocal(Matrix4::translation(_rotationPoint) * Matrix4::rotationX(-0.01_radf * delta.y()) *
+                                  Matrix4::rotationY(-0.01_radf * delta.x()) * Matrix4::translation(-_rotationPoint));
   }
 
   redraw();
@@ -341,8 +309,7 @@ void SandboxExample::mouseReleaseEvent(MouseEvent &event)
 
 void SandboxExample::drawEvent()
 {
-  GL::defaultFramebuffer.clear(GL::FramebufferClear::Color |
-                               GL::FramebufferClear::Depth);
+  GL::defaultFramebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
   _imgui.newFrame();
 
   /* Enable text input, if needed */
@@ -407,56 +374,57 @@ void SandboxExample::show_menu()
     redraw();
   }
 
+  ImGui::SliderFloat3("costs[x, y, yaw]", mpc_.cost_function_.state_slider_values_, 0.0f, 10.0f);
+  ImGui::SliderFloat3("costs[speed, acc, steering]", mpc_.cost_function_.state_slider_values_2_, 0.0f, 10.0f);
+  ImGui::SliderFloat2("costs[jerk, steering]", mpc_.cost_function_.action_slider_values_, 0.0f, 10.0f);
+  ImGui::SliderFloat3("ref[x, y, speed]", mpc_.cost_function_.ref_values_, 0.0f, 10.0f);
+  ImGui::SliderAngle("ref[]", &mpc_.cost_function_.ref_yaw_, 0.0f, 180.0f);
+  
+  ImGui::SliderFloat3("terminal costs[x, y, yaw]", mpc_.cost_function_.terminal_state_slider_values_, 0.0f, 10.0f);
+  ImGui::SliderFloat3("terminal costs[speed, acc, steering]", mpc_.cost_function_.terminal_state_slider_values_2_, 0.0f, 10.0f);
+  ImGui::SliderFloat2("terminal costs[jerk, steering]", mpc_.cost_function_.terminal_action_slider_values_, 0.0f, 10.0f);
+  ImGui::SliderFloat3("terminal ref[x, y, speed]", mpc_.cost_function_.terminal_ref_values_, -100.0f, 100.0f);
+  ImGui::SliderAngle("terminal ref[]", &mpc_.cost_function_.terminal_ref_yaw_, -180.0f, 180.0f);
+
   const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
   {
     ImPlot::SetNextAxesToFit();
     if (ImPlot::BeginPlot(title))
     {
       std::vector<float> values;
-      std::transform(this->_trajectory.states.colwise().begin(),
-                     this->_trajectory.states.colwise().end(),
+      std::transform(this->_trajectory.states.colwise().begin(), this->_trajectory.states.colwise().end(),
                      std::back_inserter(values), getter_fn);
       ImPlot::SetupAxes("time[s]", value_name);
       ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-      ImPlot::PlotLine(value_name, this->_trajectory.times.data(),
-                       values.data(), values.size());
+      ImPlot::PlotLine(value_name, this->_trajectory.times.data(), values.data(), values.size());
       ImPlot::EndPlot();
     }
   };
 
-  const auto make_action_plot =
-      [this](auto title, auto value_name, auto getter_fn)
+  const auto make_action_plot = [this](auto title, auto value_name, auto getter_fn)
   {
     ImPlot::SetNextAxesToFit();
     if (ImPlot::BeginPlot(title))
     {
       std::vector<float> values;
-      std::transform(this->_trajectory.actions.colwise().begin(),
-                     this->_trajectory.actions.colwise().end(),
+      std::transform(this->_trajectory.actions.colwise().begin(), this->_trajectory.actions.colwise().end(),
                      std::back_inserter(values), getter_fn);
       ImPlot::SetupAxes("time[s]", value_name);
       ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-      ImPlot::PlotLine(value_name, this->_trajectory.times.data(),
-                       values.data(), values.size());
+      ImPlot::PlotLine(value_name, this->_trajectory.times.data(), values.data(), values.size());
       ImPlot::EndPlot();
     }
   };
 
   EASY_BLOCK("Make plots");
-  make_plot("Speed Plot", "speed[mps]",
-            [](const Ref<EigenState> &state) { return state[3]; });
-  make_plot("Accel Plot", "accel[mpss]",
-            [](const Ref<EigenState> &state) { return state[4]; });
-  make_plot("Yaw Plot", "yaw[rad]",
-            [](const Ref<EigenState> &state) { return state[2]; });
-  make_plot("Steering Plot", "steering[rad]",
-            [](const Ref<EigenState> &state) { return state[5]; });
+  make_plot("Speed Plot", "speed[mps]", [](const Ref<EigenState> &state) { return state[3]; });
+  make_plot("Accel Plot", "accel[mpss]", [](const Ref<EigenState> &state) { return state[4]; });
+  make_plot("Yaw Plot", "yaw[rad]", [](const Ref<EigenState> &state) { return state[2]; });
+  make_plot("Steering Plot", "steering[rad]", [](const Ref<EigenState> &state) { return state[5]; });
   make_action_plot("Jerk Plot", "jerk[mpsss]",
-                   [](const Ref<EigenAction> &action)
-                   { return 0.6 * std::tanh(action[0]); });
+                   [](const Ref<EigenAction> &action) { return 0.6 * std::tanh(action[0]); });
   make_action_plot("Steering Rate Plot", "srate[rad/s]",
-                   [](const Ref<EigenAction> &action)
-                   { return 0.1 * std::tanh(action[1]); });
+                   [](const Ref<EigenAction> &action) { return 0.1 * std::tanh(action[1]); });
   EASY_END_BLOCK;
 
   ImGui::End();
