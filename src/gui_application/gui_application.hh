@@ -55,6 +55,9 @@ private:
 
 class SandboxExample : public Platform::Application
 {
+
+  using Dynamics = EigenKinematicBicycle;
+
 public:
   explicit SandboxExample(const Arguments &arguments);
 
@@ -95,7 +98,7 @@ private:
   Vector3 _rotationPoint, _translationPoint;
 
   // temp trajectory
-  EigenTrajectory _trajectory;
+  EigenKinematicBicycle::Trajectory _trajectory;
   TrajectoryObjects trajectory_objects_;
   CEM_MPC<EigenKinematicBicycle> mpc_;
 

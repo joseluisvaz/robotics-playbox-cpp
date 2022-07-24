@@ -379,10 +379,12 @@ void SandboxExample::show_menu()
   ImGui::SliderFloat2("costs[jerk, steering]", mpc_.cost_function_.action_slider_values_, 0.0f, 10.0f);
   ImGui::SliderFloat3("ref[x, y, speed]", mpc_.cost_function_.ref_values_, 0.0f, 10.0f);
   ImGui::SliderAngle("ref[]", &mpc_.cost_function_.ref_yaw_, 0.0f, 180.0f);
-  
+
   ImGui::SliderFloat3("terminal costs[x, y, yaw]", mpc_.cost_function_.terminal_state_slider_values_, 0.0f, 10.0f);
-  ImGui::SliderFloat3("terminal costs[speed, acc, steering]", mpc_.cost_function_.terminal_state_slider_values_2_, 0.0f, 10.0f);
-  ImGui::SliderFloat2("terminal costs[jerk, steering]", mpc_.cost_function_.terminal_action_slider_values_, 0.0f, 10.0f);
+  ImGui::SliderFloat3("terminal costs[speed, acc, steering]", mpc_.cost_function_.terminal_state_slider_values_2_, 0.0f,
+                      10.0f);
+  ImGui::SliderFloat2("terminal costs[jerk, steering]", mpc_.cost_function_.terminal_action_slider_values_, 0.0f,
+                      10.0f);
   ImGui::SliderFloat3("terminal ref[x, y, speed]", mpc_.cost_function_.terminal_ref_values_, -100.0f, 100.0f);
   ImGui::SliderAngle("terminal ref[]", &mpc_.cost_function_.terminal_ref_yaw_, -180.0f, 180.0f);
 
@@ -417,14 +419,14 @@ void SandboxExample::show_menu()
   };
 
   EASY_BLOCK("Make plots");
-  make_plot("Speed Plot", "speed[mps]", [](const Ref<EigenState> &state) { return state[3]; });
-  make_plot("Accel Plot", "accel[mpss]", [](const Ref<EigenState> &state) { return state[4]; });
-  make_plot("Yaw Plot", "yaw[rad]", [](const Ref<EigenState> &state) { return state[2]; });
-  make_plot("Steering Plot", "steering[rad]", [](const Ref<EigenState> &state) { return state[5]; });
+  make_plot("Speed Plot", "speed[mps]", [](const Ref<typename Dynamics::State> &state) { return state[3]; });
+  make_plot("Accel Plot", "accel[mpss]", [](const Ref<typename Dynamics::State> &state) { return state[4]; });
+  make_plot("Yaw Plot", "yaw[rad]", [](const Ref<typename Dynamics::State> &state) { return state[2]; });
+  make_plot("Steering Plot", "steering[rad]", [](const Ref<typename Dynamics::State> &state) { return state[5]; });
   make_action_plot("Jerk Plot", "jerk[mpsss]",
-                   [](const Ref<EigenAction> &action) { return 0.6 * std::tanh(action[0]); });
+                   [](const Ref<typename Dynamics::Action> &action) { return 0.6 * std::tanh(action[0]); });
   make_action_plot("Steering Rate Plot", "srate[rad/s]",
-                   [](const Ref<EigenAction> &action) { return 0.1 * std::tanh(action[1]); });
+                   [](const Ref<typename Dynamics::Action> &action) { return 0.1 * std::tanh(action[1]); });
   EASY_END_BLOCK;
 
   ImGui::End();
@@ -447,15 +449,15 @@ void SandboxExample::runCEM()
 {
   EASY_FUNCTION(profiler::colors::Red);
 
-  EigenState state = EigenState::Zero();
+  Dynamics::State state = Dynamics::State::Zero();
   state[3] = 10.0;
-  EigenTrajectory &trajectory = mpc_.execute(state);
+  Dynamics::Trajectory &trajectory = mpc_.execute(state);
   _trajectory = trajectory;
 
   EASY_BLOCK("Plotting All");
   for (int i = 0; i < trajectory.states.cols(); ++i)
   {
-    EigenState new_state = trajectory.states.col(i);
+    Dynamics::State new_state = trajectory.states.col(i);
     auto &object = trajectory_objects_.get_objects().at(i);
 
     EASY_BLOCK("Plotting");

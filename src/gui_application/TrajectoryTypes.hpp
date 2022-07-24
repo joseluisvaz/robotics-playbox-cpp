@@ -85,19 +85,27 @@ void start_thread(std::vector<std::thread> &threads, Job &&job)
 
 using namespace Eigen;
 
-constexpr int state_size = 6;
-constexpr int action_size = 2;
+// constexpr int state_size = 6;
+// constexpr int action_size = 2;
+
+template <int state_size>
 using EigenState = Vector<float, state_size>;
+
+template <int action_size>
 using EigenAction = Vector<float, action_size>;
 
+template <int state_size>
 using EigenStateSequence = Matrix<float, state_size, Dynamic>;
+
+template <int action_size>
 using EigenActionSequence = Matrix<float, action_size, Dynamic>;
 
+template <int state_size, int action_size>
 struct EigenTrajectory
 {
   std::vector<float> times{};
-  EigenStateSequence states;
-  EigenActionSequence actions;
+  EigenStateSequence<state_size> states;
+  EigenActionSequence<action_size> actions;
 };
 
 struct EigenKinematicBicycle
@@ -110,7 +118,13 @@ struct EigenKinematicBicycle
   constexpr static int state_size = 6;
   constexpr static int action_size = 2;
 
-  static void step(const Ref<const EigenState> &state, const Ref<const EigenAction> &action, Ref<EigenState> new_state)
+  using State = EigenState<state_size>;
+  using Action = EigenAction<action_size>;
+  using States = EigenStateSequence<state_size>;
+  using Actions = EigenActionSequence<action_size>;
+  using Trajectory = EigenTrajectory<state_size, action_size>;
+
+  static void step(const Ref<const State> &state, const Ref<const Action> &action, Ref<State> new_state)
   {
     new_state[0] = state[0] + ts * state[3] * std::cos(state[2]);
     new_state[1] = state[1] + ts * state[3] * std::sin(state[2]);
@@ -123,8 +137,9 @@ struct EigenKinematicBicycle
 
 struct CostFunction
 {
+  using D = EigenKinematicBicycle;
 
-  float evaluate_state_action_pair(const Ref<const EigenState> &state, const Ref<const EigenAction> &action) const
+  float evaluate_state_action_pair(const Ref<const D::State> &state, const Ref<const D::Action> &action) const
   {
 
     return state_slider_values_[0] * (state[0] - ref_values_[0]) * (state[0] - ref_values_[0]) +
@@ -135,7 +150,7 @@ struct CostFunction
            action_slider_values_[0] * (action[0] - action[0]) + action_slider_values_[1] * (action[1] - action[1]);
   }
 
-  float evaluate_terminal_pair(const Ref<const EigenState> &state, const Ref<const EigenAction> &action) const
+  float evaluate_terminal_pair(const Ref<const D::State> &state, const Ref<const D::Action> &action) const
   {
 
     return terminal_state_slider_values_[0] * (state[0] - terminal_ref_values_[0]) *
@@ -152,7 +167,7 @@ struct CostFunction
            terminal_action_slider_values_[1] * (action[1] - action[1]);
   }
 
-  float operator()(const Ref<const EigenStateSequence> &states, const Ref<const EigenActionSequence> &actions) const
+  float operator()(const Ref<const D::States> &states, const Ref<const D::Actions> &actions) const
   {
     float cost = 0.0f;
     for (int i{0}; i + 1 < states.cols(); ++i)
@@ -176,23 +191,23 @@ struct CostFunction
   float terminal_ref_yaw_{0.0f};
 };
 
+template <typename MatrixT>
 struct NormalRandomVariable
 {
   NormalRandomVariable() = default;
-  NormalRandomVariable(const EigenActionSequence &mean, const EigenActionSequence &covar)
-      : mean(mean), transform(covar){};
+  NormalRandomVariable(const MatrixT &mean, const MatrixT &covar) : mean(mean), transform(covar){};
 
-  EigenActionSequence mean;
-  EigenActionSequence transform;
+  MatrixT mean;
+  MatrixT transform;
 
-  EigenActionSequence operator()() const
+  MatrixT operator()() const
   {
     static std::mt19937 gen{std::random_device{}()};
     static std::normal_distribution<float> dist;
 
-    return mean.array() + transform.array() * (EigenActionSequence::Zero(mean.rows(), mean.cols())
-                                                   .unaryExpr([&](auto x) { return dist(gen); })
-                                                   .array());
+    return mean.array() +
+           transform.array() *
+               (MatrixT::Zero(mean.rows(), mean.cols()).unaryExpr([&](auto x) { return dist(gen); }).array());
   }
 };
 
@@ -200,33 +215,41 @@ template <typename DynamicsT>
 class CEM_MPC
 {
 
+  using State = typename DynamicsT::State;
+  using Action = typename DynamicsT::Action;
+  using States = typename DynamicsT::States;
+  using Actions = typename DynamicsT::Actions;
+  using Trajectory = typename DynamicsT::Trajectory;
+  constexpr static int state_size = DynamicsT::state_size;
+  constexpr static int action_size = DynamicsT::action_size;
+
 public:
   CEM_MPC() = default;
   CEM_MPC(const int num_iters, const int horizon, const int population, const int elites)
       : num_iters_(num_iters), horizon_(horizon), population_(population), elites_(elites)
   {
-    trajectory_.states = EigenStateSequence::Zero(state_size, horizon_);
-    trajectory_.actions = EigenActionSequence::Zero(action_size, horizon_);
+    trajectory_.states = States::Zero(state_size, horizon_);
+    trajectory_.actions = Actions::Zero(action_size, horizon_);
     trajectory_.times = std::vector<float>(horizon_, 0.0f);
 
     costs_index_pair_ = std::vector<std::pair<float, int>>(population_, std::make_pair(0.0f, 0));
 
     for (int i = 0; i < population_; ++i)
     {
-      EigenTrajectory trajectory;
-      trajectory.states = EigenStateSequence::Zero(state_size, horizon_);
-      trajectory.actions = EigenActionSequence::Zero(action_size, horizon_);
+      Trajectory trajectory;
+      trajectory.states = States::Zero(state_size, horizon_);
+      trajectory.actions = Actions::Zero(action_size, horizon_);
       trajectory.times = std::vector<float>(horizon_, 0.0f);
       candidate_trajectories_.emplace_back(std::move(trajectory));
     }
 
-    EigenActionSequence mean = EigenActionSequence::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
-    EigenActionSequence stddev = EigenActionSequence::Ones(trajectory_.actions.rows(), trajectory_.actions.cols());
+    Actions mean = Actions::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
+    Actions stddev = Actions::Ones(trajectory_.actions.rows(), trajectory_.actions.cols());
 
     sampler_ = NormalRandomVariable(mean, stddev);
   };
 
-  void rollout(EigenTrajectory &trajectory)
+  void rollout(Trajectory &trajectory)
   {
     double current_time_s{0.0};
     for (size_t i = 0; i + 1 < horizon_; ++i)
@@ -239,7 +262,7 @@ public:
     trajectory.times.at(horizon_ - 1) = current_time_s;
   }
 
-  void run_cem_iteration(const Ref<EigenState> &initial_state)
+  void run_cem_iteration(const Ref<State> &initial_state)
   {
     EASY_FUNCTION(profiler::colors::Yellow);
 
@@ -274,7 +297,7 @@ public:
     std::sort(costs_index_pair_.begin(), costs_index_pair_.end(),
               [](const auto &lhs, const auto &rhs) { return lhs.first < rhs.first; });
 
-    EigenActionSequence mean_actions = EigenActionSequence::Zero(action_size, horizon_);
+    Actions mean_actions = Actions::Zero(action_size, horizon_);
     for (int i = 0; i < elites_; ++i)
     {
       const auto &elite_index = costs_index_pair_.at(i).second;
@@ -283,11 +306,11 @@ public:
 
     mean_actions = mean_actions / elites_;
 
-    EigenActionSequence stddev = EigenActionSequence::Zero(action_size, horizon_);
+    Actions stddev = Actions::Zero(action_size, horizon_);
     for (int i = 0; i < elites_; ++i)
     {
       const auto &elite_index = costs_index_pair_.at(i).second;
-      EigenActionSequence temp = candidate_trajectories_.at(elite_index).actions - mean_actions;
+      Actions temp = candidate_trajectories_.at(elite_index).actions - mean_actions;
       stddev = stddev + temp.cwiseProduct(temp);
     }
 
@@ -297,29 +320,20 @@ public:
     sampler_.transform = stddev;
   }
 
-  EigenTrajectory &execute(const Ref<EigenState> &initial_state)
+  Trajectory &execute(const Ref<State> &initial_state)
   {
     EASY_FUNCTION(profiler::colors::Magenta);
 
-    sampler_.mean = EigenActionSequence::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
-    sampler_.transform = EigenActionSequence::Ones(trajectory_.actions.rows(), trajectory_.actions.cols());
-
-    // std::vector<std::thread> my_threads;
+    sampler_.mean = Actions::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
+    sampler_.transform = Actions::Ones(trajectory_.actions.rows(), trajectory_.actions.cols());
 
     for (int i = 0; i < num_iters_; ++i)
     {
       run_cem_iteration(initial_state);
-      // my_threads.push_back(std::thread([](int i) { printf("this is the number : %d\n", i); }, 1059));
     }
 
-    // for (auto &thread : my_threads)
-    // {
-    //   thread.join();
-    // }
-
     trajectory_.states.col(0) = initial_state; // Set first state
-
-    trajectory_.actions = sampler_.mean; // Set mean actions
+    trajectory_.actions = sampler_.mean;       // Set mean actions
     rollout(trajectory_);
     return trajectory_;
   };
@@ -331,10 +345,10 @@ private:
   int horizon_;
   int population_;
   int elites_;
-  std::vector<EigenTrajectory> candidate_trajectories_;
-  EigenTrajectory trajectory_;
-  EigenTrajectory final_trajectory;
-  NormalRandomVariable sampler_;
+  std::vector<Trajectory> candidate_trajectories_;
+  Trajectory trajectory_;
+  Trajectory final_trajectory;
+  NormalRandomVariable<Actions> sampler_;
   std::vector<std::thread> threads_{16};
   std::vector<std::pair<float, int>> costs_index_pair_;
 };
