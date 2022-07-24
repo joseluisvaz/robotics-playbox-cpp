@@ -31,17 +31,36 @@ add_library(ImPlot ${SHARED_OR_STATIC}
     implot.h
     implot_internal.h
 )
-target_include_directories(ImPlot PUBLIC
+target_include_directories(ImPlot PUBLIC 
     ${PROJECT_SOURCE_DIR}/src/MagnumExternal/ImGui)
+
+# Diable all warnings from this external library.
+target_compile_options(ImPlot PUBLIC -w)
 #END ******** Add ImPlot
 
-add_executable(gui_application WIN32 gui_application.cc gui_application.hh)
-target_compile_features(gui_application PRIVATE cxx_std_17)
-target_link_libraries(gui_application PRIVATE
+#******** Add ImPlot
+set(CEM_MPC_HEADERS cem_mpc.hpp types.hpp math.hpp cem_mpc.tpp)
+set(CEM_MPC_SRCS cem_mpc.cpp math.cpp)
+add_library(CEM_MPC ${SHARED_OR_STATIC} 
+    ${CEM_MPC_SRCS}
+    ${CEM_MPC_HEADERS}
+)
+target_compile_features(CEM_MPC PUBLIC cxx_std_17)
+target_include_directories(CEM_MPC PUBLIC
+    ${PROJECT_SOURCE_DIR}/src/gui_application/)
+target_link_libraries(CEM_MPC PRIVATE
+   Eigen3::Eigen 
+   easy_profiler)
+#END ******** Add ImPlot
+
+add_executable(gui_application WIN32 gui_application.cc gui_application.hh types.hpp math.hpp)
+target_compile_features(gui_application PUBLIC cxx_std_17)
+target_link_libraries(gui_application PUBLIC 
     MagnumImGuiIntegration
     easy_profiler
     ImPlot
     Eigen3::Eigen
+    CEM_MPC
     Corrade::Main)
 
 

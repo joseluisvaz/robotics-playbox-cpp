@@ -20,8 +20,8 @@
 #include <Magnum/Shaders/VertexColorGL.h>
 #include <Magnum/Trade/MeshData.h>
 
-#include "gui_application/TrajectoryTypes.hpp"
 #include "gui_application/implot.h"
+#include "gui_application/types.hpp"
 #include <Magnum/ImGuiIntegration/Context.hpp>
 #include <algorithm>
 #include <easy/profiler.h>

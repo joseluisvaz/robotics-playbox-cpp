@@ -24,6 +24,7 @@
 #include <Magnum/Trade/MeshData.h>
 
 #include <Magnum/ImGuiIntegration/Context.hpp>
+#include "cem_mpc.hpp"
 #include <iostream>
 
 #ifndef SCALE
@@ -34,6 +35,8 @@ namespace Magnum
 {
 namespace Examples
 {
+
+using namespace GuiApplication;
 
 using Object3D = SceneGraph::Object<SceneGraph::MatrixTransformation3D>;
 using Scene3D = SceneGraph::Scene<SceneGraph::MatrixTransformation3D>;
