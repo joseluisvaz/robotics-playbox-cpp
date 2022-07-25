@@ -89,6 +89,7 @@ SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Applicati
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
                                    GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+    GL::Renderer::setLineWidth(3.0f);
   }
 
   /* Shaders, renderer setup */
@@ -107,6 +108,11 @@ SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Applicati
   {
     new VertexColorDrawable{*object, _vertexColorShader, _mesh, _drawables};
   }
+
+  path_objects_ = std::make_shared<PathObjects>();
+  auto vtx = new Object3D{&_scene};
+  new VertexColorDrawable{*vtx, _vertexColorShader, path_objects_->mesh_, _drawables};
+
   this->runCEM();
 
   /* Grid */
@@ -455,19 +461,29 @@ void SandboxExample::runCEM()
   _trajectory = trajectory;
 
   EASY_BLOCK("Plotting All");
+  std::vector<float> x_vals;
+  std::vector<float> y_vals;
   for (int i = 0; i < trajectory.states.cols(); ++i)
   {
     Dynamics::State new_state = trajectory.states.col(i);
+    auto time_s = trajectory.times.at(i);
     auto &object = trajectory_objects_.get_objects().at(i);
+
+    x_vals.push_back(new_state[0]);
+    y_vals.push_back(new_state[1]);
 
     EASY_BLOCK("Plotting");
     (*object)
         .resetTransformation()
         .scale(trajectory_objects_.get_vehicle_extent())
+        .translate(Vector3(0.0f, 0.0f, SCALE(1.5f))) // move half wheelbase forward
         .rotateY(Rad(new_state[2]))
-        .translate(Vector3(SCALE(new_state[1]), 0.0f, SCALE(new_state[0])));
+        .translate(Vector3(SCALE(new_state[1]), SCALE(time_s), SCALE(new_state[0])));
     EASY_END_BLOCK;
   }
+
+  path_objects_->set_path(x_vals, y_vals);
+
   EASY_END_BLOCK;
 }
 
