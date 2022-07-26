@@ -99,8 +99,9 @@ SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Applicati
 
   _mesh = MeshTools::compile(Primitives::cubeWireframe());
   constexpr int horizon = 20;
-  mpc_ = CEM_MPC<EigenKinematicBicycle>(/* iters= */ 30, horizon,
-                                        /* population= */ 2048,
+  constexpr int population = 1024;
+  mpc_ = CEM_MPC<EigenKinematicBicycle>(/* iters= */ 20, horizon,
+                                        /* population= */ population,
                                         /* elites */ 16);
 
   trajectory_objects_ = TrajectoryObjects(_scene, horizon);
@@ -109,9 +110,13 @@ SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Applicati
     new VertexColorDrawable{*object, _vertexColorShader, _mesh, _drawables};
   }
 
-  path_objects_ = std::make_shared<PathObjects>();
-  auto vtx = new Object3D{&_scene};
-  new VertexColorDrawable{*vtx, _vertexColorShader, path_objects_->mesh_, _drawables};
+  for (int i = 0; i < population; ++i)
+  {
+    auto path_object = std::make_shared<PathObjects>();
+    path_objects_.push_back(path_object);
+    auto vtx = new Object3D{&_scene};
+    new VertexColorDrawable{*vtx, _vertexColorShader, path_object->mesh_, _drawables};
+  }
 
   this->runCEM();
 
@@ -380,6 +385,7 @@ void SandboxExample::show_menu()
     redraw();
   }
 
+  ImGui::SliderInt("Num Iterations", &mpc_.get_num_iters_mutable(), 1, 100);
   ImGui::SliderFloat3("costs[x, y, yaw]", mpc_.cost_function_.state_slider_values_, 0.0f, 10.0f);
   ImGui::SliderFloat3("costs[speed, acc, steering]", mpc_.cost_function_.state_slider_values_2_, 0.0f, 10.0f);
   ImGui::SliderFloat2("costs[jerk, steering]", mpc_.cost_function_.action_slider_values_, 0.0f, 10.0f);
@@ -399,12 +405,26 @@ void SandboxExample::show_menu()
     ImPlot::SetNextAxesToFit();
     if (ImPlot::BeginPlot(title))
     {
+      ImPlot::SetupAxes("time[s]", value_name);
+
+      for (auto traj : this->mpc_.candidate_trajectories_)
+      {
+        std::vector<float> values;
+        std::transform(traj.states.colwise().begin(), traj.states.colwise().end(), std::back_inserter(values),
+                       getter_fn);
+        ImPlot::PlotLine(value_name, traj.times.data(), values.data(), values.size());
+      }
+
       std::vector<float> values;
       std::transform(this->_trajectory.states.colwise().begin(), this->_trajectory.states.colwise().end(),
                      std::back_inserter(values), getter_fn);
-      ImPlot::SetupAxes("time[s]", value_name);
+
+      ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
       ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-      ImPlot::PlotLine(value_name, this->_trajectory.times.data(), values.data(), values.size());
+      ImPlot::PlotLine(std::string(value_name).append("_hola").c_str(), this->_trajectory.times.data(), values.data(),
+                       values.size());
+      ImPlot::PopStyleColor();
+
       ImPlot::EndPlot();
     }
   };
@@ -414,12 +434,24 @@ void SandboxExample::show_menu()
     ImPlot::SetNextAxesToFit();
     if (ImPlot::BeginPlot(title))
     {
+      ImPlot::SetupAxes("time[s]", value_name);
+      for (auto traj : this->mpc_.candidate_trajectories_)
+      {
+        std::vector<float> values;
+        std::transform(traj.actions.colwise().begin(), traj.actions.colwise().end(), std::back_inserter(values),
+                       getter_fn);
+        ImPlot::PlotLine(value_name, traj.times.data(), values.data(), values.size());
+      }
+
       std::vector<float> values;
       std::transform(this->_trajectory.actions.colwise().begin(), this->_trajectory.actions.colwise().end(),
                      std::back_inserter(values), getter_fn);
-      ImPlot::SetupAxes("time[s]", value_name);
+
+      ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
       ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-      ImPlot::PlotLine(value_name, this->_trajectory.times.data(), values.data(), values.size());
+      ImPlot::PlotLine(std::string(value_name).append("_hola").c_str(), this->_trajectory.times.data(), values.data(),
+                       values.size());
+      ImPlot::PopStyleColor();
       ImPlot::EndPlot();
     }
   };
@@ -461,16 +493,11 @@ void SandboxExample::runCEM()
   _trajectory = trajectory;
 
   EASY_BLOCK("Plotting All");
-  std::vector<float> x_vals;
-  std::vector<float> y_vals;
   for (int i = 0; i < trajectory.states.cols(); ++i)
   {
     Dynamics::State new_state = trajectory.states.col(i);
     auto time_s = trajectory.times.at(i);
     auto &object = trajectory_objects_.get_objects().at(i);
-
-    x_vals.push_back(new_state[0]);
-    y_vals.push_back(new_state[1]);
 
     EASY_BLOCK("Plotting");
     (*object)
@@ -482,7 +509,29 @@ void SandboxExample::runCEM()
     EASY_END_BLOCK;
   }
 
-  path_objects_->set_path(x_vals, y_vals);
+  const auto set_path_helper = [this](const auto &_trajectory, auto &_path_object)
+  {
+    std::vector<float> x_vals;
+    std::vector<float> y_vals;
+    std::vector<float> t_vals;
+    for (int i = 0; i < _trajectory.states.cols(); ++i)
+    {
+      Dynamics::State new_state = _trajectory.states.col(i);
+      auto time_s = _trajectory.times.at(i);
+
+      x_vals.push_back(new_state[0]);
+      y_vals.push_back(new_state[1]);
+      t_vals.push_back(time_s);
+    }
+
+    _path_object.set_path(x_vals, y_vals, t_vals);
+  };
+
+  assert(path_objects_.size() == mpc_.candidate_trajectories_.size());
+  for (int i = 0; i < path_objects_.size(); ++i)
+  {
+    set_path_helper(mpc_.candidate_trajectories_.at(i), *path_objects_.at(i));
+  }
 
   EASY_END_BLOCK;
 }

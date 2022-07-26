@@ -2,6 +2,7 @@
 
 #include <Eigen/Dense>
 #include <easy/profiler.h>
+#include <iostream>
 #include <random>
 #include <thread>
 
@@ -136,6 +137,12 @@ typename CEM_MPC<DynamicsT>::Trajectory &CEM_MPC<DynamicsT>::execute(const Ref<S
   trajectory_.actions = sampler_.mean_;      // Set mean actions
   rollout(trajectory_);
   return trajectory_;
+}
+
+template <typename DynamicsT>
+int &CEM_MPC<DynamicsT>::get_num_iters_mutable()
+{
+  return num_iters_;
 }
 
 } // namespace GuiApplication

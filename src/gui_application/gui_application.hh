@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Corrade/Containers/ArrayViewStl.h>
 #include <Magnum/GL/Buffer.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Mesh.h>
@@ -66,41 +67,26 @@ class PathObjects
   };
 
 public:
-  PathObjects()
+  PathObjects() : mesh_{GL::MeshPrimitive::LineStrip}
   {
-    data_ = std::vector<Vertex>(20, Vertex{Vector3{1.0f, 1.0f, 1.0f}, Color3(1.0f, 1.0f, 0.0f)});
-
-    std::copy(data_.begin(), data_.begin() + 20, data_new_);
-
-    buffer_ = GL::Buffer();
-    buffer_.setData(data_new_, GL::BufferUsage::StaticDraw);
-    printf("hola");
-    mesh_.setPrimitive(GL::MeshPrimitive::LineStrip)
-        .setCount(20)
-        .addVertexBuffer(buffer_, 0, Shaders::VertexColorGL3D::Position{}, Shaders::VertexColorGL3D::Color3{});
-    printf("adios");
+    mesh_.addVertexBuffer(buffer_, 0, Shaders::VertexColorGL3D::Position{}, Shaders::VertexColorGL3D::Color3{});
   };
 
-  void set_path(std::vector<float> x, std::vector<float> y)
+  void set_path(std::vector<float> x, std::vector<float> y, std::vector<float> t)
   {
-    std::vector<Vertex> points;
+    data_.clear();
     for (int i = 0; i < x.size(); i++)
     {
-      points.push_back(Vertex{Vector3{SCALE(y[i]), 0.0f, SCALE(x[i])}, Color3(1.0f, 1.0f, 0.0f)});
+      data_.push_back(Vertex{Vector3{SCALE(y[i]), SCALE(t[i]), SCALE(x[i])}, Color3(1.0f, 1.0f, 0.0f)});
     }
-
-    std::copy(points.begin(), points.begin() + x.size(), data_new_);
-    buffer_.setData(data_new_, GL::BufferUsage::StaticDraw);
-    mesh_.setPrimitive(GL::MeshPrimitive::LineStrip)
-        .setCount(20)
-        .addVertexBuffer(buffer_, 0, Shaders::VertexColorGL3D::Position{}, Shaders::VertexColorGL3D::Color3{});
+    buffer_.setData(data_, GL::BufferUsage::StaticDraw);
+    mesh_.setCount(data_.size());
   };
 
   std::vector<Vertex> data_;
-  Vertex data_new_[20];
-  GL::Buffer buffer_{NoCreate};
-  GL::Mesh mesh_{NoCreate};
-  Shaders::VertexColorGL3D shader_{NoCreate};
+  GL::Buffer buffer_;
+  GL::Mesh mesh_;
+  Shaders::VertexColorGL3D shader_;
 };
 
 class SandboxExample : public Platform::Application
@@ -156,7 +142,7 @@ private:
   bool is_running_{false};
 
   // temps
-  std::shared_ptr<PathObjects> path_objects_;
+  std::vector<std::shared_ptr<PathObjects>> path_objects_;
 };
 
 class VertexColorDrawable : public SceneGraph::Drawable3D
