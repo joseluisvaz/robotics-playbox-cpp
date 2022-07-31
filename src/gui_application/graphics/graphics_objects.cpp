@@ -1,13 +1,14 @@
-#include "gui_application/graphics_objects.hpp"
+
+#include "gui_application/graphics/graphics_objects.hpp"
 
 namespace RoboticsSandbox::Graphics
 {
 
 TrajectoryObjects::TrajectoryObjects(Scene3D &scene, const int horizon_points)
 {
-  constexpr double avg_length{SCALE(4.5)};
-  constexpr double avg_width{SCALE(1.75)};
-  constexpr double avg_height{SCALE(1.75)};
+  constexpr float avg_length{SCALE(4.5f)};
+  constexpr float avg_width{SCALE(1.75f)};
+  constexpr float avg_height{SCALE(1.75f)};
   vehicle_extent_ = Vector3{avg_width, avg_height, avg_length};
 
   for (size_t i{0UL}; i < horizon_points; ++i)

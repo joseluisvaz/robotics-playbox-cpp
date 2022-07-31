@@ -1,6 +1,8 @@
 
 set(CMAKE_FOLDER "Magnum/imgui_integration")
 
+add_subdirectory(graphics)
+
 find_package(Magnum REQUIRED 
     GL 
     Shaders 
@@ -51,23 +53,6 @@ target_include_directories(CEM_MPC PUBLIC
 target_link_libraries(CEM_MPC PRIVATE
    Eigen3::Eigen 
    easy_profiler)
-#END ******** Add CEM_MPC 
-
-#******** Add CEM_MPC 
-# set(CEM_MPC_HEADERS cem_mpc.hpp types.hpp math.hpp cem_mpc.tpp)
-# set(CEM_MPC_SRCS cem_mpc.cpp math.cpp)
-add_library(GraphicsObjects ${SHARED_OR_STATIC} 
-    graphics_objects.cpp
-    graphics_objects.hpp
-)
-target_compile_features(GraphicsObjects PUBLIC cxx_std_17)
-target_include_directories(GraphicsObjects PUBLIC
-    ${PROJECT_SOURCE_DIR}/src/gui_application/)
-target_link_libraries(GraphicsObjects PRIVATE
-   Eigen3::Eigen 
-   Corrade::Main
-   MagnumImGuiIntegration
-)
 #END ******** Add CEM_MPC 
 
 add_executable(gui_application WIN32 gui_application.cc gui_application.hh types.hpp math.hpp)

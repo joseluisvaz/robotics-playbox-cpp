@@ -2,20 +2,8 @@
 
 #include <Corrade/Containers/ArrayViewStl.h>
 #include <Magnum/GL/Buffer.h>
-// #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Mesh.h>
-// #include <Magnum/GL/PixelFormat.h>
-// #include <Magnum/GL/Renderer.h>
-// #include <Magnum/Image.h>
 #include <Magnum/Math/Color.h>
-// #include <Magnum/Math/FunctionsBatch.h>
-// #include <Magnum/MeshTools/Compile.h>
-// #include <Magnum/Platform/Sdl2Application.h>
-// #include <Magnum/Primitives/Axis.h>
-// #include <Magnum/Primitives/Cube.h>
-// #include <Magnum/Primitives/Grid.h>
-// #include <Magnum/SceneGraph/Camera.h>
-// #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/SceneGraph/Scene.h>
@@ -26,7 +14,7 @@
 #include <vector>
 
 #ifndef SCALE
-#define SCALE(a) (a / 10.0)
+#define SCALE(a) (a / 10.0f)
 #endif
 
 namespace RoboticsSandbox::Graphics

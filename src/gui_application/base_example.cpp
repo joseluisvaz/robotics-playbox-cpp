@@ -20,7 +20,7 @@
 #include <Magnum/Shaders/VertexColorGL.h>
 #include <Magnum/Trade/MeshData.h>
 
-#include "gui_application/graphics/graphics_objects.hpp"
+#include "gui_application/graphics_objects.hpp"
 #include "gui_application/implot.h"
 #include "gui_application/types.hpp"
 #include <Magnum/ImGuiIntegration/Context.hpp>
@@ -36,8 +36,7 @@ namespace Magnum
 namespace Examples
 {
 
-
-SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Application{arguments, NoCreate}
+BaseExample::BaseExample(const Arguments &arguments) : Platform::Application{arguments, NoCreate}
 {
   profiler::startListen();
   /* Setup window */
@@ -75,6 +74,28 @@ SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Applicati
   _flatShader = Shaders::FlatGL3D{};
   GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 
+  /* Grid */
+  _grid = MeshTools::compile(Primitives::grid3DWireframe({15, 15}));
+  auto grid = new Object3D{&_scene};
+  (*grid).rotateX(90.0_degf).scale(Vector3{15.0f});
+  new FlatDrawable{*grid, _flatShader, _grid, _drawables};
+
+  /* Origin Axis */
+  _origin_axis = MeshTools::compile(Primitives::axis3D());
+  auto origin_axis = new Object3D(&_scene);
+  new VertexColorDrawable{*origin_axis, _vertexColorShader, _origin_axis, _drawables};
+
+  /* Set up the camera */
+  _cameraObject = new Object3D{&_scene};
+  this->resetCameraPosition();
+
+  _camera = new SceneGraph::Camera3D{*_cameraObject};
+  _camera->setProjectionMatrix(
+      Matrix4::perspectiveProjection(45.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 100.0f));
+
+  /* Initialize initial depth to the value at scene center */
+  _lastDepth = ((_camera->projectionMatrix() * _camera->cameraMatrix()).transformPoint({}).z() + 1.0f) * 0.5f;
+
   _mesh = MeshTools::compile(Primitives::cubeWireframe());
   constexpr int horizon = 20;
   constexpr int population = 1024;
@@ -97,31 +118,9 @@ SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Applicati
   }
 
   this->runCEM();
-
-  /* Grid */
-  _grid = MeshTools::compile(Primitives::grid3DWireframe({15, 15}));
-  auto grid = new Object3D{&_scene};
-  (*grid).rotateX(90.0_degf).scale(Vector3{15.0f});
-  new FlatDrawable{*grid, _flatShader, _grid, _drawables};
-
-  /* Origin Axis */
-  _origin_axis = MeshTools::compile(Primitives::axis3D());
-  auto origin_axis = new Object3D(&_scene);
-  new VertexColorDrawable{*origin_axis, _vertexColorShader, _origin_axis, _drawables};
-
-  /* Set up the camera */
-  _cameraObject = new Object3D{&_scene};
-  this->resetCameraPosition();
-
-  _camera = new SceneGraph::Camera3D{*_cameraObject};
-  _camera->setProjectionMatrix(
-      Matrix4::perspectiveProjection(45.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 100.0f));
-
-  /* Initialize initial depth to the value at scene center */
-  _lastDepth = ((_camera->projectionMatrix() * _camera->cameraMatrix()).transformPoint({}).z() + 1.0f) * 0.5f;
 }
 
-Float SandboxExample::depthAt(const Vector2i &windowPosition)
+Float BaseExample::depthAt(const Vector2i &windowPosition)
 {
   /* First scale the position from being relative to window size to being
      relative to framebuffer size as those two can be different on HiDPI
@@ -138,7 +137,7 @@ Float SandboxExample::depthAt(const Vector2i &windowPosition)
   return Math::min<Float>(data.pixels<Float>().asContiguous());
 }
 
-Vector3 SandboxExample::unproject(const Vector2i &windowPosition, Float depth) const
+Vector3 BaseExample::unproject(const Vector2i &windowPosition, Float depth) const
 {
   /* We have to take window size, not framebuffer size, since the position is
      in window coordinates and the two can be different on HiDPI systems */
@@ -154,7 +153,7 @@ Vector3 SandboxExample::unproject(const Vector2i &windowPosition, Float depth) c
   return _camera->projectionMatrix().inverted().transformPoint(in);
 }
 
-void SandboxExample::viewportEvent(ViewportEvent &event)
+void BaseExample::viewportEvent(ViewportEvent &event)
 {
   /* Resize the main framebuffer */
   GL::defaultFramebuffer.setViewport({{}, event.framebufferSize()});
@@ -166,7 +165,7 @@ void SandboxExample::viewportEvent(ViewportEvent &event)
   _camera->setViewport(event.framebufferSize());
 }
 
-void SandboxExample::keyPressEvent(KeyEvent &event)
+void BaseExample::keyPressEvent(KeyEvent &event)
 {
   if (_imgui.handleKeyPressEvent(event))
     return;
@@ -205,7 +204,7 @@ void SandboxExample::keyPressEvent(KeyEvent &event)
   }
 }
 
-void SandboxExample::mousePressEvent(MouseEvent &event)
+void BaseExample::mousePressEvent(MouseEvent &event)
 {
   if (_imgui.handleMousePressEvent(event))
     return;
@@ -228,7 +227,7 @@ void SandboxExample::mousePressEvent(MouseEvent &event)
   }
 }
 
-void SandboxExample::mouseMoveEvent(MouseMoveEvent &event)
+void BaseExample::mouseMoveEvent(MouseMoveEvent &event)
 {
   if (_imgui.handleMouseMoveEvent(event))
     return;
@@ -259,7 +258,7 @@ void SandboxExample::mouseMoveEvent(MouseMoveEvent &event)
   redraw();
 }
 
-void SandboxExample::mouseScrollEvent(MouseScrollEvent &event)
+void BaseExample::mouseScrollEvent(MouseScrollEvent &event)
 {
   if (_imgui.handleMouseScrollEvent(event))
   {
@@ -290,13 +289,13 @@ void SandboxExample::mouseScrollEvent(MouseScrollEvent &event)
   redraw();
 }
 
-void SandboxExample::mouseReleaseEvent(MouseEvent &event)
+void BaseExample::mouseReleaseEvent(MouseEvent &event)
 {
   if (_imgui.handleMouseReleaseEvent(event))
     return;
 }
 
-void SandboxExample::drawEvent()
+void BaseExample::drawEvent()
 {
   GL::defaultFramebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
   _imgui.newFrame();
@@ -311,16 +310,14 @@ void SandboxExample::drawEvent()
     stopTextInput();
   }
 
-  if (is_running_)
-  {
-    runCEM();
-  }
+  // Execute the main content of the application, data generation, adding to drawables etc.
+  execute();
 
   _camera->draw(_drawables);
 
   // Set Imgui drawables
   show_menu();
-  ImGui::ShowDemoWindow();
+  // ImGui::ShowDemoWindow();
 
   /* Update application cursor */
   _imgui.updateApplicationCursor(*this);
@@ -344,7 +341,15 @@ void SandboxExample::drawEvent()
   redraw();
 }
 
-void SandboxExample::show_menu()
+void BaseExample::execute()
+{
+  if (is_running_)
+  {
+    runCEM();
+  }
+}
+
+void BaseExample::show_menu()
 {
   EASY_FUNCTION(profiler::colors::Blue);
   ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
@@ -448,7 +453,7 @@ void SandboxExample::show_menu()
   ImGui::End();
 }
 
-void SandboxExample::resetCameraPosition()
+void BaseExample::resetCameraPosition()
 {
   if (!_cameraObject)
   {
@@ -461,7 +466,7 @@ void SandboxExample::resetCameraPosition()
       .rotateY(30.0_degf);
 }
 
-void SandboxExample::runCEM()
+void BaseExample::runCEM()
 {
   EASY_FUNCTION(profiler::colors::Red);
 
@@ -517,4 +522,4 @@ void SandboxExample::runCEM()
 } // namespace Examples
 } // namespace Magnum
 
-MAGNUM_APPLICATION_MAIN(Magnum::Examples::SandboxExample)
+MAGNUM_APPLICATION_MAIN(Magnum::Examples::BaseExample)

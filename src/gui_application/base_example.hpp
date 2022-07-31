@@ -25,7 +25,7 @@
 #include <Magnum/Trade/MeshData.h>
 
 #include "cem_mpc.hpp"
-#include "gui_application/graphics/graphics_objects.hpp"
+#include "gui_application/graphics_objects.hpp"
 #include <Magnum/ImGuiIntegration/Context.hpp>
 #include <iostream>
 
@@ -45,13 +45,13 @@ using Scene3D = SceneGraph::Scene<SceneGraph::MatrixTransformation3D>;
 using namespace Math::Literals;
 using namespace RoboticsSandbox;
 
-class SandboxExample : public Platform::Application
+class BaseExample : public Platform::Application
 {
 
   using Dynamics = EigenKinematicBicycle;
 
 public:
-  explicit SandboxExample(const Arguments &arguments);
+  explicit BaseExample(const Arguments &arguments);
 
 private:
   Float depthAt(const Vector2i &windowPosition);
@@ -71,6 +71,7 @@ private:
 
   // Setup Imgui Menu
   void show_menu();
+  void execute();
 
   // Draw event
   void drawEvent() override;
