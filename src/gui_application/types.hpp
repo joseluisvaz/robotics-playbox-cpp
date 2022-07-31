@@ -25,7 +25,7 @@
 
 #include "math.hpp"
 
-namespace RoboticsSandbox 
+namespace RoboticsSandbox
 {
 
 using namespace Eigen;
@@ -89,32 +89,27 @@ struct CostFunction
 {
   using D = EigenKinematicBicycle;
 
-  float evaluate_state_action_pair(const Ref<const D::State> &state, const Ref<const D::Action> &action) const
+  float evaluate_state_action_pair(const Ref<const D::State> &s, const Ref<const D::Action> &a, const float w_s[],
+                                   const float w_a[], const float r_s[], const float r_a[]) const
   {
+    float cost = 0.0f;
+    for (int i = 0; i < D::state_size; ++i)
+    {
+      if (i == 2 || i == 5)
+      {
+        // It is the yaw state or steering
+        cost += w_s[2] * (ANGLE_DIFF(s[2], r_s[2])) * (ANGLE_DIFF(s[2], r_s[2]));
+        continue;
+      }
+      cost += w_s[i] * (s[i] - r_s[i]) * (s[i] - r_s[i]);
+    }
 
-    return state_slider_values_[0] * (state[0] - ref_values_[0]) * (state[0] - ref_values_[0]) +
-           state_slider_values_[1] * (state[1] - ref_values_[1]) * (state[1] - ref_values_[1]) +
-           state_slider_values_[2] * (ANGLE_DIFF(state[2], ref_yaw_)) * (ANGLE_DIFF(state[2], ref_yaw_)) +
-           state_slider_values_2_[0] * (state[3] - ref_values_[2]) * (state[3] - ref_values_[2]) +
-           state_slider_values_2_[1] * (state[4] * state[4]) + state_slider_values_2_[2] * (state[5] - state[5]) +
-           action_slider_values_[0] * (action[0] - action[0]) + action_slider_values_[1] * (action[1] - action[1]);
-  }
+    for (int i = 0; i < D::action_size; ++i)
+    {
+      cost += w_a[i] * (a[i] - r_a[i]) * (a[i] - r_a[i]);
+    }
 
-  float evaluate_terminal_pair(const Ref<const D::State> &state, const Ref<const D::Action> &action) const
-  {
-
-    return terminal_state_slider_values_[0] * (state[0] - terminal_ref_values_[0]) *
-               (state[0] - terminal_ref_values_[0]) +
-           terminal_state_slider_values_[1] * (state[1] - terminal_ref_values_[1]) *
-               (state[1] - terminal_ref_values_[1]) +
-           terminal_state_slider_values_[2] * (ANGLE_DIFF(state[2], terminal_ref_yaw_)) *
-               (ANGLE_DIFF(state[2], terminal_ref_yaw_)) +
-           terminal_state_slider_values_2_[0] * (state[3] - terminal_ref_values_[2]) *
-               (state[3] - terminal_ref_values_[2]) +
-           terminal_state_slider_values_2_[1] * (state[4] * state[4]) +
-           terminal_state_slider_values_2_[2] * (state[5] - state[5]) +
-           terminal_action_slider_values_[0] * (action[0] - action[0]) +
-           terminal_action_slider_values_[1] * (action[1] - action[1]);
+    return cost;
   }
 
   float operator()(const Ref<const D::States> &states, const Ref<const D::Actions> &actions) const
@@ -122,23 +117,23 @@ struct CostFunction
     float cost = 0.0f;
     for (int i{0}; i + 1 < states.cols(); ++i)
     {
-      cost += evaluate_state_action_pair(states.col(i), actions.col(i));
+      cost += evaluate_state_action_pair(states.col(i), actions.col(i), w_s_, w_a_, r_s_, r_a_);
     }
-    cost += evaluate_terminal_pair(states.col(states.cols() - 1), actions.col(actions.cols() - 1));
+    cost += evaluate_state_action_pair(states.col(states.cols() - 1) , actions.col(actions.cols() - 1UL), W_s_, W_a_, R_s_, R_a_);
     return cost;
   }
 
-  float state_slider_values_[3]{1.0f, 1.0f, 1.0f};
-  float state_slider_values_2_[3]{1.0f, 1.0f, 1.0f};
-  float action_slider_values_[2]{1.0f, 1.0f};
-  float ref_values_[3]{0.0f, 0.0f, 0.0f};
-  float ref_yaw_{0.0f};
+  float w_s_[D::state_size]{0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f}; // state costs
+  float w_a_[D::action_size]{1.0f, 1.0f};                        // action costs
 
-  float terminal_state_slider_values_[3]{1.0f, 1.0f, 1.0f};
-  float terminal_state_slider_values_2_[3]{1.0f, 1.0f, 1.0f};
-  float terminal_action_slider_values_[2]{1.0f, 1.0f};
-  float terminal_ref_values_[3]{0.0f, 0.0f, 0.0f};
-  float terminal_ref_yaw_{0.0f};
+  float W_s_[D::state_size]{0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f}; // terminal state costs
+  float W_a_[D::action_size]{1.0f, 1.0f};                        // terminal action costs
+
+  float r_s_[D::state_size]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // state reference
+  float r_a_[D::state_size]{0.0f, 0.0f};                         // action reference
+
+  float R_s_[D::state_size]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // terminal state reference
+  float R_a_[D::state_size]{0.0f, 0.0f};                         // terminal action reference
 };
 
-} // namespace GuiApplication
+} // namespace RoboticsSandbox

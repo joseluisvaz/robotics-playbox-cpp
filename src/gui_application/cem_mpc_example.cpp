@@ -118,19 +118,28 @@ void CEMMPCExample::show_menu()
   }
 
   ImGui::SliderInt("Num Iterations", &mpc_.get_num_iters_mutable(), 1, 100);
-  ImGui::SliderFloat3("costs[x, y, yaw]", mpc_.cost_function_.state_slider_values_, 0.0f, 10.0f);
-  ImGui::SliderFloat3("costs[speed, acc, steering]", mpc_.cost_function_.state_slider_values_2_, 0.0f, 10.0f);
-  ImGui::SliderFloat2("costs[jerk, steering]", mpc_.cost_function_.action_slider_values_, 0.0f, 10.0f);
-  ImGui::SliderFloat3("ref[x, y, speed]", mpc_.cost_function_.ref_values_, 0.0f, 10.0f);
-  ImGui::SliderAngle("ref[]", &mpc_.cost_function_.ref_yaw_, 0.0f, 180.0f);
 
-  ImGui::SliderFloat3("terminal costs[x, y, yaw]", mpc_.cost_function_.terminal_state_slider_values_, 0.0f, 10.0f);
-  ImGui::SliderFloat3("terminal costs[speed, acc, steering]", mpc_.cost_function_.terminal_state_slider_values_2_, 0.0f,
-                      10.0f);
-  ImGui::SliderFloat2("terminal costs[jerk, steering]", mpc_.cost_function_.terminal_action_slider_values_, 0.0f,
-                      10.0f);
-  ImGui::SliderFloat3("terminal ref[x, y, speed]", mpc_.cost_function_.terminal_ref_values_, -100.0f, 100.0f);
-  ImGui::SliderAngle("terminal ref[]", &mpc_.cost_function_.terminal_ref_yaw_, -180.0f, 180.0f);
+  float v_min = 0.0f;
+  float v_max = 10.0f;
+  ImGui::SliderScalarN("Cost Weights - States", ImGuiDataType_Float, &mpc_.cost_function_.w_s_, 6, &v_min, &v_max,
+                       "%.3f", 0);
+  ImGui::SliderScalarN("Cost Weights - Actions", ImGuiDataType_Float, &mpc_.cost_function_.w_a_, 2, &v_min, &v_max,
+                       "%.3f", 0);
+  ImGui::SliderScalarN("Terminal Cost Weights - States", ImGuiDataType_Float, &mpc_.cost_function_.W_s_, 6, &v_min,
+                       &v_max, "%.3f", 0);
+  ImGui::SliderScalarN("TerminalCost Weights - Actions", ImGuiDataType_Float, &mpc_.cost_function_.W_a_, 2, &v_min,
+                       &v_max, "%.3f", 0);
+
+  float v_min_r = -100.0f;
+  float v_max_r = 100.0f;
+  ImGui::SliderScalarN("Ref values - States", ImGuiDataType_Float, &mpc_.cost_function_.r_s_, 6, &v_min_r, &v_max_r,
+                       "%.3f", 0);
+  ImGui::SliderScalarN("Ref values - Actions", ImGuiDataType_Float, &mpc_.cost_function_.r_a_, 2, &v_min_r, &v_max_r,
+                       "%.3f", 0);
+  ImGui::SliderScalarN("Terminal Ref values - States", ImGuiDataType_Float, &mpc_.cost_function_.R_s_, 6, &v_min_r,
+                       &v_max_r, "%.3f", 0);
+  ImGui::SliderScalarN("Terminal Ref values - Actions", ImGuiDataType_Float, &mpc_.cost_function_.R_a_, 2, &v_min_r,
+                       &v_max_r, "%.3f", 0);
 
   const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
   {
@@ -192,7 +201,8 @@ void CEMMPCExample::show_menu()
   make_plot("Speed Plot", "speed[mps]", [](const Ref<const typename Dynamics::State> &state) { return state[3]; });
   make_plot("Accel Plot", "accel[mpss]", [](const Ref<const typename Dynamics::State> &state) { return state[4]; });
   make_plot("Yaw Plot", "yaw[rad]", [](const Ref<const typename Dynamics::State> &state) { return state[2]; });
-  make_plot("Steering Plot", "steering[rad]", [](const Ref<const typename Dynamics::State> &state) { return state[5]; });
+  make_plot("Steering Plot", "steering[rad]",
+            [](const Ref<const typename Dynamics::State> &state) { return state[5]; });
   make_action_plot("Jerk Plot", "jerk[mpsss]",
                    [](const Ref<const typename Dynamics::Action> &action) { return 0.6 * std::tanh(action[0]); });
   make_action_plot("Steering Rate Plot", "srate[rad/s]",

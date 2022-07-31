@@ -293,7 +293,7 @@ void BaseExample::drawEvent()
 
   // Set Imgui drawables
   show_menu();
-  // ImGui::ShowDemoWindow();
+  ImGui::ShowDemoWindow();
 
   /* Update application cursor */
   _imgui.updateApplicationCursor(*this);
