@@ -1,6 +1,6 @@
 #include "math.hpp"
 
-namespace GuiApplication
+namespace RoboticsSandbox
 {
 
 float angle_diff(float a, float b)
@@ -13,4 +13,4 @@ float angle_diff(float a, float b)
   return dif - 180.0f;
 }
 
-} // namespace GuiApplication
+} // namespace RoboticsSandbox

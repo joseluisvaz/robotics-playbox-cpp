@@ -44,4 +44,29 @@ void PathObjects::set_path(std::vector<float> x, std::vector<float> y, std::vect
   mesh_.setCount(data_.size());
 };
 
+VertexColorDrawable::VertexColorDrawable(Object3D &object, Shaders::VertexColorGL3D &shader, GL::Mesh &mesh,
+                                         SceneGraph::DrawableGroup3D &drawables)
+    : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
+{
+}
+
+void VertexColorDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph::Camera3D &camera)
+{
+  _shader.setTransformationProjectionMatrix(camera.projectionMatrix() * transformation).draw(_mesh);
+}
+
+FlatDrawable::FlatDrawable(Object3D &object, Shaders::FlatGL3D &shader, GL::Mesh &mesh,
+                           SceneGraph::DrawableGroup3D &drawables)
+    : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
+{
+}
+
+void FlatDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph::Camera3D &camera)
+{
+  _shader
+      .setColor(0x747474_rgbf) // gray color
+      .setTransformationProjectionMatrix(camera.projectionMatrix() * transformation)
+      .draw(_mesh);
+}
+
 } // namespace RoboticsSandbox::Graphics

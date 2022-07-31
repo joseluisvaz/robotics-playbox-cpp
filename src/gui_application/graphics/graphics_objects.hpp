@@ -4,9 +4,12 @@
 #include <Magnum/GL/Buffer.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/Math/Color.h>
+#include <Magnum/SceneGraph/Camera.h>
+#include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/SceneGraph/Scene.h>
+#include <Magnum/Shaders/FlatGL.h>
 #include <Magnum/Shaders/VertexColorGL.h>
 #include <Magnum/Trade/MeshData.h>
 
@@ -29,24 +32,22 @@ class TrajectoryObjects
 {
 public:
   TrajectoryObjects() = default;
-//   TrajectoryObjects(const TrajectoryObjects &other) = default;
-//   TrajectoryObjects(TrajectoryObjects &&other) = default;
   TrajectoryObjects(Scene3D &scene, const int horizon_points);
 
   const std::vector<std::shared_ptr<Object3D>> &get_objects() const;
-  const Vector3 &get_vehicle_extent() const;
+  const Magnum::Vector3 &get_vehicle_extent() const;
 
 private:
   std::vector<std::shared_ptr<Object3D>> objects_;
   std::vector<std::shared_ptr<Object3D>> line_objects_;
-  Vector3 vehicle_extent_;
+  Magnum::Vector3 vehicle_extent_;
 };
 
 class PathObjects
 {
   struct Vertex
   {
-    Vector3 position;
+    Magnum::Vector3 position;
     Color3 color;
   };
 
@@ -60,6 +61,32 @@ public:
   GL::Buffer buffer_;
   GL::Mesh mesh_;
   Shaders::VertexColorGL3D shader_;
+};
+
+class VertexColorDrawable : public SceneGraph::Drawable3D
+{
+public:
+  explicit VertexColorDrawable(Object3D &object, Shaders::VertexColorGL3D &shader, GL::Mesh &mesh,
+                               SceneGraph::DrawableGroup3D &drawables);
+
+  void draw(const Magnum::Matrix4 &transformation, SceneGraph::Camera3D &camera);
+
+private:
+  Shaders::VertexColorGL3D &_shader;
+  GL::Mesh &_mesh;
+};
+
+class FlatDrawable : public SceneGraph::Drawable3D
+{
+public:
+  explicit FlatDrawable(Object3D &object, Shaders::FlatGL3D &shader, GL::Mesh &mesh,
+                        SceneGraph::DrawableGroup3D &drawables);
+
+  void draw(const Magnum::Matrix4 &transformation, SceneGraph::Camera3D &camera);
+
+private:
+  Shaders::FlatGL3D &_shader;
+  GL::Mesh &_mesh;
 };
 
 } // namespace RoboticsSandbox::Graphics

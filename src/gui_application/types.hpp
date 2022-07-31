@@ -25,7 +25,7 @@
 
 #include "math.hpp"
 
-namespace GuiApplication
+namespace RoboticsSandbox 
 {
 
 using namespace Eigen;

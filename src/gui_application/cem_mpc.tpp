@@ -10,7 +10,7 @@
 #include "math.hpp"
 #include "types.hpp"
 
-namespace GuiApplication
+namespace RoboticsSandbox
 {
 
 template <typename DynamicsT>
@@ -140,9 +140,15 @@ typename CEM_MPC<DynamicsT>::Trajectory &CEM_MPC<DynamicsT>::execute(const Ref<S
 }
 
 template <typename DynamicsT>
-int &CEM_MPC<DynamicsT>::get_num_iters_mutable()
+int &CEM_MPC<DynamicsT>::get_num_iters_mutable() 
 {
   return num_iters_;
 }
 
-} // namespace GuiApplication
+template <typename DynamicsT>
+const typename DynamicsT::Trajectory &CEM_MPC<DynamicsT>::get_trajectory() const
+{
+  return trajectory_;
+}
+
+} // namespace RoboticsSandbox

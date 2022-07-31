@@ -6,7 +6,7 @@
 #include <array>
 #include <thread>
 
-namespace GuiApplication
+namespace RoboticsSandbox
 {
 using namespace Eigen;
 
@@ -38,13 +38,15 @@ public:
   ///@param[in] initial_state The initial state
   ///@return Trajectory& A reference to the trajectory that the MPC computed.
   Trajectory &execute(const Ref<State> &initial_state);
-  
-  int& get_num_iters_mutable();
+
+  int &get_num_iters_mutable();
+
+  const Trajectory &get_trajectory() const;
 
   CostFunction cost_function_;
 
   std::vector<Trajectory> candidate_trajectories_;
-  
+
 private:
   /// Runs a single rollout for a trajectory.
   ///@param[in, out] trajectory The modified trajectory after a rollout.
@@ -63,11 +65,10 @@ private:
   int elites_;
 
   Trajectory trajectory_;
-  Trajectory final_trajectory;
   Sampler sampler_;
 
   std::vector<std::thread> threads_{16};
   std::vector<std::pair<float, int>> costs_index_pair_;
 };
 
-} // namespace GuiApplication
+} // namespace RoboticsSandbox

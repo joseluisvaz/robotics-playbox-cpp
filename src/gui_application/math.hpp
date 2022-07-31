@@ -2,7 +2,7 @@
 #include <Eigen/Dense>
 #include <random>
 
-namespace GuiApplication
+namespace RoboticsSandbox 
 {
 
 using namespace Eigen;

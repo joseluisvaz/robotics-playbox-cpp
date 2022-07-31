@@ -55,9 +55,9 @@ target_link_libraries(CEM_MPC PRIVATE
    easy_profiler)
 #END ******** Add CEM_MPC 
 
-add_executable(gui_application WIN32 gui_application.cc gui_application.hh types.hpp math.hpp)
-target_compile_features(gui_application PUBLIC cxx_std_17)
-target_link_libraries(gui_application PUBLIC 
+add_library(base_example base_example.cpp base_example.hpp types.hpp math.hpp)
+target_compile_features(base_example PUBLIC cxx_std_17)
+target_link_libraries(base_example PUBLIC 
     MagnumImGuiIntegration
     easy_profiler
     ImPlot
@@ -66,4 +66,9 @@ target_link_libraries(gui_application PUBLIC
     GraphicsObjects
     Corrade::Main)
 
-
+add_executable(cem_mpc_example WIN32 cem_mpc_example.cpp cem_mpc_example.hpp types.hpp math.hpp)
+target_link_libraries(cem_mpc_example 
+PUBLIC 
+    base_example
+    Eigen3::Eigen
+)
