@@ -38,7 +38,7 @@ target_include_directories(ImPlot PUBLIC
 target_compile_options(ImPlot PUBLIC -w)
 #END ******** Add ImPlot
 
-#******** Add ImPlot
+#******** Add CEM_MPC 
 set(CEM_MPC_HEADERS cem_mpc.hpp types.hpp math.hpp cem_mpc.tpp)
 set(CEM_MPC_SRCS cem_mpc.cpp math.cpp)
 add_library(CEM_MPC ${SHARED_OR_STATIC} 
@@ -51,7 +51,24 @@ target_include_directories(CEM_MPC PUBLIC
 target_link_libraries(CEM_MPC PRIVATE
    Eigen3::Eigen 
    easy_profiler)
-#END ******** Add ImPlot
+#END ******** Add CEM_MPC 
+
+#******** Add CEM_MPC 
+# set(CEM_MPC_HEADERS cem_mpc.hpp types.hpp math.hpp cem_mpc.tpp)
+# set(CEM_MPC_SRCS cem_mpc.cpp math.cpp)
+add_library(GraphicsObjects ${SHARED_OR_STATIC} 
+    graphics_objects.cpp
+    graphics_objects.hpp
+)
+target_compile_features(GraphicsObjects PUBLIC cxx_std_17)
+target_include_directories(GraphicsObjects PUBLIC
+    ${PROJECT_SOURCE_DIR}/src/gui_application/)
+target_link_libraries(GraphicsObjects PRIVATE
+   Eigen3::Eigen 
+   Corrade::Main
+   MagnumImGuiIntegration
+)
+#END ******** Add CEM_MPC 
 
 add_executable(gui_application WIN32 gui_application.cc gui_application.hh types.hpp math.hpp)
 target_compile_features(gui_application PUBLIC cxx_std_17)
@@ -61,6 +78,7 @@ target_link_libraries(gui_application PUBLIC
     ImPlot
     Eigen3::Eigen
     CEM_MPC
+    GraphicsObjects
     Corrade::Main)
 
 

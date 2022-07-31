@@ -25,6 +25,7 @@
 #include <Magnum/Trade/MeshData.h>
 
 #include "cem_mpc.hpp"
+#include "gui_application/graphics_objects.hpp"
 #include <Magnum/ImGuiIntegration/Context.hpp>
 #include <iostream>
 
@@ -42,52 +43,7 @@ using namespace GuiApplication;
 using Object3D = SceneGraph::Object<SceneGraph::MatrixTransformation3D>;
 using Scene3D = SceneGraph::Scene<SceneGraph::MatrixTransformation3D>;
 using namespace Math::Literals;
-
-class TrajectoryObjects
-{
-public:
-  TrajectoryObjects() = default;
-  TrajectoryObjects(Scene3D &scene, const int horizon_points);
-
-  const std::vector<std::shared_ptr<Object3D>> &get_objects() const;
-  const Vector3 &get_vehicle_extent() const;
-
-private:
-  std::vector<std::shared_ptr<Object3D>> objects_;
-  std::vector<std::shared_ptr<Object3D>> line_objects_;
-  Vector3 vehicle_extent_;
-};
-
-class PathObjects
-{
-  struct Vertex
-  {
-    Vector3 position;
-    Color3 color;
-  };
-
-public:
-  PathObjects() : mesh_{GL::MeshPrimitive::LineStrip}
-  {
-    mesh_.addVertexBuffer(buffer_, 0, Shaders::VertexColorGL3D::Position{}, Shaders::VertexColorGL3D::Color3{});
-  };
-
-  void set_path(std::vector<float> x, std::vector<float> y, std::vector<float> t)
-  {
-    data_.clear();
-    for (int i = 0; i < x.size(); i++)
-    {
-      data_.push_back(Vertex{Vector3{SCALE(y[i]), SCALE(t[i]), SCALE(x[i])}, Color3(1.0f, 1.0f, 0.0f)});
-    }
-    buffer_.setData(data_, GL::BufferUsage::StaticDraw);
-    mesh_.setCount(data_.size());
-  };
-
-  std::vector<Vertex> data_;
-  GL::Buffer buffer_;
-  GL::Mesh mesh_;
-  Shaders::VertexColorGL3D shader_;
-};
+using namespace RoboticsSandbox;
 
 class SandboxExample : public Platform::Application
 {
@@ -135,14 +91,14 @@ private:
 
   // temp trajectory
   EigenKinematicBicycle::Trajectory _trajectory;
-  TrajectoryObjects trajectory_objects_;
+  Graphics::TrajectoryObjects trajectory_objects_;
   CEM_MPC<EigenKinematicBicycle> mpc_;
 
   // flags
   bool is_running_{false};
 
   // temps
-  std::vector<std::shared_ptr<PathObjects>> path_objects_;
+  std::vector<std::shared_ptr<Graphics::PathObjects>> path_objects_;
 };
 
 class VertexColorDrawable : public SceneGraph::Drawable3D

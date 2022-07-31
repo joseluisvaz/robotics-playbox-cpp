@@ -20,6 +20,7 @@
 #include <Magnum/Shaders/VertexColorGL.h>
 #include <Magnum/Trade/MeshData.h>
 
+#include "gui_application/graphics_objects.hpp"
 #include "gui_application/implot.h"
 #include "gui_application/types.hpp"
 #include <Magnum/ImGuiIntegration/Context.hpp>
@@ -35,29 +36,6 @@ namespace Magnum
 namespace Examples
 {
 
-TrajectoryObjects::TrajectoryObjects(Scene3D &scene, const int horizon_points)
-{
-  constexpr double avg_length{SCALE(4.5)};
-  constexpr double avg_width{SCALE(1.75)};
-  constexpr double avg_height{SCALE(1.75)};
-  vehicle_extent_ = Vector3{avg_width, avg_height, avg_length};
-
-  for (size_t i{0UL}; i < horizon_points; ++i)
-  {
-    auto cube = std::make_shared<Object3D>(&scene);
-    objects_.emplace_back(std::move(cube));
-  }
-}
-
-const std::vector<std::shared_ptr<Object3D>> &TrajectoryObjects::get_objects() const
-{
-  return objects_;
-}
-
-const Vector3 &TrajectoryObjects::get_vehicle_extent() const
-{
-  return vehicle_extent_;
-}
 
 SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Application{arguments, NoCreate}
 {
@@ -104,7 +82,7 @@ SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Applicati
                                         /* population= */ population,
                                         /* elites */ 16);
 
-  trajectory_objects_ = TrajectoryObjects(_scene, horizon);
+  trajectory_objects_ = Graphics::TrajectoryObjects(_scene, horizon);
   for (auto &object : trajectory_objects_.get_objects())
   {
     new VertexColorDrawable{*object, _vertexColorShader, _mesh, _drawables};
@@ -112,7 +90,7 @@ SandboxExample::SandboxExample(const Arguments &arguments) : Platform::Applicati
 
   for (int i = 0; i < population; ++i)
   {
-    auto path_object = std::make_shared<PathObjects>();
+    auto path_object = std::make_shared<Graphics::PathObjects>();
     path_objects_.push_back(path_object);
     auto vtx = new Object3D{&_scene};
     new VertexColorDrawable{*vtx, _vertexColorShader, path_object->mesh_, _drawables};
