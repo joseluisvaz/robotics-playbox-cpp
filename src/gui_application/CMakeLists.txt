@@ -72,3 +72,16 @@ PUBLIC
     base_example
     Eigen3::Eigen
 )
+
+add_executable(template_example WIN32 template_example.cpp template_example.hpp)
+target_link_libraries(template_example 
+PUBLIC 
+    base_example
+)
+
+add_executable(tsdf_example WIN32 tsdf_example.cpp tsdf_example.hpp)
+target_link_libraries(tsdf_example 
+PUBLIC 
+    base_example
+)
+
