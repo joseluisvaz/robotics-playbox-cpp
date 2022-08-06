@@ -66,7 +66,7 @@ target_link_libraries(base_example PUBLIC
     GraphicsObjects
     Corrade::Main)
 
-add_executable(cem_mpc_example WIN32 cem_mpc_example.cpp cem_mpc_example.hpp types.hpp math.hpp)
+add_executable(cem_mpc_example WIN32 cem_mpc_example.cpp cem_mpc_example.hpp types.hpp math.hpp intelligent_driver_model.hpp)
 target_link_libraries(cem_mpc_example 
 PUBLIC 
     base_example
@@ -83,5 +83,11 @@ add_executable(tsdf_example WIN32 tsdf_example.cpp tsdf_example.hpp)
 target_link_libraries(tsdf_example 
 PUBLIC 
     base_example
+)
+
+add_executable(ilqr_main WIN32 ilqr_main.cpp ilqr_main.hpp)
+target_link_libraries(ilqr_main 
+PUBLIC 
+   base_example 
 )
 

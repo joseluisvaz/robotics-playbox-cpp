@@ -23,6 +23,7 @@
 #include <Eigen/Dense>
 #include <algorithm>
 
+#include <iostream>
 #include "math.hpp"
 
 namespace RoboticsSandbox
@@ -85,6 +86,17 @@ public:
   }
 };
 
+class SingleIntegrator : public Dynamics<2, 1>
+{
+public:
+  constexpr static float ts{0.5f};
+  static void step(const Ref<const State> &state, const Ref<const Action> &action, Ref<State> new_state)
+  {
+    new_state[0] = state[0] + ts * state[1];
+    new_state[1] = state[1] + ts * action[0];
+  }
+};
+
 struct CostFunction
 {
   using D = EigenKinematicBicycle;
@@ -119,7 +131,8 @@ struct CostFunction
     {
       cost += evaluate_state_action_pair(states.col(i), actions.col(i), w_s_, w_a_, r_s_, r_a_);
     }
-    cost += evaluate_state_action_pair(states.col(states.cols() - 1) , actions.col(actions.cols() - 1UL), W_s_, W_a_, R_s_, R_a_);
+    cost += evaluate_state_action_pair(states.col(states.cols() - 1), actions.col(actions.cols() - 1UL), W_s_, W_a_,
+                                       R_s_, R_a_);
     return cost;
   }
 

@@ -7,6 +7,7 @@
 #include "gui_application/base_example.hpp"
 #include "gui_application/cem_mpc.hpp"
 #include "gui_application/graphics/graphics_objects.hpp"
+#include "gui_application/intelligent_driver_model.hpp"
 #include "gui_application/types.hpp"
 
 namespace RoboticsSandbox
@@ -29,8 +30,10 @@ private:
 
   Magnum::GL::Mesh _mesh{Magnum::NoCreate};
   Graphics::TrajectoryObjects trajectory_objects_;
+  Graphics::TrajectoryObjects trajectory_objects_idm_;
   std::vector<std::shared_ptr<Graphics::PathObjects>> path_objects_;
   CEM_MPC<Dynamics> mpc_;
+  IntelligentDriverModel idm_;
 
   // flags
   bool is_running_{false};

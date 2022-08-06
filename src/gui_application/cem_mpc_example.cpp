@@ -1,10 +1,13 @@
 
 #include "gui_application/base_example.hpp"
 #include "gui_application/implot.h"
+#include "gui_application/intelligent_driver_model.hpp"
 #include <Magnum/SceneGraph/Object.h>
 #include <easy/profiler.h>
 
 #include "gui_application/cem_mpc_example.hpp"
+#include "intelligent_driver_model.hpp"
+#include "types.hpp"
 
 namespace RoboticsSandbox
 {
@@ -19,9 +22,14 @@ CEMMPCExample::CEMMPCExample(const Arguments &arguments) : Magnum::Examples::Bas
                                         /* elites */ 16);
 
   trajectory_objects_ = Graphics::TrajectoryObjects(_scene, horizon);
+  trajectory_objects_idm_ = Graphics::TrajectoryObjects(_scene, horizon);
 
   _mesh = Magnum::MeshTools::compile(Magnum::Primitives::cubeWireframe());
   for (auto &object : trajectory_objects_.get_objects())
+  {
+    new Graphics::VertexColorDrawable{*object, _vertexColorShader, _mesh, _drawables};
+  }
+  for (auto &object : trajectory_objects_idm_.get_objects())
   {
     new Graphics::VertexColorDrawable{*object, _vertexColorShader, _mesh, _drawables};
   }
@@ -33,6 +41,11 @@ CEMMPCExample::CEMMPCExample(const Arguments &arguments) : Magnum::Examples::Bas
     auto vtx = new Magnum::Examples::BaseExample::Object3D{&_scene};
     new Graphics::VertexColorDrawable{*vtx, _vertexColorShader, path_object->mesh_, _drawables};
   }
+
+  IntelligentDriverModel::Config config;
+  config.v0 = 10.0;
+  config.N = horizon;
+  idm_ = IntelligentDriverModel(config);
 
   // run one iteration of CEM to show in the window
   runCEM();
@@ -54,21 +67,18 @@ void CEMMPCExample::runCEM()
   state[3] = 10.0;
   Dynamics::Trajectory &trajectory = mpc_.execute(state);
 
-  EASY_BLOCK("Plotting All");
   for (int i = 0; i < trajectory.states.cols(); ++i)
   {
     Dynamics::State new_state = trajectory.states.col(i);
     auto time_s = trajectory.times.at(i);
     auto &object = trajectory_objects_.get_objects().at(i);
 
-    EASY_BLOCK("Plotting");
     (*object)
         .resetTransformation()
         .scale(trajectory_objects_.get_vehicle_extent())
         .translate(Magnum::Vector3(0.0f, 0.0f, SCALE(1.5f))) // move half wheelbase forward
         .rotateY(Magnum::Math::Rad(new_state[2]))
         .translate(Magnum::Vector3(SCALE(new_state[1]), SCALE(time_s), SCALE(new_state[0])));
-    EASY_END_BLOCK;
   }
 
   const auto set_path_helper = [this](const auto &_trajectory, auto &_path_object)
@@ -93,6 +103,39 @@ void CEMMPCExample::runCEM()
   for (int i = 0; i < path_objects_.size(); ++i)
   {
     set_path_helper(mpc_.candidate_trajectories_.at(i), *path_objects_.at(i));
+  }
+
+  typename IntelligentDriverModel::State this_state = IntelligentDriverModel::State::Zero();
+  this_state[0] = -20.0f;
+  this_state[1] = 10.0f;
+
+  typename IntelligentDriverModel::States lead_states =
+      IntelligentDriverModel::States::Ones(IntelligentDriverModel::state_size, trajectory.states.cols());
+  lead_states.row(0).array() = 1000.0f;
+  lead_states.row(1).array() = idm_.config_.v0;
+
+  for (int i = 0; i < trajectory.states.cols(); ++i)
+  {
+    if (trajectory.states(1, i) < -2.0f && trajectory.states(1, i) > -8.0f)
+    {
+      lead_states(0, i) = trajectory.states(0, i);
+      lead_states(1, i) = trajectory.states(3, i);
+    }
+  }
+
+  const IntelligentDriverModel::States idm_states = idm_.rollout(this_state, lead_states);
+
+  for (int i = 0; i < idm_states.cols(); ++i)
+  {
+    IntelligentDriverModel::State new_state = idm_states.col(i);
+    auto time_s = trajectory.times.at(i);
+    auto &object = trajectory_objects_idm_.get_objects().at(i);
+
+    (*object)
+        .resetTransformation()
+        .scale(trajectory_objects_idm_.get_vehicle_extent())
+        .translate(Magnum::Vector3(0.0f, 0.0f, SCALE(1.5f))) // move half wheelbase forward
+        .translate(Magnum::Vector3(SCALE(-5.0f), SCALE(time_s), SCALE(new_state[0])));
   }
 
   EASY_END_BLOCK;
@@ -209,6 +252,40 @@ void CEMMPCExample::show_menu()
                    [](const Ref<const typename Dynamics::Action> &action) { return 0.1 * std::tanh(action[1]); });
   EASY_END_BLOCK;
 
+  ImGui::End();
+
+  EASY_FUNCTION(profiler::colors::Blue);
+  ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowBgAlpha(0.5f);
+  ImGui::Begin("IntelligentDriverModel", nullptr);
+
+  const auto make_plot_idm = [this](auto title, auto value_name, auto getter_fn)
+  {
+    ImPlot::SetNextAxesToFit();
+    if (ImPlot::BeginPlot(title))
+    {
+      ImPlot::SetupAxes("time[s]", value_name);
+
+      std::vector<float> values;
+      auto states = idm_.get_states();
+      for (int i = 0; i < states.cols(); i++)
+      {
+        values.push_back(states(1, i));
+      }
+      // std::transform(idm_.get_states().colwise().cbegin(), idm_.get_states().colwise().cend(),
+      //                std::back_inserter(values), getter_fn);
+
+      ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
+      ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+      ImPlot::PlotLine(std::string(value_name).append("_hola").c_str(), this->mpc_.get_trajectory().times.data(),
+                       values.data(), values.size());
+      ImPlot::PopStyleColor();
+
+      ImPlot::EndPlot();
+    }
+  };
+
+  make_plot_idm("Speed Plot", "speed[mps]", [](const Ref<const SingleIntegrator::State> &state) { return state[1]; });
   ImGui::End();
 }
 
