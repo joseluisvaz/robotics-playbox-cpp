@@ -4,6 +4,7 @@
 #include <Magnum/GL/PixelFormat.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/Image.h>
+#include <Magnum/Magnum.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/FunctionsBatch.h>
 #include <Magnum/MeshTools/Compile.h>
@@ -324,9 +325,10 @@ void BaseExample::resetCameraPosition()
   }
   (*_cameraObject)
       .resetTransformation()
-      .translate(Vector3::zAxis(SCALE(100.0f)))
-      .rotateX(-15.0_degf)
-      .rotateY(30.0_degf);
+      .translate(Vector3::zAxis(SCALE(200.0f)))
+      .translate(Vector3::xAxis(SCALE(50.0f)))
+      .rotateX(-90.0_degf)
+      .rotateY(-90.0_degf); 
 }
 
 } // namespace Examples
