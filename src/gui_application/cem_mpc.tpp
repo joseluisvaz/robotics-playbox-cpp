@@ -15,21 +15,13 @@ namespace RoboticsSandbox
 
 template <typename DynamicsT>
 CEM_MPC<DynamicsT>::CEM_MPC(const int num_iters, const int horizon, const int population, const int elites)
-    : num_iters_(num_iters), horizon_(horizon), population_(population), elites_(elites)
+    : num_iters_(num_iters), horizon_(horizon), population_(population), elites_(elites), trajectory_(horizon)
 {
-  trajectory_.states = States::Zero(state_size, horizon_);
-  trajectory_.actions = Actions::Zero(action_size, horizon_);
-  trajectory_.times = std::vector<float>(horizon_, 0.0f);
-
   costs_index_pair_ = std::vector<std::pair<float, int>>(population_, std::make_pair(0.0f, 0));
 
   for (int i = 0; i < population_; ++i)
   {
-    Trajectory trajectory;
-    trajectory.states = States::Zero(state_size, horizon_);
-    trajectory.actions = Actions::Zero(action_size, horizon_);
-    trajectory.times = std::vector<float>(horizon_, 0.0f);
-    candidate_trajectories_.emplace_back(std::move(trajectory));
+    candidate_trajectories_.emplace_back(Trajectory(horizon_));
   }
 
   sampler_.mean_ = Actions::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
@@ -140,7 +132,7 @@ typename CEM_MPC<DynamicsT>::Trajectory &CEM_MPC<DynamicsT>::execute(const Ref<S
 }
 
 template <typename DynamicsT>
-int &CEM_MPC<DynamicsT>::get_num_iters_mutable() 
+int &CEM_MPC<DynamicsT>::get_num_iters_mutable()
 {
   return num_iters_;
 }

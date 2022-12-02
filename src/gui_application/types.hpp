@@ -22,58 +22,113 @@
 
 #include <Eigen/Dense>
 #include <algorithm>
+#include <autodiff/forward/dual.hpp>
+#include <autodiff/forward/dual/eigen.hpp>
 
-#include <iostream>
 #include "math.hpp"
+#include <iostream>
 
 namespace RoboticsSandbox
 {
 
 using namespace Eigen;
+using namespace autodiff;
 
-template <int state_size>
-using EigenState = Vector<float, state_size>;
+/*
+  Defining common linear algebra types that we are going to use in this project
+*/
+using Matrix = Eigen::MatrixXd;
+using Vector = Eigen::VectorXd;
 
-template <int action_size>
-using EigenAction = Vector<float, action_size>;
+template <typename EigenT>
+using VectorOfEigen = std::vector<EigenT, Eigen::aligned_allocator<EigenT>>;
 
-template <int state_size>
-using EigenStateSequence = Matrix<float, state_size, Dynamic>;
+template <int state_size, typename T = double>
+using EigenState = Eigen::Vector<T, state_size>;
 
-template <int action_size>
-using EigenActionSequence = Matrix<float, action_size, Dynamic>;
+template <int action_size, typename T = double>
+using EigenAction = Eigen::Vector<T, action_size>;
 
-template <int state_size, int action_size>
+template <int state_size, typename T = double>
+using EigenStateSequence = Eigen::Matrix<T, state_size, Eigen::Dynamic>;
+
+template <int action_size, typename T = double>
+using EigenActionSequence = Eigen::Matrix<T, action_size, Eigen::Dynamic>;
+
+template <int state_size, int action_size, typename T = double>
 struct EigenTrajectory
 {
-  std::vector<float> times{};
-  EigenStateSequence<state_size> states;
-  EigenActionSequence<action_size> actions;
+  std::vector<T> times{};
+  EigenStateSequence<state_size, T> states;
+  EigenActionSequence<action_size, T> actions;
+
+  EigenTrajectory() = default;
+  EigenTrajectory(int horizon)
+  {
+    states = EigenStateSequence<state_size, T>::Zero(state_size, horizon);
+    actions = EigenActionSequence<action_size, T>::Zero(action_size, horizon);
+    times = std::vector<T>(horizon, 0.0f);
+  };
+
+  EigenState<state_size, T> state_at(int i) const
+  {
+    return this->states.col(i);
+  };
+
+  EigenState<action_size, T> action_at(int i) const
+  {
+    return this->actions.col(i);
+  };
 };
 
-template <int _state_size, int _action_size>
+template <int _state_size, int _action_size, typename T = double>
 class Dynamics
 {
 public:
   constexpr static int state_size = _state_size;
   constexpr static int action_size = _action_size;
 
-  using State = EigenState<state_size>;
-  using Action = EigenAction<action_size>;
-  using States = EigenStateSequence<state_size>;
-  using Actions = EigenActionSequence<action_size>;
+  using State = EigenState<state_size, T>;
+  using Action = EigenAction<action_size, T>;
+  using States = EigenStateSequence<state_size, T>;
+  using Actions = EigenActionSequence<action_size, T>;
   using Trajectory = EigenTrajectory<state_size, action_size>;
 };
 
-class EigenKinematicBicycle : public Dynamics<6, 2>
+class EigenKinematicBicycle : public Dynamics<6, 2, double>
 {
 
 public:
-  constexpr static float ts{0.5f};
-  constexpr static float one_over_wheelbase{1.0f / 3.0f};
-  constexpr static float max_steering{0.52f};
-  constexpr static float max_steering_rate{0.1f};
-  constexpr static float max_jerk{0.6f};
+  constexpr static double ts{0.5};
+  constexpr static double one_over_wheelbase{1.0 / 3.0};
+  constexpr static double max_steering{0.52};
+  constexpr static double max_steering_rate{0.1};
+  constexpr static double max_jerk{0.6};
+
+  static State step_(const Ref<const State> &state, const Ref<const Action> &action)
+  {
+    State new_state = State::Zero();
+    new_state[0] = state[0] + ts * state[3] * std::cos(state[2]);
+    new_state[1] = state[1] + ts * state[3] * std::sin(state[2]);
+    new_state[2] = state[2] + ts * state[3] * one_over_wheelbase * std::tan(state[5]);
+    new_state[3] = state[3] + ts * state[4];
+    new_state[4] = state[4] + ts * max_jerk * std::tanh(action[0]);
+    new_state[5] = state[5] + ts * max_steering_rate * std::tanh(action[1]);
+    return new_state;
+  }
+
+  template <typename VectorT>
+  static VectorT step_diff(const VectorT &state, const VectorT &action)
+  {
+    VectorT new_state = VectorT::Zero(state.size());
+    new_state[0] = state[0] + ts * state[3] * cos(state[2]);
+    new_state[1] = state[1] + ts * state[3] * sin(state[2]);
+    new_state[2] = state[2] + ts * state[3] * one_over_wheelbase * tan(state[5]);
+    new_state[3] = state[3] + ts * state[4];
+    new_state[4] = state[4] + ts * max_jerk * tanh(action[0]);
+    new_state[5] = state[5] + ts * max_steering_rate * tanh(action[1]);
+    return new_state;
+  }
 
   static void step(const Ref<const State> &state, const Ref<const Action> &action, Ref<State> new_state)
   {
@@ -89,7 +144,7 @@ public:
 class SingleIntegrator : public Dynamics<2, 1>
 {
 public:
-  constexpr static float ts{0.5f};
+  constexpr static double ts{0.5f};
   static void step(const Ref<const State> &state, const Ref<const Action> &action, Ref<State> new_state)
   {
     new_state[0] = state[0] + ts * state[1];
@@ -101,10 +156,10 @@ struct CostFunction
 {
   using D = EigenKinematicBicycle;
 
-  float evaluate_state_action_pair(const Ref<const D::State> &s, const Ref<const D::Action> &a, const float w_s[],
-                                   const float w_a[], const float r_s[], const float r_a[]) const
+  double evaluate_state_action_pair(const Ref<const D::State> &s, const Ref<const D::Action> &a, const double w_s[],
+                                    const double w_a[], const double r_s[], const double r_a[]) const
   {
-    float cost = 0.0f;
+    double cost = 0.0f;
     for (int i = 0; i < D::state_size; ++i)
     {
       if (i == 2 || i == 5)
@@ -124,9 +179,9 @@ struct CostFunction
     return cost;
   }
 
-  float operator()(const Ref<const D::States> &states, const Ref<const D::Actions> &actions) const
+  double operator()(const Ref<const D::States> &states, const Ref<const D::Actions> &actions) const
   {
-    float cost = 0.0f;
+    double cost = 0.0f;
     for (int i{0}; i + 1 < states.cols(); ++i)
     {
       cost += evaluate_state_action_pair(states.col(i), actions.col(i), w_s_, w_a_, r_s_, r_a_);
@@ -136,17 +191,17 @@ struct CostFunction
     return cost;
   }
 
-  float w_s_[D::state_size]{0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f}; // state costs
-  float w_a_[D::action_size]{1.0f, 1.0f};                        // action costs
+  double w_s_[D::state_size]{0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f}; // state costs
+  double w_a_[D::action_size]{1.0f, 1.0f};                        // action costs
 
-  float W_s_[D::state_size]{0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f}; // terminal state costs
-  float W_a_[D::action_size]{1.0f, 1.0f};                        // terminal action costs
+  double W_s_[D::state_size]{0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f}; // terminal state costs
+  double W_a_[D::action_size]{1.0f, 1.0f};                        // terminal action costs
 
-  float r_s_[D::state_size]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // state reference
-  float r_a_[D::state_size]{0.0f, 0.0f};                         // action reference
+  double r_s_[D::state_size]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // state reference
+  double r_a_[D::state_size]{0.0f, 0.0f};                         // action reference
 
-  float R_s_[D::state_size]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // terminal state reference
-  float R_a_[D::state_size]{0.0f, 0.0f};                         // terminal action reference
+  double R_s_[D::state_size]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // terminal state reference
+  double R_a_[D::state_size]{0.0f, 0.0f};                         // terminal action reference
 };
 
 } // namespace RoboticsSandbox
