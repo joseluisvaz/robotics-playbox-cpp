@@ -6,15 +6,18 @@
 #include <Eigen/StdVector>
 #include <array>
 
+#include "matplotlibcpp.h"
 namespace RoboticsSandbox
 {
 using namespace Eigen;
+
+namespace plt = matplotlibcpp;
 
 /* Implementation of a simple Cross Entropy Method Model Predictive Control (CEM-MPC) */
 class iLQR_MPC
 {
   using DynamicsT = EigenKinematicBicycle;
-
+  
   using State = typename DynamicsT::State;
   using Action = typename DynamicsT::Action;
   using States = typename DynamicsT::States;
@@ -30,12 +33,13 @@ class iLQR_MPC
 
   void initialize_matrices(const int horizon);
   void compute_matrices(const Trajectory &trajectory);
+  void plot_trajectory(const Trajectory &trajectory);
 
 public:
-  iLQR_MPC() = delete;
+  iLQR_MPC() = default;
   iLQR_MPC(const int horizon, const int iters);
 
-  void solve(const Ref<State> &x0);
+  Trajectory solve(const Ref<State> &x0);
 
 private:
   /// Runs a single rollout for a trajectory.
@@ -49,6 +53,9 @@ private:
   int iters_;
   double mu_{0.5};
   double tol_{1e-6};
+
+  // Instantiate sampler for initial action distribution
+  Sampler sampler_;
 
   // Derivatives of the dynamics
   VectorOfEigen<Matrix> fx; // [s, s] length (n)

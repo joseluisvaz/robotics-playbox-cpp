@@ -15,6 +15,11 @@ find_package(Magnum REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(Eigen3 REQUIRED)
 
+
+# Find python and its include files so that we can use matplotlibcpp.h
+find_package(PythonLibs REQUIRED)
+include_directories(${PYTHON_INCLUDE_DIRS})
+
 if(NOT TARGET Eigen3::Eigen)
     add_library(Eigen3::Eigen INTERFACE IMPORTED)
     set_target_properties(Eigen3::Eigen PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${EIGEN3_INCLUDE_DIR})
@@ -90,6 +95,8 @@ add_executable(ilqr_main WIN32 ilqr_main.cpp ilqr_main.hpp ilqr_mpc.hpp ilqr_mpc
 target_link_libraries(ilqr_main 
 PUBLIC 
    base_example 
+   # Add python libraries so that we can use matplotlibcpp.h for debugging
+   ${PYTHON_LIBRARIES}
 )
 
 file(GLOB_RECURSE TEST_FILES "*_test.cpp")

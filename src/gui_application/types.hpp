@@ -103,7 +103,7 @@ public:
   constexpr static double one_over_wheelbase{1.0 / 3.0};
   constexpr static double max_steering{0.52};
   constexpr static double max_steering_rate{0.1};
-  constexpr static double max_jerk{0.6};
+  constexpr static double max_jerk{1.0};
 
   static State step_(const Ref<const State> &state, const Ref<const Action> &action)
   {
@@ -130,6 +130,15 @@ public:
     return new_state;
   }
 
+  // static void step(const Ref<const State> &state, const Ref<const Action> &action, Ref<State> new_state)
+  // {
+  //   new_state[0] = state[0] + ts * state[3] * std::cos(state[2]);
+  //   new_state[1] = state[1] + ts * state[3] * std::sin(state[2]);
+  //   new_state[2] = state[2] + ts * state[3] * one_over_wheelbase * std::tan(state[5]);
+  //   new_state[3] = state[3] + ts * state[4];
+  //   new_state[4] = state[4] + ts * max_jerk * std::tanh(action[0]);
+  //   new_state[5] = std::clamp(state[5] + ts * max_steering_rate * std::tanh(action[1]), -max_steering, max_steering);
+  // }
   static void step(const Ref<const State> &state, const Ref<const Action> &action, Ref<State> new_state)
   {
     new_state[0] = state[0] + ts * state[3] * std::cos(state[2]);
@@ -137,7 +146,7 @@ public:
     new_state[2] = state[2] + ts * state[3] * one_over_wheelbase * std::tan(state[5]);
     new_state[3] = state[3] + ts * state[4];
     new_state[4] = state[4] + ts * max_jerk * std::tanh(action[0]);
-    new_state[5] = std::clamp(state[5] + ts * max_steering_rate * std::tanh(action[1]), -max_steering, max_steering);
+    new_state[5] = state[5] + ts * max_steering_rate * std::tanh(action[1]);
   }
 };
 
