@@ -20,7 +20,7 @@ IlqrMain::IlqrMain(const Arguments &arguments) : Magnum::Examples::BaseExample(a
     new Graphics::VertexColorDrawable{*object, _vertexColorShader, mesh_, _drawables};
   }
 
-  ilqr_mpc = iLQR_MPC(/* horizon */ horizon, /* iters */ 100);
+  ilqr_mpc = iLQR_MPC(/* horizon */ horizon, /* iters */ 30);
 }
 
 void IlqrMain::execute()

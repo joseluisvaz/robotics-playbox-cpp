@@ -32,7 +32,7 @@ class iLQR_MPC
   using VectorOfEigen = std::vector<EigenT, Eigen::aligned_allocator<EigenT>>;
 
   void initialize_matrices(const int horizon);
-  void compute_matrices(const Trajectory &trajectory);
+  void compute_derivatives(const Trajectory &trajectory);
   void plot_trajectory(const Trajectory &trajectory);
 
 public:

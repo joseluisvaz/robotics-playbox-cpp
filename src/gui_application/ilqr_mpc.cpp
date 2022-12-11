@@ -19,23 +19,6 @@ using namespace Eigen;
 namespace
 {
 
-double cost_function(Vector x, Vector u)
-{
-  Vector x_ref = Vector::Zero(x.size());
-  x_ref(3) = 0.0;
-  x_ref(0) = 100.0;
-  x_ref(1) = 0.0;
-  // x_ref(1) = 13.0;
-
-  Vector Q(x.size());
-  Q << 1.0, 1.0, 1.0, 0.0, 0.0, 0.0;
-  Vector R(u.size());
-  R << 0.1, 0.1;
-
-  double result = ((x - x_ref).transpose() * Q.asDiagonal() * (x - x_ref) + u.transpose() * R.asDiagonal() * u).value();
-  return result + std::sqrt(2);
-}
-
 autodiff::dual2nd cost_function_diff(VectorXdual2nd x, VectorXdual2nd u)
 {
   VectorXdual2nd x_ref = VectorXdual2nd::Zero(x.size());
@@ -58,7 +41,6 @@ iLQR_MPC::iLQR_MPC(const int horizon, const int iters) : horizon_(horizon), iter
   initialize_matrices(horizon_);
 }
 
-// TODO: make it a free function
 void iLQR_MPC::plot_trajectory(const Trajectory &trajectory)
 {
   vector<double> x_vals;
@@ -76,17 +58,12 @@ void iLQR_MPC::rollout(Trajectory &trajectory)
   auto &u = trajectory.actions;
   auto &x = trajectory.states;
 
-  sampler_.mean_ = Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
-  sampler_.stddev_ = Actions::Ones(trajectory.actions.rows(), trajectory.actions.cols());
-
-  u = this->sampler_();
+  u = Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
 
   double current_time_s{0.0f};
   for (size_t i = 0; i + 1 < static_cast<size_t>(horizon_ + 1); ++i)
   {
     trajectory.times.at(i) = current_time_s;
-    // u(0, i) += 0.1;
-    // u(1, i) += 0.01;
     DynamicsT::step(x.col(i), u.col(i), x.col(i + 1));
     current_time_s += DynamicsT::ts;
   }
@@ -103,29 +80,33 @@ iLQR_MPC::Trajectory iLQR_MPC::solve(const Ref<State> &x0)
   for (int i{0}; i < iters_; ++i)
   {
     this->backward_pass(trajectory);
-    double J = compute_cost(trajectory);
-    cout << "iter: " << i << " cost: " << std::fixed << J << endl;
-    // plot_trajectory(trajectory);
+    auto cost = compute_cost(trajectory);
+    cout << "iter: " << i << " cost: " << std::fixed << cost << endl;
 
-    for (int j{0}; j < 10; ++j) // Iterate over alphas
+    // Do backtracking line search to find when the cost decreases the most, forward passes are inexpesive,
+    // so this it is ok to iterate for maximum of "backtracking_iterations".
+    constexpr int backtracking_iterations = 10;
+    for (int j{0}; j < backtracking_iterations; ++j)
     {
+      // The value of alpha will be decreased exponentially with each iteration to find a decreasing cost.
       auto new_trajectory = this->forward_pass(trajectory, /* alpha= */ pow(0.5, j));
-      double J_new = compute_cost(new_trajectory);
-      if (J_new < J)
-      {
-        trajectory = new_trajectory;
-        if (std ::abs((J - J_new) / (J + 1e-4)) < tol_)
-        {
-          return trajectory;
-        }
+      auto new_cost = compute_cost(new_trajectory);
 
-        J = J_new;
+      if (std ::abs((cost - new_cost) / (cost + 1e-4)) < tol_)
+      {
+        // First check for convergence
+        return new_trajectory;
+      }
+
+      if (new_cost < cost)
+      {
+        // If the cost decreased then update the trajectory, and break the loop to continue the main ilqr loop.
+        trajectory = new_trajectory;
+        cost = new_cost;
         break;
       }
     }
   }
-  // plt::show();
-
   return trajectory;
 }
 
@@ -166,7 +147,7 @@ double iLQR_MPC::compute_cost(const Trajectory &trajectory)
 void iLQR_MPC::backward_pass(const Trajectory &trajectory)
 {
   EASY_FUNCTION(profiler::colors::Green);
-  this->compute_matrices(trajectory);
+  this->compute_derivatives(trajectory);
 
   Vector Vx = lx.back();
   Matrix Vxx = lxx.back();
@@ -175,16 +156,13 @@ void iLQR_MPC::backward_pass(const Trajectory &trajectory)
 
   for (int i = horizon_ - 1; i >= 0; --i)
   {
-    auto Qx = lx[i] + (fx[i].transpose() * Vx);
-    auto Qu = lu[i] + (fu[i].transpose() * Vx);
+    const auto &Qx = lx[i] + (fx[i].transpose() * Vx);
+    const auto &Qu = lu[i] + (fu[i].transpose() * Vx);
 
-    auto Qxx = lxx[i] + (fx[i].transpose() * Vxx * fx[i]);
-    auto Quu = luu[i] + fu[i].transpose() * (Vxx + (mu_ * I)) * fu[i];
-    auto Qux = lux[i] + fu[i].transpose() * (Vxx + (mu_ * I)) * fx[i];
+    const auto &Qxx = lxx[i] + (fx[i].transpose() * Vxx * fx[i]);
+    const auto &Quu = luu[i] + fu[i].transpose() * (Vxx + (mu_ * I)) * fu[i];
+    const auto &Qux = lux[i] + fu[i].transpose() * (Vxx + (mu_ * I)) * fx[i];
 
-    // Matrix Quu_inv = Quu.inverse();
-    // K[i] = -Quu_inv * Qux;
-    // k[i] = -Quu_inv * Qu;
     for (int j{0}; j < K[i].cols(); ++j)
     {
       K[i].col(j) = -Quu.ldlt().solve(Qux.col(j));
@@ -197,38 +175,14 @@ void iLQR_MPC::backward_pass(const Trajectory &trajectory)
   }
 }
 
-// void iLQR_MPC::compute_matrices(const Trajectory &trajectory)
-// {
-//   EASY_FUNCTION(profiler::colors::Yellow);
-//   for (int i = 0; i < horizon_; ++i)
-//   {
-//     VectorXdual2nd x = trajectory.states.col(i);
-//     VectorXdual2nd u = trajectory.actions.col(i);
-//
-//     fx[i] = calc_jacobian_x(DynamicsT::step_, trajectory.states.col(i), trajectory.actions.col(i));
-//     fu[i] = calc_jacobian_u(DynamicsT::step_, trajectory.states.col(i), trajectory.actions.col(i));
-//     lx[i] = calc_grad_x(cost_function, trajectory.states.col(i), trajectory.actions.col(i));
-//     lu[i] = calc_grad_u(cost_function, trajectory.states.col(i), trajectory.actions.col(i), 0.01);
-//     lxx[i] = calc_hessian_x(cost_function, trajectory.states.col(i), trajectory.actions.col(i), 0.01);
-//     luu[i] = calc_hessian_u(cost_function, trajectory.states.col(i), trajectory.actions.col(i), 0.01);
-//     lux[i] = calc_hessian_ux(cost_function, trajectory.states.col(i), trajectory.actions.col(i), 0.01);
-//   }
-//
-//   const int T = horizon_;
-//   lx[T] = calc_grad_x(cost_function, trajectory.states.col(T - 1), trajectory.actions.col(T - 1));
-//   lxx[T] = calc_hessian_x(cost_function, trajectory.states.col(T - 1), trajectory.actions.col(T - 1));
-// }
-
-void iLQR_MPC::compute_matrices(const Trajectory &trajectory)
+void iLQR_MPC::compute_derivatives(const Trajectory &trajectory)
 {
-  EASY_FUNCTION(profiler::colors::Yellow);
+  VectorXdual2nd x; // placeholder for the current state as differentiable type
+  VectorXdual2nd u; // placeholder for the current action as differentiable type
 
-  VectorXdual2nd x;
-  VectorXdual2nd u;
-
-  dual2nd cost; // unused
-  Vector G;
-  Matrix H;
+  dual2nd cost;                 // unused
+  Vector state_action_gradient; // placeholder for the full state_action_gradient
+  Matrix state_action_hessian;  // placeholder for the full state_action_hessian
 
   for (int i = 0; i < horizon_; ++i)
   {
@@ -238,21 +192,21 @@ void iLQR_MPC::compute_matrices(const Trajectory &trajectory)
     fx[i] = jacobian(DynamicsT::step_diff<VectorXdual2nd>, wrt(x), at(x, u));
     fu[i] = jacobian(DynamicsT::step_diff<VectorXdual2nd>, wrt(u), at(x, u));
 
-    H = hessian(cost_function_diff, wrt(x, u), at(x, u), cost, G);
+    // Compute full hessian and full gradient
+    state_action_hessian = hessian(cost_function_diff, wrt(x, u), at(x, u), cost, state_action_gradient);
 
-    lx[i] = G.head(state_size);
-    lu[i] = G.tail(action_size);
-    lxx[i] = H.topLeftCorner(state_size, state_size);
-    luu[i] = H.bottomRightCorner(action_size, action_size);
-    lux[i] = H.bottomLeftCorner(action_size, state_size);
+    // Split full state_action_gradient and hessian into individual matrices
+    lx[i] = state_action_gradient.head(state_size);
+    lu[i] = state_action_gradient.tail(action_size);
+    lxx[i] = state_action_hessian.topLeftCorner(state_size, state_size);
+    luu[i] = state_action_hessian.bottomRightCorner(action_size, action_size);
+    lux[i] = state_action_hessian.bottomLeftCorner(action_size, state_size);
   }
 
-  const int T = horizon_;
-
-  x = trajectory.states.col(T - 1);
-  u = trajectory.actions.col(T - 1);
-
-  lxx[T] = hessian(cost_function_diff, wrt(x), at(x, u), cost, lx[T]);
+  // Final cost hessian and gradient calculation
+  x = trajectory.states.col(horizon_ - 1);
+  u = trajectory.actions.col(horizon_ - 1);
+  lxx[horizon_] = hessian(cost_function_diff, wrt(x), at(x, u), cost, lx[horizon_]);
 }
 
 void iLQR_MPC::initialize_matrices(const int horizon)
