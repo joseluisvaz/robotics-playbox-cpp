@@ -7,7 +7,7 @@ find_package(Magnum REQUIRED
 find_package(Corrade REQUIRED Main)
 
 #******** Add  graphics object 
-add_library(GraphicsObjects ${SHARED_OR_STATIC} 
+add_library(GraphicsObjects
     graphics_objects.cpp
     graphics_objects.hpp
 )

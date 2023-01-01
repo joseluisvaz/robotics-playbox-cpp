@@ -20,11 +20,11 @@
 #include <Magnum/Shaders/FlatGL.h>
 #include <Magnum/Shaders/VertexColorGL.h>
 #include <Magnum/Trade/MeshData.h>
+#include <Magnum/ImGuiIntegration/Context.hpp>
 
 #include "gui_application/graphics/graphics_objects.hpp"
 #include "gui_application/implot.h"
 #include "gui_application/types.hpp"
-#include <Magnum/ImGuiIntegration/Context.hpp>
 #include <algorithm>
 #include <easy/profiler.h>
 #include <iostream>

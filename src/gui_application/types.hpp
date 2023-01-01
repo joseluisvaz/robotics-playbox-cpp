@@ -44,10 +44,10 @@ template <typename EigenT>
 using VectorOfEigen = std::vector<EigenT, Eigen::aligned_allocator<EigenT>>;
 
 template <int state_size, typename T = double>
-using EigenState = Eigen::Vector<T, state_size>;
+using EigenState = Eigen::Matrix<T, state_size, 1>;
 
 template <int action_size, typename T = double>
-using EigenAction = Eigen::Vector<T, action_size>;
+using EigenAction = Eigen::Matrix<T, action_size, 1>;
 
 template <int state_size, typename T = double>
 using EigenStateSequence = Eigen::Matrix<T, state_size, Eigen::Dynamic>;

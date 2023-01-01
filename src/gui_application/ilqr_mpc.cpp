@@ -1,16 +1,18 @@
 #pragma once
 
+#include <stdexcept>
+#include <array>
+
+#include <Eigen/Dense>
+#include <Eigen/StdVector>
+#include <autodiff/forward/dual.hpp>
+#include <autodiff/forward/dual/eigen.hpp>
+#include <easy/profiler.h>
+
 #include "ilqr_mpc.hpp"
 #include "finite_diff.hpp"
 #include "math.hpp"
 #include "types.hpp"
-#include <Eigen/Dense>
-#include <Eigen/StdVector>
-#include <array>
-#include <autodiff/forward/dual.hpp>
-#include <autodiff/forward/dual/eigen.hpp>
-#include <easy/profiler.h>
-#include <stdexcept>
 
 namespace RoboticsSandbox
 {
@@ -58,7 +60,10 @@ void iLQR_MPC::rollout(Trajectory &trajectory)
   auto &u = trajectory.actions;
   auto &x = trajectory.states;
 
-  u = Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
+  //u = Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
+  sampler_.mean_ = Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
+  sampler_.stddev_ = Actions::Ones(trajectory.actions.rows(), trajectory.actions.cols());
+  u = sampler_();
 
   double current_time_s{0.0f};
   for (size_t i = 0; i + 1 < static_cast<size_t>(horizon_ + 1); ++i)
@@ -74,6 +79,7 @@ iLQR_MPC::Trajectory iLQR_MPC::solve(const Ref<State> &x0)
 {
   EASY_FUNCTION(profiler::colors::Grey);
   auto trajectory = Trajectory(horizon_ + 1);
+  trajectory.states.col(0) = x0; // Add initial state
   this->rollout(trajectory);
 
   cout.precision(17);

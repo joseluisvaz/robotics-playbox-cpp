@@ -1,20 +1,20 @@
-
 set(CMAKE_FOLDER "Magnum/imgui_integration")
 
 add_subdirectory(graphics)
 
+find_package(Eigen3 REQUIRED)
 find_package(Magnum REQUIRED 
     GL 
-    Shaders 
+    Shaders
     Primitives
     SceneGraph
     Shaders
     Sdl2Application)
 find_package(Catch2 3 REQUIRED)
 find_package(Magnum REQUIRED)
+find_package(MagnumIntegration REQUIRED)
 find_package(SDL2 REQUIRED)
-find_package(Eigen3 REQUIRED)
-
+include_directories(/usr/include/SDL2/)
 
 # Find python and its include files so that we can use matplotlibcpp.h
 find_package(PythonLibs REQUIRED)
@@ -33,7 +33,7 @@ find_package(Magnum REQUIRED Sdl2Application)
 find_package(easy_profiler REQUIRED)
 
 #******** Add ImPlot
-add_library(ImPlot ${SHARED_OR_STATIC} 
+add_library(ImPlot 
     implot.cpp
     implot_items.cpp
     implot.h
@@ -61,16 +61,25 @@ target_link_libraries(CEM_MPC PRIVATE
    easy_profiler)
 #END ******** Add CEM_MPC 
 
+
 add_library(base_example base_example.cpp base_example.hpp types.hpp math.hpp)
+target_include_directories(base_example PUBLIC
+    ${PROJECT_SOURCE_DIR}/src/)
 target_compile_features(base_example PUBLIC cxx_std_17)
 target_link_libraries(base_example PUBLIC 
-    MagnumImGuiIntegration
-    easy_profiler
     ImPlot
-    Eigen3::Eigen
-    CEM_MPC
     GraphicsObjects
-    Corrade::Main)
+    easy_profiler
+    MagnumImGuiIntegration
+    Magnum::Sdl2Application
+    Magnum::GL 
+    Magnum::Shaders
+    Magnum::Primitives
+    Magnum::SceneGraph
+    Magnum::Shaders
+    Corrade::Main
+    Eigen3::Eigen
+    CEM_MPC)
 
 # add_executable(cem_mpc_example WIN32 cem_mpc_example.cpp cem_mpc_example.hpp types.hpp math.hpp intelligent_driver_model.hpp)
 # target_link_libraries(cem_mpc_example 
@@ -79,11 +88,11 @@ target_link_libraries(base_example PUBLIC
 #     Eigen3::Eigen
 # )
 # 
-# add_executable(template_example WIN32 template_example.cpp template_example.hpp)
-# target_link_libraries(template_example 
-# PUBLIC 
-#     base_example
-# )
+add_executable(template_example template_example.cpp template_example.hpp)
+target_link_libraries(template_example 
+PRIVATE 
+    base_example
+)
 # 
 # add_executable(tsdf_example WIN32 tsdf_example.cpp tsdf_example.hpp)
 # target_link_libraries(tsdf_example 
@@ -91,14 +100,18 @@ target_link_libraries(base_example PUBLIC
 #     base_example
 # )
 
-add_executable(ilqr_main WIN32 ilqr_main.cpp ilqr_main.hpp ilqr_mpc.hpp ilqr_mpc.cpp)
+add_executable(ilqr_main ilqr_main.cpp ilqr_main.hpp ilqr_mpc.hpp ilqr_mpc.cpp)
+target_include_directories(ilqr_main PUBLIC
+    ${PROJECT_SOURCE_DIR}/src/)
+target_compile_features(ilqr_main PUBLIC cxx_std_17)
 target_link_libraries(ilqr_main 
 PUBLIC 
-   base_example 
+    base_example 
    # Add python libraries so that we can use matplotlibcpp.h for debugging
    ${PYTHON_LIBRARIES}
 )
 
+# Compiles tests for the repo
 file(GLOB_RECURSE TEST_FILES "*_test.cpp")
 add_executable(roboticssandbox-tests main.cpp ${TEST_FILES} finite_diff.hpp types.hpp)
 target_link_libraries(roboticssandbox-tests 
@@ -106,5 +119,3 @@ PUBLIC
     Catch2::Catch2WithMain
     Eigen3::Eigen)
 set_target_properties(roboticssandbox-tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
-    #autodiff::autodiff
-    

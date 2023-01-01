@@ -28,6 +28,8 @@ private:
 
   iLQR_MPC ilqr_mpc;
   bool is_running_{false};
+
+  Dynamics::State current_state_;
 };
 
 } // namespace RoboticsSandbox

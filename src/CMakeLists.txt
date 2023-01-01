@@ -39,7 +39,7 @@ if(CORRADE_TARGET_WINDOWS)
     add_definitions("-DUNICODE" "-D_UNICODE")
 endif()
 
-add_subdirectory(Magnum)
+# add_subdirectory(Magnum)
 add_subdirectory(MagnumExternal)
 add_subdirectory(gui_application)
 
