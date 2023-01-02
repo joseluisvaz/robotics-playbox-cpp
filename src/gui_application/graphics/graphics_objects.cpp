@@ -1,6 +1,8 @@
 
 #include "gui_application/graphics/graphics_objects.hpp"
 
+#include "Magnum/GL/DefaultFramebuffer.h"
+
 namespace RoboticsSandbox::Graphics
 {
 
@@ -53,6 +55,21 @@ VertexColorDrawable::VertexColorDrawable(Object3D &object, Shaders::VertexColorG
 void VertexColorDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph::Camera3D &camera)
 {
   _shader.setTransformationProjectionMatrix(camera.projectionMatrix() * transformation).draw(_mesh);
+}
+
+WireframeDrawable::WireframeDrawable(Object3D &object, Shaders::MeshVisualizerGL3D &shader, GL::Mesh &mesh,
+                                     SceneGraph::DrawableGroup3D &drawables)
+    : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
+{
+}
+
+void WireframeDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph::Camera3D &camera)
+{
+  _shader.setColor(0x2f83cc_rgbf)
+      .setWireframeColor(0xdcdcdc_rgbf)
+      .setViewportSize(Vector2{GL::defaultFramebuffer.viewport().size()})
+      .setTransformationProjectionMatrix(camera.projectionMatrix() * transformation)
+      .draw(_mesh);
 }
 
 FlatDrawable::FlatDrawable(Object3D &object, Shaders::FlatGL3D &shader, GL::Mesh &mesh,

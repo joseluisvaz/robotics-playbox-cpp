@@ -19,7 +19,7 @@ IlqrMain::IlqrMain(const Arguments &arguments) : Magnum::Examples::BaseExample(a
   mesh_ = Magnum::MeshTools::compile(Magnum::Primitives::cubeWireframe());
   for (auto &object : trajectory_objects_.get_objects())
   {
-    new Graphics::VertexColorDrawable{*object, _vertexColorShader, mesh_, _drawables};
+    new Graphics::WireframeDrawable{*object, _wireframe_shader, mesh_, _drawables};
   }
 
   ilqr_mpc = iLQR_MPC(/* horizon */ horizon, /* iters */ 70);
@@ -43,7 +43,7 @@ void IlqrMain::run_ilqr()
 
   Dynamics::Trajectory trajectory = ilqr_mpc.solve(current_state_);
   Dynamics::Action current_action = trajectory.actions.col(1);
-  
+
   for (int i = 0; i < trajectory.states.cols() - 1; ++i)
   {
     Dynamics::State new_state = trajectory.states.col(i);
@@ -57,7 +57,7 @@ void IlqrMain::run_ilqr()
         .rotateY(Magnum::Math::Rad(static_cast<float>(new_state[2])))
         .translate(Magnum::Vector3(SCALE(new_state[1]), SCALE(time_s), SCALE(new_state[0])));
   }
-  
+
   current_state_ = Dynamics::step_(current_state_, current_action);
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }

@@ -3,6 +3,7 @@
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/PixelFormat.h>
 #include <Magnum/GL/Renderer.h>
+#include <Magnum/ImGuiIntegration/Context.hpp>
 #include <Magnum/Image.h>
 #include <Magnum/Magnum.h>
 #include <Magnum/Math/Color.h>
@@ -18,9 +19,9 @@
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/Shaders/FlatGL.h>
+#include <Magnum/Shaders/MeshVisualizerGL.h>
 #include <Magnum/Shaders/VertexColorGL.h>
 #include <Magnum/Trade/MeshData.h>
-#include <Magnum/ImGuiIntegration/Context.hpp>
 
 #include "gui_application/graphics/graphics_objects.hpp"
 #include "gui_application/implot.h"
@@ -72,18 +73,22 @@ BaseExample::BaseExample(const Arguments &arguments) : Platform::Application{arg
   /* Shaders, renderer setup */
   _vertexColorShader = Shaders::VertexColorGL3D{};
   _flatShader = Shaders::FlatGL3D{};
+  // NOTE: NoGeometryShader is needed for rendering
+  _wireframe_shader = Shaders::MeshVisualizerGL3D{Shaders::MeshVisualizerGL3D::Configuration{}.setFlags(
+      Shaders::MeshVisualizerGL3D::Flag::Wireframe | Shaders::MeshVisualizerGL3D::Flag::NoGeometryShader)};
+
   GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 
   /* Grid */
-  _grid = MeshTools::compile(Primitives::grid3DWireframe({15, 15}));
-  auto grid = new Object3D{&_scene};
-  (*grid).rotateX(90.0_degf).scale(Vector3{15.0f});
-  new Graphics::FlatDrawable{*grid, _flatShader, _grid, _drawables};
+  _grid_mesh = MeshTools::compile(Primitives::grid3DWireframe({15, 15}));
+  auto grid_object = new Object3D{&_scene};
+  (*grid_object).rotateX(90.0_degf).scale(Vector3{15.0f});
+  new Graphics::FlatDrawable{*grid_object, _flatShader, _grid_mesh, _drawables};
 
   /* Origin Axis */
-  _origin_axis = MeshTools::compile(Primitives::axis3D());
-  auto origin_axis = new Object3D(&_scene);
-  new Graphics::VertexColorDrawable{*origin_axis, _vertexColorShader, _origin_axis, _drawables};
+  _origin_axis_mesh = MeshTools::compile(Primitives::axis3D());
+  auto origin_axis_object = new Object3D(&_scene);
+  new Graphics::VertexColorDrawable{*origin_axis_object, _vertexColorShader, _origin_axis_mesh, _drawables};
 
   /* Set up the camera */
   _cameraObject = new Object3D{&_scene};
@@ -328,7 +333,7 @@ void BaseExample::resetCameraPosition()
       .translate(Vector3::zAxis(SCALE(200.0f)))
       .translate(Vector3::xAxis(SCALE(50.0f)))
       .rotateX(-90.0_degf)
-      .rotateY(-90.0_degf); 
+      .rotateY(-90.0_degf);
 }
 
 } // namespace Examples

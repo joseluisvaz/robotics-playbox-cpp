@@ -58,7 +58,12 @@ public:
 
   Scene3D _scene;
   SceneGraph::DrawableGroup3D _drawables;
+
+  // Shader to render meshes with position and color information
   Shaders::VertexColorGL3D _vertexColorShader{NoCreate};
+
+  // Shader to render meshes with color information
+  Shaders::MeshVisualizerGL3D _wireframe_shader{NoCreate};
 
 private:
   Float depthAt(const Vector2i &windowPosition);
@@ -80,7 +85,7 @@ private:
 
   ImGuiIntegration::Context _imgui{NoCreate};
   Shaders::FlatGL3D _flatShader{NoCreate};
-  GL::Mesh _grid{NoCreate}, _origin_axis{NoCreate};
+  GL::Mesh _grid_mesh{NoCreate}, _origin_axis_mesh{NoCreate};
 
   Object3D *_cameraObject;
   SceneGraph::Camera3D *_camera;

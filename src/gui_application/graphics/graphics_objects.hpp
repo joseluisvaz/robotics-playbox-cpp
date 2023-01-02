@@ -11,6 +11,7 @@
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/Shaders/FlatGL.h>
 #include <Magnum/Shaders/VertexColorGL.h>
+#include <Magnum/Shaders/MeshVisualizerGL.h>
 #include <Magnum/Trade/MeshData.h>
 
 #include <memory>
@@ -73,6 +74,19 @@ public:
 
 private:
   Shaders::VertexColorGL3D &_shader;
+  GL::Mesh &_mesh;
+};
+
+class WireframeDrawable : public SceneGraph::Drawable3D
+{
+public:
+  explicit WireframeDrawable(Object3D &object, Shaders::MeshVisualizerGL3D &shader, GL::Mesh &mesh,
+                               SceneGraph::DrawableGroup3D &drawables);
+
+  void draw(const Magnum::Matrix4 &transformation, SceneGraph::Camera3D &camera);
+
+private:
+  Shaders::MeshVisualizerGL3D &_shader;
   GL::Mesh &_mesh;
 };
 
