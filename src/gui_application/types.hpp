@@ -200,16 +200,16 @@ struct CostFunction
     return cost;
   }
 
-  double w_s_[D::state_size]{0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f}; // state costs
+  double w_s_[D::state_size]{0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f}; // state costs
   double w_a_[D::action_size]{1.0f, 1.0f};                        // action costs
 
-  double W_s_[D::state_size]{0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f}; // terminal state costs
+  double W_s_[D::state_size]{0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f}; // terminal state costs
   double W_a_[D::action_size]{1.0f, 1.0f};                        // terminal action costs
 
-  double r_s_[D::state_size]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // state reference
+  double r_s_[D::state_size]{0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f}; // state reference
   double r_a_[D::state_size]{0.0f, 0.0f};                         // action reference
 
-  double R_s_[D::state_size]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // terminal state reference
+  double R_s_[D::state_size]{0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f}; // terminal state reference
   double R_a_[D::state_size]{0.0f, 0.0f};                         // terminal action reference
 };
 

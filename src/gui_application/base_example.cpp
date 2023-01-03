@@ -47,8 +47,7 @@ BaseExample::BaseExample(const Arguments &arguments) : Platform::Application{arg
     Configuration conf;
     conf.setTitle("Robotics Sandbox")
         .setSize(conf.size(), dpiScaling)
-        .setWindowFlags(Configuration::WindowFlag::Resizable | Configuration::WindowFlag::Maximized |
-                        Configuration::WindowFlag::Tooltip);
+        .setWindowFlags(Configuration::WindowFlag::FullscreenDesktop);
     GLConfiguration glConf;
     glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
     if (!tryCreate(conf, glConf))

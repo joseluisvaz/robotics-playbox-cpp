@@ -2,7 +2,7 @@ set(CMAKE_FOLDER "Magnum/imgui_integration")
 
 add_subdirectory(graphics)
 
-find_package(Eigen3 REQUIRED)
+find_package(Eigen3 3.4.0 REQUIRED)
 find_package(Magnum REQUIRED 
     GL 
     Shaders
@@ -49,7 +49,7 @@ target_compile_options(ImPlot PUBLIC -w)
 #******** Add CEM_MPC 
 set(CEM_MPC_HEADERS cem_mpc.hpp types.hpp math.hpp cem_mpc.tpp)
 set(CEM_MPC_SRCS cem_mpc.cpp math.cpp)
-add_library(CEM_MPC ${SHARED_OR_STATIC} 
+add_library(CEM_MPC
     ${CEM_MPC_SRCS}
     ${CEM_MPC_HEADERS}
 )
@@ -81,13 +81,13 @@ target_link_libraries(base_example PUBLIC
     Eigen3::Eigen
     CEM_MPC)
 
-# add_executable(cem_mpc_example WIN32 cem_mpc_example.cpp cem_mpc_example.hpp types.hpp math.hpp intelligent_driver_model.hpp)
-# target_link_libraries(cem_mpc_example 
-# PUBLIC 
-#     base_example
-#     Eigen3::Eigen
-# )
-# 
+add_executable(cem_mpc_example WIN32 cem_mpc_example.cpp cem_mpc_example.hpp types.hpp math.hpp intelligent_driver_model.hpp)
+target_link_libraries(cem_mpc_example 
+PUBLIC 
+    base_example
+    Eigen3::Eigen
+)
+
 add_executable(template_example template_example.cpp template_example.hpp)
 target_link_libraries(template_example 
 PRIVATE 

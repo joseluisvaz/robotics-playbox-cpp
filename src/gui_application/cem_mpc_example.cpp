@@ -77,7 +77,7 @@ void CEMMPCExample::runCEM()
         .resetTransformation()
         .scale(trajectory_objects_.get_vehicle_extent())
         .translate(Magnum::Vector3(0.0f, 0.0f, SCALE(1.5f))) // move half wheelbase forward
-        .rotateY(Magnum::Math::Rad(new_state[2]))
+        .rotateY(Magnum::Math::Rad(static_cast<float>(new_state[2])))
         .translate(Magnum::Vector3(SCALE(new_state[1]), SCALE(time_s), SCALE(new_state[0])));
   }
 
@@ -143,6 +143,8 @@ void CEMMPCExample::runCEM()
 
 void CEMMPCExample::show_menu()
 {
+
+  //ImGui::ShowDemoWindow();
   EASY_FUNCTION(profiler::colors::Blue);
   ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowBgAlpha(0.5f);
@@ -162,26 +164,26 @@ void CEMMPCExample::show_menu()
 
   ImGui::SliderInt("Num Iterations", &mpc_.get_num_iters_mutable(), 1, 100);
 
-  float v_min = 0.0f;
-  float v_max = 10.0f;
-  ImGui::SliderScalarN("Cost Weights - States", ImGuiDataType_Float, &mpc_.cost_function_.w_s_, 6, &v_min, &v_max,
+  double v_min = 0.0;
+  double v_max = 10.0;
+  ImGui::SliderScalarN("Cost Weights - States", ImGuiDataType_Double, &mpc_.cost_function_.w_s_, 6, &v_min, &v_max,
                        "%.3f", 0);
-  ImGui::SliderScalarN("Cost Weights - Actions", ImGuiDataType_Float, &mpc_.cost_function_.w_a_, 2, &v_min, &v_max,
+  ImGui::SliderScalarN("Cost Weights - Actions", ImGuiDataType_Double, &mpc_.cost_function_.w_a_, 2, &v_min, &v_max,
                        "%.3f", 0);
-  ImGui::SliderScalarN("Terminal Cost Weights - States", ImGuiDataType_Float, &mpc_.cost_function_.W_s_, 6, &v_min,
+  ImGui::SliderScalarN("Terminal Cost Weights - States", ImGuiDataType_Double, &mpc_.cost_function_.W_s_, 6, &v_min,
                        &v_max, "%.3f", 0);
-  ImGui::SliderScalarN("TerminalCost Weights - Actions", ImGuiDataType_Float, &mpc_.cost_function_.W_a_, 2, &v_min,
+  ImGui::SliderScalarN("TerminalCost Weights - Actions", ImGuiDataType_Double, &mpc_.cost_function_.W_a_, 2, &v_min,
                        &v_max, "%.3f", 0);
 
-  float v_min_r = -100.0f;
-  float v_max_r = 100.0f;
-  ImGui::SliderScalarN("Ref values - States", ImGuiDataType_Float, &mpc_.cost_function_.r_s_, 6, &v_min_r, &v_max_r,
+  double v_min_r = -100.0;
+  double v_max_r = 100.0;
+  ImGui::SliderScalarN("Ref values - States", ImGuiDataType_Double, &mpc_.cost_function_.r_s_, 6, &v_min_r, &v_max_r,
                        "%.3f", 0);
-  ImGui::SliderScalarN("Ref values - Actions", ImGuiDataType_Float, &mpc_.cost_function_.r_a_, 2, &v_min_r, &v_max_r,
+  ImGui::SliderScalarN("Ref values - Actions", ImGuiDataType_Double, &mpc_.cost_function_.r_a_, 2, &v_min_r, &v_max_r,
                        "%.3f", 0);
-  ImGui::SliderScalarN("Terminal Ref values - States", ImGuiDataType_Float, &mpc_.cost_function_.R_s_, 6, &v_min_r,
+  ImGui::SliderScalarN("Terminal Ref values - States", ImGuiDataType_Double, &mpc_.cost_function_.R_s_, 6, &v_min_r,
                        &v_max_r, "%.3f", 0);
-  ImGui::SliderScalarN("Terminal Ref values - Actions", ImGuiDataType_Float, &mpc_.cost_function_.R_a_, 2, &v_min_r,
+  ImGui::SliderScalarN("Terminal Ref values - Actions", ImGuiDataType_Double, &mpc_.cost_function_.R_a_, 2, &v_min_r,
                        &v_max_r, "%.3f", 0);
 
   const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
@@ -193,13 +195,13 @@ void CEMMPCExample::show_menu()
 
       for (auto traj : this->mpc_.candidate_trajectories_)
       {
-        std::vector<float> values;
+        std::vector<double> values;
         std::transform(traj.states.colwise().begin(), traj.states.colwise().end(), std::back_inserter(values),
                        getter_fn);
         ImPlot::PlotLine(value_name, traj.times.data(), values.data(), values.size());
       }
 
-      std::vector<float> values;
+      std::vector<double> values;
       std::transform(mpc_.get_trajectory().states.colwise().cbegin(), mpc_.get_trajectory().states.colwise().cend(),
                      std::back_inserter(values), getter_fn);
 
@@ -221,13 +223,13 @@ void CEMMPCExample::show_menu()
       ImPlot::SetupAxes("time[s]", value_name);
       for (auto traj : this->mpc_.candidate_trajectories_)
       {
-        std::vector<float> values;
+        std::vector<double> values;
         std::transform(traj.actions.colwise().begin(), traj.actions.colwise().end(), std::back_inserter(values),
                        getter_fn);
         ImPlot::PlotLine(value_name, traj.times.data(), values.data(), values.size());
       }
 
-      std::vector<float> values;
+      std::vector<double> values;
       std::transform(this->mpc_.get_trajectory().actions.colwise().cbegin(),
                      this->mpc_.get_trajectory().actions.colwise().cend(), std::back_inserter(values), getter_fn);
 
@@ -266,7 +268,7 @@ void CEMMPCExample::show_menu()
     {
       ImPlot::SetupAxes("time[s]", value_name);
 
-      std::vector<float> values;
+      std::vector<double> values;
       auto states = idm_.get_states();
       for (int i = 0; i < states.cols(); i++)
       {
