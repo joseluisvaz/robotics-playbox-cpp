@@ -1,16 +1,22 @@
 
-#include "gui_application/base_example.hpp"
-#include "gui_application/implot.h"
-#include "gui_application/intelligent_driver_model.hpp"
+#include <Magnum/Math/Color.h>
 #include <Magnum/SceneGraph/Object.h>
 #include <easy/profiler.h>
 
+#include "gui_application/base_example.hpp"
 #include "gui_application/cem_mpc_example.hpp"
+#include "gui_application/implot.h"
 #include "intelligent_driver_model.hpp"
 #include "types.hpp"
 
 namespace RoboticsSandbox
 {
+
+namespace
+{
+const auto red_color = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
+const auto blue_color = Magnum::Math::Color3(0.0f, 0.6f, 1.0f);
+} // namespace
 
 CEMMPCExample::CEMMPCExample(const Arguments &arguments) : Magnum::Examples::BaseExample(arguments)
 {
@@ -27,11 +33,11 @@ CEMMPCExample::CEMMPCExample(const Arguments &arguments) : Magnum::Examples::Bas
   _mesh = Magnum::MeshTools::compile(Magnum::Primitives::cubeWireframe());
   for (auto &object : trajectory_objects_.get_objects())
   {
-    new Graphics::VertexColorDrawable{*object, _vertexColorShader, _mesh, _drawables};
+    new Graphics::WireframeDrawable{*object, _wireframe_shader, _mesh, _drawables, red_color};
   }
   for (auto &object : trajectory_objects_idm_.get_objects())
   {
-    new Graphics::VertexColorDrawable{*object, _vertexColorShader, _mesh, _drawables};
+    new Graphics::WireframeDrawable{*object, _wireframe_shader, _mesh, _drawables, blue_color};
   }
 
   for (int i = 0; i < population; ++i)
@@ -81,8 +87,7 @@ void CEMMPCExample::runCEM()
         .translate(Magnum::Vector3(SCALE(new_state[1]), SCALE(time_s), SCALE(new_state[0])));
   }
 
-  const auto set_path_helper = [this](const auto &_trajectory, auto &_path_object)
-  {
+  const auto set_path_helper = [this](const auto &_trajectory, auto &_path_object) {
     std::vector<float> x_vals;
     std::vector<float> y_vals;
     std::vector<float> t_vals;
@@ -144,7 +149,7 @@ void CEMMPCExample::runCEM()
 void CEMMPCExample::show_menu()
 {
 
-  //ImGui::ShowDemoWindow();
+  // ImGui::ShowDemoWindow();
   EASY_FUNCTION(profiler::colors::Blue);
   ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowBgAlpha(0.5f);
@@ -186,8 +191,7 @@ void CEMMPCExample::show_menu()
   ImGui::SliderScalarN("Terminal Ref values - Actions", ImGuiDataType_Double, &mpc_.cost_function_.R_a_, 2, &v_min_r,
                        &v_max_r, "%.3f", 0);
 
-  const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
-  {
+  const auto make_plot = [this](auto title, auto value_name, auto getter_fn) {
     ImPlot::SetNextAxesToFit();
     if (ImPlot::BeginPlot(title))
     {
@@ -215,8 +219,7 @@ void CEMMPCExample::show_menu()
     }
   };
 
-  const auto make_action_plot = [this](auto title, auto value_name, auto getter_fn)
-  {
+  const auto make_action_plot = [this](auto title, auto value_name, auto getter_fn) {
     ImPlot::SetNextAxesToFit();
     if (ImPlot::BeginPlot(title))
     {
@@ -261,8 +264,7 @@ void CEMMPCExample::show_menu()
   ImGui::SetNextWindowBgAlpha(0.5f);
   ImGui::Begin("IntelligentDriverModel", nullptr);
 
-  const auto make_plot_idm = [this](auto title, auto value_name, auto getter_fn)
-  {
+  const auto make_plot_idm = [this](auto title, auto value_name, auto getter_fn) {
     ImPlot::SetNextAxesToFit();
     if (ImPlot::BeginPlot(title))
     {

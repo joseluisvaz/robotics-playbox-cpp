@@ -12,21 +12,33 @@
 namespace RoboticsSandbox
 {
 
+namespace
+{
+
+const auto red = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
+const auto blue = Magnum::Math::Color3(0.0f, 0.6f, 1.0f);
+const auto gray = Magnum::Math::Color3(0.4f, 0.4f, 0.4f);
+
+} // namespace
+
 IlqrMain::IlqrMain(const Arguments &arguments) : Magnum::Examples::BaseExample(arguments)
 {
   constexpr int horizon = 20;
   trajectory_objects_ = Graphics::TrajectoryObjects(_scene, horizon);
   mesh_ = Magnum::MeshTools::compile(Magnum::Primitives::cubeWireframe());
+
+  auto color = red; // first element is the current state and must be red.
   for (auto &object : trajectory_objects_.get_objects())
   {
-    new Graphics::WireframeDrawable{*object, _wireframe_shader, mesh_, _drawables};
+    new Graphics::WireframeDrawable{*object, _wireframe_shader, mesh_, _drawables, color};
+    color = gray; // the rest of the wireframes will be gray.
   }
 
-  ilqr_mpc = iLQR_MPC(/* horizon */ horizon, /* iters */ 70);
+  ilqr_mpc = iLQR_MPC(/* horizon */ horizon, /* iters */ 20);
 
   // Initialize current state for the simulation, kinematic bicycle.
   current_state_ = Dynamics::State();
-  current_state_ << 1.0, 10.0, 0.0, 0.0, 0.0, 0.0;
+  current_state_ << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
 }
 
 void IlqrMain::execute()
@@ -59,7 +71,7 @@ void IlqrMain::run_ilqr()
   }
 
   current_state_ = Dynamics::step_(current_state_, current_action);
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  // std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 void IlqrMain::show_menu()
@@ -72,6 +84,12 @@ void IlqrMain::show_menu()
   if (ImGui::Button("Reset scene"))
   {
     resetCameraPosition();
+    redraw();
+  }
+
+  if (ImGui::Button("Reset state"))
+  {
+    current_state_ << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
     redraw();
   }
 

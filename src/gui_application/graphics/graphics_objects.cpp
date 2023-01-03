@@ -58,15 +58,16 @@ void VertexColorDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph
 }
 
 WireframeDrawable::WireframeDrawable(Object3D &object, Shaders::MeshVisualizerGL3D &shader, GL::Mesh &mesh,
-                                     SceneGraph::DrawableGroup3D &drawables)
-    : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
+                                     SceneGraph::DrawableGroup3D &drawables,
+                                     const Color3 &color)
+    : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh), _color(color)
 {
 }
 
 void WireframeDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph::Camera3D &camera)
 {
-  _shader.setColor(0x2f83cc_rgbf)
-      .setWireframeColor(0xdcdcdc_rgbf)
+  _shader.setColor(_color)
+      .setWireframeColor(_color)
       .setViewportSize(Vector2{GL::defaultFramebuffer.viewport().size()})
       .setTransformationProjectionMatrix(camera.projectionMatrix() * transformation)
       .draw(_mesh);

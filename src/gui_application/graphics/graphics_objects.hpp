@@ -81,13 +81,15 @@ class WireframeDrawable : public SceneGraph::Drawable3D
 {
 public:
   explicit WireframeDrawable(Object3D &object, Shaders::MeshVisualizerGL3D &shader, GL::Mesh &mesh,
-                               SceneGraph::DrawableGroup3D &drawables);
+                               SceneGraph::DrawableGroup3D &drawables,
+                        const Color3 &color = Color3(1.0f, 1.0f, 0.0f));
 
   void draw(const Magnum::Matrix4 &transformation, SceneGraph::Camera3D &camera);
 
 private:
   Shaders::MeshVisualizerGL3D &_shader;
   GL::Mesh &_mesh;
+  Color3 _color;
 };
 
 class FlatDrawable : public SceneGraph::Drawable3D
