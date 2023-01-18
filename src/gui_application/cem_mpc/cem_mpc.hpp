@@ -47,6 +47,8 @@ public:
 
   std::vector<Trajectory> candidate_trajectories_;
 
+  std::vector<std::pair<float, int>> costs_index_pair_;
+
 private:
   /// Runs a single rollout for a trajectory.
   ///@param[in, out] trajectory The modified trajectory after a rollout.
@@ -68,7 +70,6 @@ private:
   Sampler sampler_;
 
   std::vector<std::thread> threads_{16};
-  std::vector<std::pair<float, int>> costs_index_pair_;
 };
 
 } // namespace mpex

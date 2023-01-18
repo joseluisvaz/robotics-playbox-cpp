@@ -87,7 +87,7 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
   right_boundary_->set_xy(x_vals, y_vals, z_vals);
 
   IntelligentDriverModel::Config config;
-  config.v0 = 5.0;
+  config.v0 = 10.0;
   config.N = horizon;
   idm_ = IntelligentDriverModel(config);
 
@@ -130,7 +130,7 @@ void CEMMPCApplication::runCEM()
         .translate(Magnum::Vector3(SCALE(new_state[1]), SCALE(time_s), SCALE(new_state[0])));
   }
 
-  const auto set_xy_helper = [this](const auto &_trajectory, auto &path_entity)
+  const auto set_xy_helper = [this](const auto &_trajectory, auto &path_entity, auto color)
   {
     std::vector<float> x_vals;
     std::vector<float> y_vals;
@@ -145,13 +145,23 @@ void CEMMPCApplication::runCEM()
       t_vals.push_back(time_s);
     }
 
-    path_entity.set_xy(x_vals, y_vals, t_vals);
+    path_entity.set_xy(x_vals, y_vals, t_vals, color);
   };
+
+  auto max_iter = std::max_element(mpc_.costs_index_pair_.begin(), mpc_.costs_index_pair_.end());
+  auto min_iter = std::min_element(mpc_.costs_index_pair_.begin(), mpc_.costs_index_pair_.end());
+  auto max_cost = max_iter != mpc_.costs_index_pair_.end() ? max_iter->first : 1e9;
+  auto min_cost = min_iter != mpc_.costs_index_pair_.end() ? min_iter->first : -1e9;
 
   assert(path_entities_.size() == mpc_.candidate_trajectories_.size());
   for (int i = 0; i < path_entities_.size(); ++i)
   {
-    set_xy_helper(mpc_.candidate_trajectories_.at(i), *path_entities_.at(i));
+    auto cost = mpc_.costs_index_pair_[i].first;
+    auto color_value = (cost - min_cost) / (max_cost - min_cost);
+    
+    std::cout << "max: " << max_cost << " min: "  << min_cost << "cost: " << cost << " color: " << color_value << std::endl;
+    auto color = Magnum::Math::Color3(1.0f, 0.0f, static_cast<float>(color_value));
+    set_xy_helper(mpc_.candidate_trajectories_.at(i), *path_entities_.at(i), color);
   }
 
   typename IntelligentDriverModel::States lead_states =
@@ -162,7 +172,8 @@ void CEMMPCApplication::runCEM()
 
   for (int i = 0; i < trajectory.states.cols(); ++i)
   {
-    if (trajectory.states(1, i) < -2.0f && trajectory.states(1, i) > -8.0f)
+    // if (trajectory.states(1, i) < -2.0f && trajectory.states(1, i) > -8.0f)
+    if (true)
     {
       lead_states(0, i) = trajectory.states(0, i); // x positions
       lead_states(1, i) = trajectory.states(3, i); // speeds
