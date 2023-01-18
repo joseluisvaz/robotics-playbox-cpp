@@ -7,8 +7,8 @@
 #include <functional>
 #include <iostream>
 
-#include "finite_diff.hpp"
-#include "types.hpp"
+#include "common/finite_diff.hpp"
+#include "common/types.hpp"
 
 namespace RoboticsSandbox
 {
