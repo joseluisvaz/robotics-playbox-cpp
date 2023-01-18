@@ -3,10 +3,10 @@
 
 #include "Magnum/GL/DefaultFramebuffer.h"
 
-namespace RoboticsSandbox::Graphics
+namespace mpex::Graphics
 {
 
-TrajectoryObjects::TrajectoryObjects(Scene3D &scene, const int horizon_points)
+TrajectoryEntities::TrajectoryEntities(Scene3D &scene, const int horizon_points)
 {
   constexpr float avg_length{SCALE(4.5f)};
   constexpr float avg_width{SCALE(1.75f)};
@@ -20,22 +20,23 @@ TrajectoryObjects::TrajectoryObjects(Scene3D &scene, const int horizon_points)
   }
 }
 
-const std::vector<std::shared_ptr<Object3D>> &TrajectoryObjects::get_objects() const
+const std::vector<std::shared_ptr<Object3D>> &TrajectoryEntities::get_objects() const
 {
   return objects_;
 }
 
-const Vector3 &TrajectoryObjects::get_vehicle_extent() const
+const Vector3 &TrajectoryEntities::get_vehicle_extent() const
 {
   return vehicle_extent_;
 }
 
-PathObjects::PathObjects() : mesh_{GL::MeshPrimitive::LineStrip}
+LineEntity::LineEntity(Scene3D &scene) : mesh_{GL::MeshPrimitive::LineStrip}
 {
   mesh_.addVertexBuffer(buffer_, 0, Shaders::VertexColorGL3D::Position{}, Shaders::VertexColorGL3D::Color3{});
+  object_ptr_ = std::make_shared<Object3D>(&scene);
 };
 
-void PathObjects::set_path(std::vector<float> x, std::vector<float> y, std::vector<float> z, const Color3 &color)
+void LineEntity::set_xy(std::vector<float> &x, std::vector<float> &y, std::vector<float> &z, const Color3 &color)
 {
   data_.clear();
   for (int i = 0; i < x.size(); i++)
@@ -46,8 +47,8 @@ void PathObjects::set_path(std::vector<float> x, std::vector<float> y, std::vect
   mesh_.setCount(data_.size());
 };
 
-VertexColorDrawable::VertexColorDrawable(Object3D &object, Shaders::VertexColorGL3D &shader, GL::Mesh &mesh,
-                                         SceneGraph::DrawableGroup3D &drawables)
+VertexColorDrawable::VertexColorDrawable(
+    Object3D &object, Shaders::VertexColorGL3D &shader, GL::Mesh &mesh, SceneGraph::DrawableGroup3D &drawables)
     : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
 {
 }
@@ -57,9 +58,8 @@ void VertexColorDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph
   _shader.setTransformationProjectionMatrix(camera.projectionMatrix() * transformation).draw(_mesh);
 }
 
-WireframeDrawable::WireframeDrawable(Object3D &object, Shaders::MeshVisualizerGL3D &shader, GL::Mesh &mesh,
-                                     SceneGraph::DrawableGroup3D &drawables,
-                                     const Color3 &color)
+WireframeDrawable::WireframeDrawable(
+    Object3D &object, Shaders::MeshVisualizerGL3D &shader, GL::Mesh &mesh, SceneGraph::DrawableGroup3D &drawables, const Color3 &color)
     : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh), _color(color)
 {
 }
@@ -73,8 +73,7 @@ void WireframeDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph::
       .draw(_mesh);
 }
 
-FlatDrawable::FlatDrawable(Object3D &object, Shaders::FlatGL3D &shader, GL::Mesh &mesh,
-                           SceneGraph::DrawableGroup3D &drawables)
+FlatDrawable::FlatDrawable(Object3D &object, Shaders::FlatGL3D &shader, GL::Mesh &mesh, SceneGraph::DrawableGroup3D &drawables)
     : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
 {
 }
@@ -87,4 +86,4 @@ void FlatDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph::Camer
       .draw(_mesh);
 }
 
-} // namespace RoboticsSandbox::Graphics
+} // namespace mpex::Graphics

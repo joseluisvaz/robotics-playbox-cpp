@@ -4,7 +4,7 @@
 #include "common/types.hpp"
 #include "ilqr_mpc/ilqr_mpc.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 using namespace Eigen;
@@ -24,7 +24,7 @@ private:
   void run_ilqr();
 
   Magnum::GL::Mesh mesh_{Magnum::NoCreate};
-  Graphics::TrajectoryObjects trajectory_objects_;
+  Graphics::TrajectoryEntities trajectory_entities_;
 
   iLQR_MPC ilqr_mpc;
   bool is_running_{false};
@@ -32,4 +32,4 @@ private:
   Dynamics::State current_state_;
 };
 
-} // namespace RoboticsSandbox
+} // namespace mpex

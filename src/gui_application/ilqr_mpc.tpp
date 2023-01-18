@@ -9,10 +9,10 @@
 #include <autodiff/forward/dual/eigen.hpp>
 #include <easy/profiler.h>
 
-#include "common/finite_diff.hpp"
-#include "common/math.hpp"
-#include "common/types.hpp"
-#include "ilqr_mpc/ilqr_mpc.hpp"
+#include "finite_diff.hpp"
+#include "ilqr_mpc.hpp"
+#include "math.hpp"
+#include "types.hpp"
 
 namespace mpex
 {
@@ -24,33 +24,12 @@ namespace
 autodiff::dual2nd cost_function_diff(VectorXdual2nd x, VectorXdual2nd u)
 {
   VectorXdual2nd x_ref = VectorXdual2nd::Zero(x.size());
+  x_ref(3) = 0.0;
   x_ref(0) = 100.0;
   x_ref(1) = 0.0;
-  x_ref(2) = 0.0;
-  x_ref(3) = 0.0;
-  x_ref(4) = 0.0;
-  x_ref(5) = 0.0;
 
   VectorXdual2nd Q(x.size());
-  Q << 0.0, 0.0, 1.0, 0.0, 1.0, 1.0;
-  VectorXdual2nd R(u.size());
-  R << 0.1, 0.1;
-
-  return ((x - x_ref).transpose() * Q.asDiagonal() * (x - x_ref) + u.transpose() * R.asDiagonal() * u).value();
-}
-
-autodiff::dual2nd terminal_cost_function_diff(VectorXdual2nd x, VectorXdual2nd u)
-{
-  VectorXdual2nd x_ref = VectorXdual2nd::Zero(x.size());
-  x_ref(0) = 100.0;
-  x_ref(1) = 0.0;
-  x_ref(2) = 0.0;
-  x_ref(3) = 0.0;
-  x_ref(4) = 0.0;
-  x_ref(5) = 0.0;
-
-  VectorXdual2nd Q(x.size());
-  Q << 100.0, 100.0, 10.0, 10.0, 1.0, 1.0;
+  Q << 1.0, 1.0, 1.0, 0.0, 0.0, 0.0;
   VectorXdual2nd R(u.size());
   R << 0.1, 0.1;
 
@@ -59,12 +38,14 @@ autodiff::dual2nd terminal_cost_function_diff(VectorXdual2nd x, VectorXdual2nd u
 
 } // namespace
 
-iLQR_MPC::iLQR_MPC(const int horizon, const int iters) : horizon_(horizon), iters_(iters)
+template <typename DynamicsT>
+iLQR_MPC<DynamicsT>::iLQR_MPC(const int horizon, const int iters) : horizon_(horizon), iters_(iters)
 {
   initialize_matrices(horizon_);
 }
 
-void iLQR_MPC::plot_trajectory(const Trajectory &trajectory)
+template <typename DynamicsT>
+void iLQR_MPC<DynamicsT>::plot_trajectory(const Trajectory &trajectory)
 {
   vector<double> x_vals;
   vector<double> y_vals;
@@ -76,15 +57,13 @@ void iLQR_MPC::plot_trajectory(const Trajectory &trajectory)
   plt::plot(x_vals, y_vals);
 }
 
-void iLQR_MPC::rollout(Trajectory &trajectory)
+template <typename DynamicsT>
+void iLQR_MPC<DynamicsT>::rollout(Trajectory &trajectory)
 {
   auto &u = trajectory.actions;
   auto &x = trajectory.states;
 
-  // u = Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
-  sampler_.mean_ = Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
-  sampler_.stddev_ = Actions::Ones(trajectory.actions.rows(), trajectory.actions.cols());
-  u = sampler_();
+  u = Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
 
   double current_time_s{0.0f};
   for (size_t i = 0; i + 1 < static_cast<size_t>(horizon_ + 1); ++i)
@@ -96,11 +75,11 @@ void iLQR_MPC::rollout(Trajectory &trajectory)
   trajectory.times.at(horizon_) = current_time_s;
 }
 
-iLQR_MPC::Trajectory iLQR_MPC::solve(const Ref<State> &x0)
+template <typename DynamicsT>
+typename iLQR_MPC<DynamicsT>::Trajectory iLQR_MPC<DynamicsT>::solve(const Ref<State> &x0)
 {
   EASY_FUNCTION(profiler::colors::Grey);
   auto trajectory = Trajectory(horizon_ + 1);
-  trajectory.states.col(0) = x0; // Add initial state
   this->rollout(trajectory);
 
   cout.precision(17);
@@ -137,7 +116,9 @@ iLQR_MPC::Trajectory iLQR_MPC::solve(const Ref<State> &x0)
   return trajectory;
 }
 
-iLQR_MPC::Trajectory iLQR_MPC::forward_pass(const Trajectory &trajectory, const double alpha)
+template <typename DynamicsT>
+typename iLQR_MPC<DynamicsT>::Trajectory iLQR_MPC<DynamicsT>::forward_pass(const Trajectory &trajectory,
+                                                                           const double alpha)
 {
   EASY_FUNCTION(profiler::colors::Blue);
   Trajectory new_trajectory = Trajectory(horizon_ + 1);
@@ -151,16 +132,14 @@ iLQR_MPC::Trajectory iLQR_MPC::forward_pass(const Trajectory &trajectory, const 
   // Compute to horizon_ to account for the terminal state
   for (size_t i = 0; i + 1 < static_cast<size_t>(horizon_ + 1); ++i)
   {
-    new_trajectory.times[i] = trajectory.times[i];
     u.col(i) = u_bar.col(i) + alpha * k[i] + K[i] * (x.col(i) - x_bar.col(i));
     DynamicsT::step(x.col(i), u.col(i), x.col(i + 1));
   }
-
-  new_trajectory.times[horizon_] = trajectory.times[horizon_];
   return new_trajectory;
 }
 
-double iLQR_MPC::compute_cost(const Trajectory &trajectory)
+template <typename DynamicsT>
+double iLQR_MPC<DynamicsT>::compute_cost(const Trajectory &trajectory)
 {
   double cost = 0.0;
   for (int i{0}; i < horizon_; ++i)
@@ -168,13 +147,14 @@ double iLQR_MPC::compute_cost(const Trajectory &trajectory)
     cost += cost_function_diff(trajectory.states.col(i), trajectory.actions.col(i)).val.val;
   }
 
-  // Evaluate terminal_state;
+  const int n = horizon_;
   Vector zero_action = Vector::Zero(trajectory.actions.rows());
-  cost += terminal_cost_function_diff(trajectory.states.col(horizon_), zero_action).val.val;
+  cost += cost_function_diff(trajectory.states.col(n), zero_action).val.val;
   return cost;
 }
 
-void iLQR_MPC::backward_pass(const Trajectory &trajectory)
+template <typename DynamicsT>
+void iLQR_MPC<DynamicsT>::backward_pass(const Trajectory &trajectory)
 {
   EASY_FUNCTION(profiler::colors::Green);
   this->compute_derivatives(trajectory);
@@ -182,7 +162,7 @@ void iLQR_MPC::backward_pass(const Trajectory &trajectory)
   Vector Vx = lx.back();
   Matrix Vxx = lxx.back();
 
-  Matrix I = Matrix::Identity(DynamicsT::state_size, DynamicsT::state_size);
+  Matrix I = Matrix::Identity(state_size, state_size);
 
   for (int i = horizon_ - 1; i >= 0; --i)
   {
@@ -205,7 +185,8 @@ void iLQR_MPC::backward_pass(const Trajectory &trajectory)
   }
 }
 
-void iLQR_MPC::compute_derivatives(const Trajectory &trajectory)
+template <typename DynamicsT>
+void iLQR_MPC<DynamicsT>::compute_derivatives(const Trajectory &trajectory)
 {
   VectorXdual2nd x; // placeholder for the current state as differentiable type
   VectorXdual2nd u; // placeholder for the current action as differentiable type
@@ -219,8 +200,9 @@ void iLQR_MPC::compute_derivatives(const Trajectory &trajectory)
     x = trajectory.states.col(i);
     u = trajectory.actions.col(i);
 
-    fx[i] = jacobian(DynamicsT::step_diff<VectorXdual2nd>, wrt(x), at(x, u));
-    fu[i] = jacobian(DynamicsT::step_diff<VectorXdual2nd>, wrt(u), at(x, u));
+    static constexpr auto &&dynamics_fn = DynamicsT::template step_diff<VectorXdual2nd>;
+    fx[i] = jacobian(dynamics_fn, wrt(x), at(x, u));
+    fu[i] = jacobian(dynamics_fn, wrt(u), at(x, u));
 
     // Compute full hessian and full gradient
     state_action_hessian = hessian(cost_function_diff, wrt(x, u), at(x, u), cost, state_action_gradient);
@@ -236,14 +218,12 @@ void iLQR_MPC::compute_derivatives(const Trajectory &trajectory)
   // Final cost hessian and gradient calculation
   x = trajectory.states.col(horizon_ - 1);
   u = trajectory.actions.col(horizon_ - 1);
-  lxx[horizon_] = hessian(terminal_cost_function_diff, wrt(x), at(x, u), cost, lx[horizon_]);
+  lxx[horizon_] = hessian(cost_function_diff, wrt(x), at(x, u), cost, lx[horizon_]);
 }
 
-void iLQR_MPC::initialize_matrices(const int horizon)
+template <typename DynamicsT>
+void iLQR_MPC<DynamicsT>::initialize_matrices(const int horizon)
 {
-  const int state_size = DynamicsT::state_size;
-  const int action_size = DynamicsT::action_size;
-
   fx.resize(horizon_);
   fu.resize(horizon_);
   lx.resize(horizon_ + 1);

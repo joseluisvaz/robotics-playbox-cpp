@@ -10,7 +10,7 @@
 #include "common/math.hpp"
 #include "common/types.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 template <typename DynamicsT>
@@ -143,4 +143,4 @@ const typename DynamicsT::Trajectory &CEM_MPC<DynamicsT>::get_trajectory() const
   return trajectory_;
 }
 
-} // namespace RoboticsSandbox
+} // namespace mpex

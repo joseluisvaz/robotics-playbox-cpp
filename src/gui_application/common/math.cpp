@@ -1,6 +1,6 @@
 #include "math.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 double angle_diff(double a, double b)
@@ -13,4 +13,4 @@ double angle_diff(double a, double b)
   return dif - 180.0;
 }
 
-} // namespace RoboticsSandbox
+} // namespace mpex

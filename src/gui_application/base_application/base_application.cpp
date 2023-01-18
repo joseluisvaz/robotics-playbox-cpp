@@ -47,8 +47,7 @@ BaseApplication::BaseApplication(const Arguments &arguments) : Platform::Applica
     Configuration conf;
     conf.setTitle("Robotics Sandbox")
         .setSize(conf.size(), dpiScaling)
-        .setWindowFlags(Configuration::WindowFlag::Resizable | Configuration::WindowFlag::Maximized |
-                        Configuration::WindowFlag::Tooltip);
+        .setWindowFlags(Configuration::WindowFlag::Resizable | Configuration::WindowFlag::Maximized | Configuration::WindowFlag::Tooltip);
     GLConfiguration glConf;
     glConf.setSampleCount(dpiScaling.max() < 2.0f ? 8 : 2);
     if (!tryCreate(conf, glConf))
@@ -65,41 +64,39 @@ BaseApplication::BaseApplication(const Arguments &arguments) : Platform::Applica
 
     /* Setup proper blending to be used by ImGui */
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
-    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
-                                   GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha, GL::Renderer::BlendFunction::OneMinusSourceAlpha);
     GL::Renderer::setLineWidth(3.0f);
   }
 
   /* Shaders, renderer setup */
-  _vertexColorShader = Shaders::VertexColorGL3D{};
+  vertex_color_shader_ = Shaders::VertexColorGL3D{};
   _flatShader = Shaders::FlatGL3D{};
   // NOTE: NoGeometryShader is needed for rendering
-  _wireframe_shader = Shaders::MeshVisualizerGL3D{Shaders::MeshVisualizerGL3D::Configuration{}.setFlags(
+  wireframe_shader_ = Shaders::MeshVisualizerGL3D{Shaders::MeshVisualizerGL3D::Configuration{}.setFlags(
       Shaders::MeshVisualizerGL3D::Flag::Wireframe | Shaders::MeshVisualizerGL3D::Flag::NoGeometryShader)};
 
   GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 
   /* Grid */
-  _grid_mesh = MeshTools::compile(Primitives::grid3DWireframe({15, 15}));
-  auto grid_object = new Object3D{&_scene};
+  grid_mesh_ = MeshTools::compile(Primitives::grid3DWireframe({15, 15}));
+  auto grid_object = new Object3D{&scene_};
   (*grid_object).rotateX(90.0_degf).scale(Vector3{15.0f});
-  new Graphics::FlatDrawable{*grid_object, _flatShader, _grid_mesh, _drawables};
+  new Graphics::FlatDrawable{*grid_object, _flatShader, grid_mesh_, drawable_group_};
 
   /* Origin Axis */
-  _origin_axis_mesh = MeshTools::compile(Primitives::axis3D());
-  auto origin_axis_object = new Object3D(&_scene);
-  new Graphics::VertexColorDrawable{*origin_axis_object, _vertexColorShader, _origin_axis_mesh, _drawables};
+  origin_axis_mesh_ = MeshTools::compile(Primitives::axis3D());
+  auto origin_axis_object = new Object3D(&scene_);
+  new Graphics::VertexColorDrawable{*origin_axis_object, vertex_color_shader_, origin_axis_mesh_, drawable_group_};
 
   /* Set up the camera */
-  _cameraObject = new Object3D{&_scene};
+  camera_object_ = new Object3D{&scene_};
   this->resetCameraPosition();
 
-  _camera = new SceneGraph::Camera3D{*_cameraObject};
-  _camera->setProjectionMatrix(
-      Matrix4::perspectiveProjection(45.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 100.0f));
+  camera_ = new SceneGraph::Camera3D{*camera_object_};
+  camera_->setProjectionMatrix(Matrix4::perspectiveProjection(45.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 100.0f));
 
   /* Initialize initial depth to the value at scene center */
-  _lastDepth = ((_camera->projectionMatrix() * _camera->cameraMatrix()).transformPoint({}).z() + 1.0f) * 0.5f;
+  _lastDepth = ((camera_->projectionMatrix() * camera_->cameraMatrix()).transformPoint({}).z() + 1.0f) * 0.5f;
 }
 
 Float BaseApplication::depthAt(const Vector2i &windowPosition)
@@ -111,8 +108,9 @@ Float BaseApplication::depthAt(const Vector2i &windowPosition)
   const Vector2i fbPosition{position.x(), GL::defaultFramebuffer.viewport().sizeY() - position.y() - 1};
 
   GL::defaultFramebuffer.mapForRead(GL::DefaultFramebuffer::ReadAttachment::Front);
-  Image2D data = GL::defaultFramebuffer.read(Range2Di::fromSize(fbPosition, Vector2i{1}).padded(Vector2i{2}),
-                                             {GL::PixelFormat::DepthComponent, GL::PixelType::Float});
+  Image2D data =
+      GL::defaultFramebuffer
+          .read(Range2Di::fromSize(fbPosition, Vector2i{1}).padded(Vector2i{2}), {GL::PixelFormat::DepthComponent, GL::PixelType::Float});
 
   /* TODO: change to just Math::min<Float>(data.pixels<Float>() when the
      batch functions in Math can handle 2D views */
@@ -130,9 +128,9 @@ Vector3 BaseApplication::unproject(const Vector2i &windowPosition, Float depth) 
   /*
       Use the following to get global coordinates instead of
      camera-relative:
-      (_cameraObject->absoluteTransformationMatrix()*_camera->projectionMatrix().inverted()).transformPoint(in)
+      (camera_object_->absoluteTransformationMatrix()*camera_->projectionMatrix().inverted()).transformPoint(in)
   */
-  return _camera->projectionMatrix().inverted().transformPoint(in);
+  return camera_->projectionMatrix().inverted().transformPoint(in);
 }
 
 void BaseApplication::viewportEvent(ViewportEvent &event)
@@ -144,7 +142,7 @@ void BaseApplication::viewportEvent(ViewportEvent &event)
   _imgui.relayout(Vector2{event.windowSize()} / event.dpiScaling(), event.windowSize(), event.framebufferSize());
 
   /* Recompute the camera's projection matrix */
-  _camera->setViewport(event.framebufferSize());
+  camera_->setViewport(event.framebufferSize());
 }
 
 void BaseApplication::keyPressEvent(KeyEvent &event)
@@ -155,18 +153,17 @@ void BaseApplication::keyPressEvent(KeyEvent &event)
   /* Reset the transformation to the original view */
   if (event.key() == KeyEvent::Key::NumZero)
   {
-    (*_cameraObject).resetTransformation().translate(Vector3::zAxis(5.0f)).rotateX(-15.0_degf).rotateY(30.0_degf);
+    (*camera_object_).resetTransformation().translate(Vector3::zAxis(5.0f)).rotateX(-15.0_degf).rotateY(30.0_degf);
     redraw();
     return;
 
     /* Axis-aligned view */
   }
-  else if (event.key() == KeyEvent::Key::NumOne || event.key() == KeyEvent::Key::NumThree ||
-           event.key() == KeyEvent::Key::NumSeven)
+  else if (event.key() == KeyEvent::Key::NumOne || event.key() == KeyEvent::Key::NumThree || event.key() == KeyEvent::Key::NumSeven)
   {
     /* Start with current camera translation with the rotation inverted */
     const Vector3 viewTranslation =
-        _cameraObject->transformation().rotationScaling().inverted() * _cameraObject->transformation().translation();
+        camera_object_->transformation().rotationScaling().inverted() * camera_object_->transformation().translation();
 
     /* Front/back */
     const Float multiplier = event.modifiers() & KeyEvent::Modifier::Ctrl ? -1.0f : 1.0f;
@@ -181,7 +178,7 @@ void BaseApplication::keyPressEvent(KeyEvent &event)
     else
       CORRADE_INTERNAL_ASSERT_UNREACHABLE();
 
-    _cameraObject->setTransformation(transformation * Matrix4::translation(viewTranslation));
+    camera_object_->setTransformation(transformation * Matrix4::translation(viewTranslation));
     redraw();
   }
 }
@@ -199,12 +196,12 @@ void BaseApplication::mousePressEvent(MouseEvent &event)
 
   const Float currentDepth = depthAt(event.position());
   const Float depth = currentDepth == 1.0f ? _lastDepth : currentDepth;
-  _translationPoint = unproject(event.position(), depth);
+  translation_point_ = unproject(event.position(), depth);
   /* Update the rotation point only if we're not zooming against infinite
      depth or if the original rotation point is not yet initialized */
-  if (currentDepth != 1.0f || _rotationPoint.isZero())
+  if (currentDepth != 1.0f || rotation_point_.isZero())
   {
-    _rotationPoint = _translationPoint;
+    rotation_point_ = translation_point_;
     _lastDepth = depth;
   }
 }
@@ -214,10 +211,10 @@ void BaseApplication::mouseMoveEvent(MouseMoveEvent &event)
   if (_imgui.handleMouseMoveEvent(event))
     return;
 
-  if (_lastPosition == Vector2i{-1})
-    _lastPosition = event.position();
-  const Vector2i delta = event.position() - _lastPosition;
-  _lastPosition = event.position();
+  if (last_position_ == Vector2i{-1})
+    last_position_ = event.position();
+  const Vector2i delta = event.position() - last_position_;
+  last_position_ = event.position();
 
   if (!event.buttons())
     return;
@@ -226,15 +223,16 @@ void BaseApplication::mouseMoveEvent(MouseMoveEvent &event)
   if (event.modifiers() & MouseMoveEvent::Modifier::Shift)
   {
     const Vector3 p = unproject(event.position(), _lastDepth);
-    _cameraObject->translateLocal(_translationPoint - p); /* is Z always 0? */
-    _translationPoint = p;
+    camera_object_->translateLocal(translation_point_ - p); /* is Z always 0? */
+    translation_point_ = p;
 
     /* Rotate around rotation point */
   }
   else
   {
-    _cameraObject->transformLocal(Matrix4::translation(_rotationPoint) * Matrix4::rotationX(-0.01_radf * delta.y()) *
-                                  Matrix4::rotationY(-0.01_radf * delta.x()) * Matrix4::translation(-_rotationPoint));
+    camera_object_->transformLocal(
+        Matrix4::translation(rotation_point_) * Matrix4::rotationX(-0.01_radf * delta.y()) * Matrix4::rotationY(-0.01_radf * delta.x()) *
+        Matrix4::translation(-rotation_point_));
   }
 
   redraw();
@@ -254,9 +252,9 @@ void BaseApplication::mouseScrollEvent(MouseScrollEvent &event)
   const Vector3 p = unproject(event.position(), depth);
   /* Update the rotation point only if we're not zooming against infinite
      depth or if the original rotation point is not yet initialized */
-  if (currentDepth != 1.0f || _rotationPoint.isZero())
+  if (currentDepth != 1.0f || rotation_point_.isZero())
   {
-    _rotationPoint = p;
+    rotation_point_ = p;
     _lastDepth = depth;
   }
 
@@ -265,7 +263,7 @@ void BaseApplication::mouseScrollEvent(MouseScrollEvent &event)
     return;
 
   /* Move towards/backwards the rotation point in cam coords */
-  _cameraObject->translateLocal(_rotationPoint * direction * 0.1f);
+  camera_object_->translateLocal(rotation_point_ * direction * 0.1f);
 
   event.setAccepted();
   redraw();
@@ -295,7 +293,7 @@ void BaseApplication::drawEvent()
   // Execute the main content of the application, data generation, adding to drawables etc.
   execute();
 
-  _camera->draw(_drawables);
+  camera_->draw(drawable_group_);
 
   // Set Imgui drawables
   show_menu();
@@ -324,11 +322,11 @@ void BaseApplication::drawEvent()
 
 void BaseApplication::resetCameraPosition()
 {
-  if (!_cameraObject)
+  if (!camera_object_)
   {
     return;
   }
-  (*_cameraObject)
+  (*camera_object_)
       .resetTransformation()
       .translate(Vector3::zAxis(SCALE(200.0f)))
       .translate(Vector3::xAxis(SCALE(50.0f)))

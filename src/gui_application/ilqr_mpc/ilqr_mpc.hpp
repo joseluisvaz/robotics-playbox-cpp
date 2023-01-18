@@ -4,10 +4,10 @@
 #include <Eigen/StdVector>
 #include <array>
 
-#include "third_party/matplotlibcpp.h"
 #include "common/math.hpp"
 #include "common/types.hpp"
-namespace RoboticsSandbox
+#include "third_party/matplotlibcpp.h"
+namespace mpex
 {
 using namespace Eigen;
 
@@ -17,7 +17,7 @@ namespace plt = matplotlibcpp;
 class iLQR_MPC
 {
   using DynamicsT = EigenKinematicBicycle;
-  
+
   using State = typename DynamicsT::State;
   using Action = typename DynamicsT::Action;
   using States = typename DynamicsT::States;
@@ -73,4 +73,4 @@ private:
   VectorOfEigen<Vector> k; // [a] length (n)
 };
 
-} // namespace RoboticsSandbox
+} // namespace mpex

@@ -38,7 +38,7 @@ namespace Examples
 {
 
 using namespace Math::Literals;
-using namespace RoboticsSandbox;
+using namespace mpex;
 
 class BaseApplication : public Platform::Application
 {
@@ -55,14 +55,14 @@ public:
   virtual void show_menu() = 0;
   virtual void execute() = 0;
 
-  Scene3D _scene;
-  SceneGraph::DrawableGroup3D _drawables;
+  Scene3D scene_;
+  SceneGraph::DrawableGroup3D drawable_group_;
 
   // Shader to render meshes with position and color information
-  Shaders::VertexColorGL3D _vertexColorShader{NoCreate};
+  Shaders::VertexColorGL3D vertex_color_shader_{NoCreate};
 
   // Shader to render meshes with color information
-  Shaders::MeshVisualizerGL3D _wireframe_shader{NoCreate};
+  Shaders::MeshVisualizerGL3D wireframe_shader_{NoCreate};
 
 private:
   Float depthAt(const Vector2i &windowPosition);
@@ -84,14 +84,14 @@ private:
 
   ImGuiIntegration::Context _imgui{NoCreate};
   Shaders::FlatGL3D _flatShader{NoCreate};
-  GL::Mesh _grid_mesh{NoCreate}, _origin_axis_mesh{NoCreate};
+  GL::Mesh grid_mesh_{NoCreate}, origin_axis_mesh_{NoCreate};
 
-  Object3D *_cameraObject;
-  SceneGraph::Camera3D *_camera;
+  Object3D *camera_object_;
+  SceneGraph::Camera3D *camera_;
 
   Float _lastDepth;
-  Vector2i _lastPosition{-1};
-  Vector3 _rotationPoint, _translationPoint;
+  Vector2i last_position_{-1};
+  Vector3 rotation_point_, translation_point_;
 };
 
 } // namespace Examples

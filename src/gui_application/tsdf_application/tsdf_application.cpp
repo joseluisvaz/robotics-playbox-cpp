@@ -10,7 +10,7 @@
 #include "graphics/graphics_objects.hpp"
 #include "tsdf_application/tsdf_application.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 namespace
@@ -80,13 +80,13 @@ TemplateApplication::TemplateApplication(const Arguments &arguments) : Magnum::E
   mesh_ = Magnum::GL::Mesh{};
   mesh_.setPrimitive(Magnum::GL::MeshPrimitive::Triangles)
       .setCount(data_.size())
-      .addVertexBuffer(Magnum::GL::Buffer(data_), 0, Magnum::Shaders::VertexColorGL3D::Position{},
-                       Magnum::Shaders::VertexColorGL3D::Color3{});
+      .addVertexBuffer(
+          Magnum::GL::Buffer(data_), 0, Magnum::Shaders::VertexColorGL3D::Position{}, Magnum::Shaders::VertexColorGL3D::Color3{});
   // .setIndexBuffer(Magnum::GL::Buffer(indices), 0, Magnum::GL::MeshIndexType::UnsignedInt);
 
   /* Triangle object */
-  auto triangle = new Object3D{&_scene};
-  new Graphics::VertexColorDrawable{*triangle, _vertexColorShader, mesh_, _drawables};
+  auto triangle = new Object3D{&scene_};
+  new Graphics::VertexColorDrawable{*triangle, vertex_color_shader_, mesh_, drawable_group_};
 }
 
 void TemplateApplication::execute() {}
@@ -96,6 +96,6 @@ void TemplateApplication::show_menu()
   ImGui::ShowDemoWindow();
 }
 
-} // namespace RoboticsSandbox
+} // namespace mpex
 
-MAGNUM_APPLICATION_MAIN(RoboticsSandbox::TemplateApplication)
+MAGNUM_APPLICATION_MAIN(mpex::TemplateApplication)

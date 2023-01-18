@@ -10,7 +10,7 @@
 #include "common/types.hpp"
 #include "graphics/graphics_objects.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 using namespace Eigen;
@@ -28,15 +28,26 @@ private:
 
   void runCEM();
 
+  // Visualization
   Magnum::GL::Mesh _mesh{Magnum::NoCreate};
-  Graphics::TrajectoryObjects trajectory_objects_;
-  Graphics::TrajectoryObjects trajectory_objects_idm_;
-  std::vector<std::shared_ptr<Graphics::PathObjects>> path_objects_;
+  Graphics::TrajectoryEntities trajectory_entities_;
+  Graphics::TrajectoryEntities trajectory_entities_idm_;
+  std::vector<std::shared_ptr<Graphics::LineEntity>> path_entities_;
+
+  std::shared_ptr<Graphics::LineEntity> left_boundary_;
+  std::shared_ptr<Graphics::LineEntity> centerline_;
+  std::shared_ptr<Graphics::LineEntity> right_boundary_;
+
+  // Algorithm
   CEM_MPC<Dynamics> mpc_;
   IntelligentDriverModel idm_;
 
   // flags
   bool is_running_{false};
+
+  // state of the vehicle
+  Dynamics::State current_state_;
+  IntelligentDriverModel::State idm_state_;
 };
 
-} // namespace RoboticsSandbox
+} // namespace mpex

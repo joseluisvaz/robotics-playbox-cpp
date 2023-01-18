@@ -3,7 +3,7 @@
 
 #include "base_application//base_application.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 using namespace Eigen;
@@ -27,4 +27,4 @@ private:
   Magnum::GL::Mesh mesh_{Magnum::NoCreate};
 };
 
-} // namespace RoboticsSandbox
+} // namespace mpex

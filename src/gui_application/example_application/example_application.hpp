@@ -2,7 +2,7 @@
 
 #include "base_application/base_application.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 class TemplateApplication : public Magnum::Examples::BaseApplication
@@ -16,4 +16,4 @@ private:
   virtual void execute();
 };
 
-} // namespace RoboticsSandbox
+} // namespace mpex

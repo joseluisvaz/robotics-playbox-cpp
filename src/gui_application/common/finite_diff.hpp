@@ -3,7 +3,7 @@
 
 #include "types.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 using namespace std;
@@ -118,4 +118,4 @@ Matrix calc_jacobian_u(Function dynamics, const State &x, const Action &u, doubl
   return Ju;
 }
 
-} // namespace RoboticsSandbox
+} // namespace mpex

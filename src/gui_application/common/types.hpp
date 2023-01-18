@@ -28,7 +28,7 @@
 #include "math.hpp"
 #include <iostream>
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 using namespace Eigen;
@@ -159,14 +159,26 @@ public:
     new_state[0] = state[0] + ts * state[1];
     new_state[1] = state[1] + ts * action[0];
   }
+  static State step_(const Ref<const State> &state, const Ref<const Action> &action)
+  {
+    State new_state = State::Zero();
+    new_state[0] = state[0] + ts * state[1];
+    new_state[1] = state[1] + ts * action[0];
+    return new_state;
+  }
 };
 
 struct CostFunction
 {
   using D = EigenKinematicBicycle;
 
-  double evaluate_state_action_pair(const Ref<const D::State> &s, const Ref<const D::Action> &a, const double w_s[],
-                                    const double w_a[], const double r_s[], const double r_a[]) const
+  double evaluate_state_action_pair(
+      const Ref<const D::State> &s,
+      const Ref<const D::Action> &a,
+      const double w_s[],
+      const double w_a[],
+      const double r_s[],
+      const double r_a[]) const
   {
     double cost = 0.0f;
     for (int i = 0; i < D::state_size; ++i)
@@ -195,8 +207,7 @@ struct CostFunction
     {
       cost += evaluate_state_action_pair(states.col(i), actions.col(i), w_s_, w_a_, r_s_, r_a_);
     }
-    cost += evaluate_state_action_pair(states.col(states.cols() - 1), actions.col(actions.cols() - 1UL), W_s_, W_a_,
-                                       R_s_, R_a_);
+    cost += evaluate_state_action_pair(states.col(states.cols() - 1), actions.col(actions.cols() - 1UL), W_s_, W_a_, R_s_, R_a_);
     return cost;
   }
 
@@ -213,4 +224,4 @@ struct CostFunction
   double R_a_[D::state_size]{0.0f, 0.0f};                         // terminal action reference
 };
 
-} // namespace RoboticsSandbox
+} // namespace mpex

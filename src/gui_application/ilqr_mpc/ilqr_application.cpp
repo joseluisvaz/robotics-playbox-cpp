@@ -9,7 +9,7 @@
 #include "ilqr_application.hpp"
 #include "ilqr_mpc.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 namespace
@@ -24,13 +24,13 @@ const auto gray = Magnum::Math::Color3(0.4f, 0.4f, 0.4f);
 IlqrMain::IlqrMain(const Arguments &arguments) : Magnum::Examples::BaseApplication(arguments)
 {
   constexpr int horizon = 20;
-  trajectory_objects_ = Graphics::TrajectoryObjects(_scene, horizon);
+  trajectory_entities_ = Graphics::TrajectoryEntities(scene_, horizon);
   mesh_ = Magnum::MeshTools::compile(Magnum::Primitives::cubeWireframe());
 
   auto color = red; // first element is the current state and must be red.
-  for (auto &object : trajectory_objects_.get_objects())
+  for (auto &object : trajectory_entities_.get_objects())
   {
-    new Graphics::WireframeDrawable{*object, _wireframe_shader, mesh_, _drawables, color};
+    new Graphics::WireframeDrawable{*object, wireframe_shader_, mesh_, drawable_group_, color};
     color = gray; // the rest of the wireframes will be gray.
   }
 
@@ -60,11 +60,11 @@ void IlqrMain::run_ilqr()
   {
     Dynamics::State new_state = trajectory.states.col(i);
     auto time_s = trajectory.times.at(i);
-    auto &object = trajectory_objects_.get_objects().at(i);
+    auto &object = trajectory_entities_.get_objects().at(i);
 
     (*object)
         .resetTransformation()
-        .scale(trajectory_objects_.get_vehicle_extent())
+        .scale(trajectory_entities_.get_vehicle_extent())
         .translate(Magnum::Vector3(0.0f, 0.0f, SCALE(1.5f))) // move half wheelbase forward
         .rotateY(Magnum::Math::Rad(static_cast<float>(new_state[2])))
         .translate(Magnum::Vector3(SCALE(new_state[1]), SCALE(time_s), SCALE(new_state[0])));
@@ -101,6 +101,6 @@ void IlqrMain::show_menu()
   ImGui::End();
 }
 
-} // namespace RoboticsSandbox
+} // namespace mpex
 
-MAGNUM_APPLICATION_MAIN(RoboticsSandbox::IlqrMain)
+MAGNUM_APPLICATION_MAIN(mpex::IlqrMain)

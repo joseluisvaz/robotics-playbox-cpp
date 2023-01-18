@@ -10,7 +10,7 @@
 #include "common/finite_diff.hpp"
 #include "common/types.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 using namespace Eigen;
@@ -136,4 +136,4 @@ TEST_CASE("Test finite differences bycicle model")
   cout << "H_ux_= " << H_ux_ << endl;
 }
 
-} // namespace RoboticsSandbox
+} // namespace mpex

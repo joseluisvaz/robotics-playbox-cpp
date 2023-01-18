@@ -2,7 +2,7 @@
 #include <Eigen/Dense>
 #include <random>
 
-namespace RoboticsSandbox 
+namespace mpex
 {
 
 using namespace Eigen;
@@ -44,4 +44,4 @@ struct NormalRandomVariable
   MatrixT stddev_;
 };
 
-} // namespace GuiApplication
+} // namespace mpex

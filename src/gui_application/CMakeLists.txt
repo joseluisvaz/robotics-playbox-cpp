@@ -48,10 +48,10 @@ add_subdirectory(tsdf_application)
 
 # Compiles tests for the repo
 file(GLOB_RECURSE TEST_FILES "*_test.cpp")
-add_executable(roboticssandbox-tests main.cpp ${TEST_FILES} finite_diff.hpp)
-target_link_libraries(roboticssandbox-tests 
+add_executable(mpex-tests main.cpp ${TEST_FILES} common/finite_diff.hpp)
+target_link_libraries(mpex-tests 
 PUBLIC
     Common
     Catch2::Catch2WithMain
     Eigen3::Eigen)
-set_target_properties(roboticssandbox-tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+set_target_properties(mpex-tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)

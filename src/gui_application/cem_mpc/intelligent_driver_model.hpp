@@ -28,7 +28,7 @@
 #include "common/math.hpp"
 #include "common/types.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 using namespace Eigen;
 
@@ -65,7 +65,7 @@ public:
   IntelligentDriverModel(const Config &config) : config_(std::move(config)){};
 
   // rollout a trajectory for this model.
-  States& rollout(const Ref<const State> &x0, const Ref<const States> &x_lead_states)
+  States &rollout(const Ref<const State> &x0, const Ref<const States> &x_lead_states)
   {
     states_ = States::Zero(state_size, x_lead_states.cols());
     states_.col(0) = x0;
@@ -78,7 +78,7 @@ public:
     return states_;
   };
 
-  States& get_states()
+  States &get_states()
   {
     return states_;
   };
@@ -99,4 +99,4 @@ public:
   States states_;
 };
 
-} // namespace RoboticsSandbox
+} // namespace mpex

@@ -2,7 +2,7 @@
 #include "example_application/example_application.hpp"
 #include "base_application/base_application.hpp"
 
-namespace RoboticsSandbox
+namespace mpex
 {
 
 TemplateApplication::TemplateApplication(const Arguments &arguments) : Magnum::Examples::BaseApplication(arguments)
@@ -20,6 +20,6 @@ void TemplateApplication::show_menu()
   ImGui::ShowDemoWindow();
 }
 
-} // namespace RoboticsSandbox
+} // namespace mpex
 
-MAGNUM_APPLICATION_MAIN(RoboticsSandbox::TemplateApplication)
+MAGNUM_APPLICATION_MAIN(mpex::TemplateApplication)

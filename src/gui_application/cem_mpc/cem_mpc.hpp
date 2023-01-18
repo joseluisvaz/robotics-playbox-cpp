@@ -6,7 +6,7 @@
 #include <array>
 #include <thread>
 
-namespace RoboticsSandbox
+namespace mpex
 {
 using namespace Eigen;
 
@@ -71,4 +71,4 @@ private:
   std::vector<std::pair<float, int>> costs_index_pair_;
 };
 
-} // namespace RoboticsSandbox
+} // namespace mpex
