@@ -36,7 +36,6 @@ public:
   Lane(Polyline2D centerline, Polyline2D left_boundary, Polyline2D right_boundary);
   [[nodiscard]] bool is_inside(const P2D point) const noexcept;
 
-private:
   Polyline2D centerline_;
   Polyline2D left_boundary_;
   Polyline2D right_boundary_;

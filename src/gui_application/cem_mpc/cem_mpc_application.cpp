@@ -105,9 +105,9 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
 
   // Initialize current state for the simulation, kinematic bicycle.
   current_state_ = Dynamics::State();
-  current_state_ << 0.0, 0.0, 0.0, 10.0, 0.0, 0.0;
+  current_state_ << -10.0, 0.0, 0.0, 10.0, 0.0, 0.0;
   idm_state_ = IntelligentDriverModel::State();
-  idm_state_ << -20.0, 5.0;
+  idm_state_ << -30.0, 5.0;
 
   // run one iteration of CEM to show in the window
   runCEM();
@@ -180,13 +180,15 @@ void CEMMPCApplication::runCEM()
   lead_states.row(0).array() = 1000.0f; // initialize x positions with high value but not too high.
   lead_states.row(1).array() = idm_.config_.v0;
 
+  const auto agent_xy = P2D(idm_state_[0], idm_state_[1]);
+  const auto agent_dist_m = lane_.centerline_.calc_progress_coord(agent_xy);
+
   for (size_t i{0}; i < trajectory.states.cols(); ++i)
   {
-    const auto ego_location = P2D(trajectory.states(0, i), trajectory.states(1, i));
-    bool is_inside = lane_.is_inside(ego_location);
+    const auto ego_xy = P2D(trajectory.states(0, i), trajectory.states(1, i));
+    const auto ego_dist_m = lane_.centerline_.calc_progress_coord(ego_xy);
 
-    std::cout << "is_inside: " << is_inside << std::endl;
-    if (is_inside)
+    if (lane_.is_inside(ego_xy) && ego_dist_m > agent_dist_m)
     {
       lead_states(0, i) = trajectory.states(0, i); // x positions
       lead_states(1, i) = trajectory.states(3, i); // speeds
@@ -212,6 +214,11 @@ void CEMMPCApplication::runCEM()
   current_state_ = Dynamics::step_(current_state_, current_action);
   idm_state_ = SingleIntegrator::step_(idm_state_, idm_action);
 
+  const auto ego_xy = P2D(current_state_[0], current_state_[1]);
+  const auto ego_dist_m = lane_.centerline_.calc_progress_coord(ego_xy);
+
+  std::cout << "progress: -- " << ego_dist_m << std::endl;
+
   EASY_END_BLOCK;
 }
 
@@ -232,8 +239,8 @@ void CEMMPCApplication::show_menu()
 
   if (ImGui::Button("Reset state"))
   {
-    current_state_ << 0.0, 0.0, 0.0, 10.0, 0.0, 0.0;
-    idm_state_ << -20.0, 5.0;
+    current_state_ << -10.0, 0.0, 0.0, 10.0, 0.0, 0.0;
+    idm_state_ << -30.0, 5.0;
     redraw();
   }
 
