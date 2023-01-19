@@ -33,7 +33,7 @@ TEST_CASE("Test pnpoly")
 
 TEST_CASE("Test is_between_polylines")
 {
-  using geometry::Point2D;
+  using geometry::P2D;
   using geometry::Polyline2D;
 
   // define unit box
@@ -45,14 +45,14 @@ TEST_CASE("Test is_between_polylines")
   {
     const double x = 0.5;
     const double y = 0.5;
-    CHECK(is_between_polylines(polyline_a, polyline_b, Point2D(x, y)));
+    CHECK(is_between_polylines(polyline_a, polyline_b, P2D(x, y)));
   }
 
   SECTION("Test outside of box")
   {
     const double x = 1.5;
     const double y = 1.5;
-    CHECK_FALSE(is_between_polylines(polyline_a, polyline_b, Point2D(x, y)));
+    CHECK_FALSE(is_between_polylines(polyline_a, polyline_b, P2D(x, y)));
   }
 }
 } // namespace environment

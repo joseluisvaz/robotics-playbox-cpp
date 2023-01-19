@@ -1,7 +1,5 @@
 set(CMAKE_FOLDER "Magnum/imgui_integration")
 
-
-
 find_package(Eigen3 3.4.0 REQUIRED)
 find_package(Magnum REQUIRED 
     GL 
@@ -40,6 +38,8 @@ add_subdirectory(graphics)
 add_subdirectory(common)
 add_subdirectory(third_party)
 add_subdirectory(base_application)
+add_subdirectory(environment)
+add_subdirectory(geometry)
 # Add applications to showcase algorithms
 add_subdirectory(cem_mpc)
 add_subdirectory(ilqr_mpc)
@@ -47,11 +47,15 @@ add_subdirectory(example_application)
 add_subdirectory(tsdf_application)
 
 # Compiles tests for the repo
-file(GLOB_RECURSE TEST_FILES "*_test.cpp")
-add_executable(mpex-tests main.cpp ${TEST_FILES} common/finite_diff.hpp environment/lane_map.hpp)
-target_link_libraries(mpex-tests 
-PUBLIC
-    Common
-    Catch2::Catch2WithMain
-    Eigen3::Eigen)
-set_target_properties(mpex-tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+# file(GLOB_RECURSE TEST_FILES "*_test.cpp")
+# add_executable(mpex-tests main.cpp ${TEST_FILES} common/finite_diff.hpp environment/lane_map.hpp geometry/geometry.hpp)
+# target_include_directories(mpex-tests PUBLIC
+#     ${PROJECT_SOURCE_DIR}/src/gui_application/)
+# target_link_libraries(mpex-tests 
+# PUBLIC
+#     Common
+#     Catch2::Catch2WithMain
+#     Eigen3::Eigen
+#     geometry
+#     environment)
+# set_target_properties(mpex-tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)

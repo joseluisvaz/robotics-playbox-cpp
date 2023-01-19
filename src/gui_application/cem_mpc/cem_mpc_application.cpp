@@ -17,7 +17,7 @@ namespace mpex
 namespace
 {
 
-using geometry::Point2D;
+using geometry::P2D;
 using geometry::Polyline2D;
 
 const auto red_color = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
@@ -182,7 +182,7 @@ void CEMMPCApplication::runCEM()
 
   for (size_t i{0}; i < trajectory.states.cols(); ++i)
   {
-    const auto ego_location = Point2D(trajectory.states(0, i), trajectory.states(1, i));
+    const auto ego_location = P2D(trajectory.states(0, i), trajectory.states(1, i));
     bool is_inside = lane_.is_inside(ego_location);
 
     std::cout << "is_inside: " << is_inside << std::endl;

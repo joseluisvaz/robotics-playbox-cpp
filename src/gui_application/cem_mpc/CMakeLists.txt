@@ -20,4 +20,6 @@ PUBLIC
     base_application
     Common
     Eigen3::Eigen
+    geometry
+    environment
 )

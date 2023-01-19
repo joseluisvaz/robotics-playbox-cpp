@@ -12,6 +12,10 @@ BraceWrapping:
   IndentBraces:    true
 BreakBeforeBraces: Allman 
 
+AlignAfterOpenBracket: AlwaysBreak 
+BinPackArguments: false
+BinPackParameters: false
 AlwaysBreakTemplateDeclarations: 'Yes'
+PenaltyBreakBeforeFirstCallParameter: 9999
 AllowShortFunctionsOnASingleLine: Empty
-ColumnLimit: 120
+ColumnLimit: 140

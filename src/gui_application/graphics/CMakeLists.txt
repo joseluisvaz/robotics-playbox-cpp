@@ -1,6 +1,3 @@
-
-set(CMAKE_FOLDER "Magnum/imgui_integration/graphics/")
-
 find_package(Magnum REQUIRED 
     GL 
     Shaders)
