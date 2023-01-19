@@ -1,8 +1,5 @@
 set(CMAKE_FOLDER "Magnum/imgui_integration/cem_mpc/")
 
-set(CEM_MPC_HEADERS cem_mpc.hpp cem_mpc.tpp)
-set(CEM_MPC_SRCS cem_mpc.cpp)
-
 add_library(CEM_MPC 
     cem_mpc.cpp
     cem_mpc.hpp

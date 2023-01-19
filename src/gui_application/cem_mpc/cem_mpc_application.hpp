@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/Platform/Sdl2Application.h>
 #include <memory>
@@ -8,6 +10,7 @@
 #include "cem_mpc/cem_mpc.hpp"
 #include "cem_mpc/intelligent_driver_model.hpp"
 #include "common/types.hpp"
+#include "environment/lane_map.hpp"
 #include "graphics/graphics_objects.hpp"
 
 namespace mpex
@@ -48,6 +51,9 @@ private:
   // state of the vehicle
   Dynamics::State current_state_;
   IntelligentDriverModel::State idm_state_;
+
+  // enviroment
+  environment::Lane lane_;
 };
 
 } // namespace mpex

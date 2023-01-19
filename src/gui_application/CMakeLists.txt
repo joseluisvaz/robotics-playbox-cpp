@@ -48,7 +48,7 @@ add_subdirectory(tsdf_application)
 
 # Compiles tests for the repo
 file(GLOB_RECURSE TEST_FILES "*_test.cpp")
-add_executable(mpex-tests main.cpp ${TEST_FILES} common/finite_diff.hpp)
+add_executable(mpex-tests main.cpp ${TEST_FILES} common/finite_diff.hpp environment/lane_map.hpp)
 target_link_libraries(mpex-tests 
 PUBLIC
     Common

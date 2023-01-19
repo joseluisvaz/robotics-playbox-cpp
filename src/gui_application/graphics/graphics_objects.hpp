@@ -56,7 +56,7 @@ public:
   LineEntity() = delete;
   LineEntity(Scene3D &scene);
 
-  void set_xy(std::vector<float> &x, std::vector<float> &y, std::vector<float> &z, const Color3 &color = Color3(1.0f, 1.0f, 0.0f));
+  void set_xy(std::vector<double> &x, std::vector<double> &y, std::vector<double> &z, const Color3 &color = Color3(1.0f, 1.0f, 0.0f));
 
   std::vector<Vertex> data_;
   GL::Mesh mesh_;

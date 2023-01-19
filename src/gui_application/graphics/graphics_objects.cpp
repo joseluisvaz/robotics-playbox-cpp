@@ -36,12 +36,13 @@ LineEntity::LineEntity(Scene3D &scene) : mesh_{GL::MeshPrimitive::LineStrip}
   object_ptr_ = std::make_shared<Object3D>(&scene);
 };
 
-void LineEntity::set_xy(std::vector<float> &x, std::vector<float> &y, std::vector<float> &z, const Color3 &color)
+void LineEntity::set_xy(std::vector<double> &x, std::vector<double> &y, std::vector<double> &z, const Color3 &color)
 {
   data_.clear();
   for (int i = 0; i < x.size(); i++)
   {
-    data_.push_back(Vertex{Vector3{SCALE(y[i]), SCALE(z[i]), SCALE(x[i])}, color});
+    data_.push_back(
+        Vertex{Vector3{SCALE(static_cast<float>(y[i])), SCALE(static_cast<float>(z[i])), SCALE(static_cast<float>(x[i]))}, color});
   }
   buffer_.setData(data_, GL::BufferUsage::StaticDraw);
   mesh_.setCount(data_.size());
