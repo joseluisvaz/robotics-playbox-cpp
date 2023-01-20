@@ -37,6 +37,7 @@ public:
 
   const std::vector<std::shared_ptr<Object3D>> &get_objects() const;
   const Magnum::Vector3 &get_vehicle_extent() const;
+  void set_state_at(const size_t idx, const float x, const float y, const float yaw, const float z = 0.0);
 
 private:
   std::vector<std::shared_ptr<Object3D>> objects_;

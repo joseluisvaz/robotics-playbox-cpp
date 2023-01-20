@@ -6,12 +6,19 @@
 namespace mpex::Graphics
 {
 
+namespace
+{
+
+constexpr double wheelbase_m = 3.0;
+constexpr float avg_length_m{SCALE(4.5f)};
+constexpr float avg_width_m{SCALE(1.75f)};
+constexpr float avg_height_m{SCALE(1.75f)};
+
+} // namespace
+
 TrajectoryEntities::TrajectoryEntities(Scene3D &scene, const int horizon_points)
 {
-  constexpr float avg_length{SCALE(4.5f)};
-  constexpr float avg_width{SCALE(1.75f)};
-  constexpr float avg_height{SCALE(1.75f)};
-  vehicle_extent_ = Vector3{avg_width, avg_height, avg_length};
+  vehicle_extent_ = Vector3{avg_width_m, avg_height_m, avg_length_m};
 
   for (size_t i{0UL}; i < horizon_points; ++i)
   {
@@ -23,6 +30,17 @@ TrajectoryEntities::TrajectoryEntities(Scene3D &scene, const int horizon_points)
 const std::vector<std::shared_ptr<Object3D>> &TrajectoryEntities::get_objects() const
 {
   return objects_;
+}
+
+void TrajectoryEntities::set_state_at(const size_t idx, const float x, const float y, const float yaw, const float z)
+{
+  get_objects()
+      .at(idx)
+      ->resetTransformation()
+      .scale(get_vehicle_extent())
+      .translate(Magnum::Vector3(0.0f, 0.0f, SCALE(static_cast<float>(wheelbase_m) / 2))) // move half wheelbase forward
+      .rotateY(Magnum::Math::Rad(static_cast<float>(yaw)))
+      .translate(Magnum::Vector3(SCALE(y), SCALE(z), SCALE(x)));
 }
 
 const Vector3 &TrajectoryEntities::get_vehicle_extent() const

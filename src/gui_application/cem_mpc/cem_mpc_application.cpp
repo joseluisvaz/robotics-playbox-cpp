@@ -3,6 +3,7 @@
 #include <Magnum/SceneGraph/Object.h>
 #include <cstddef>
 #include <easy/profiler.h>
+#include <memory>
 
 #include "base_application/base_application.hpp"
 #include "cem_mpc/cem_mpc_application.hpp"
@@ -22,6 +23,69 @@ using geometry::Polyline2D;
 
 const auto red_color = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
 const auto blue_color = Magnum::Math::Color3(0.0f, 0.6f, 1.0f);
+
+void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::shared_ptr<Graphics::LineEntity>> &path_entities)
+{
+  const auto set_xy_helper = [](const auto &candidate_trajectory, auto &path_entity, auto color)
+  {
+    std::vector<double> x_vals;
+    std::vector<double> y_vals;
+    std::vector<double> t_vals;
+    for (int i = 0; i < candidate_trajectory.states.cols(); ++i)
+    {
+      const EigenKinematicBicycle::State new_state = candidate_trajectory.states.col(i);
+      x_vals.push_back(new_state[0]);
+      y_vals.push_back(new_state[1]);
+      t_vals.push_back(candidate_trajectory.times.at(i));
+    }
+    path_entity.set_xy(x_vals, y_vals, t_vals, color);
+  };
+
+  const auto max_iter = std::max_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
+  const auto min_iter = std::min_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
+  const auto max_cost = max_iter != mpc.costs_index_pair_.end() ? max_iter->first : 1e9;
+  const auto min_cost = min_iter != mpc.costs_index_pair_.end() ? min_iter->first : -1e9;
+  assert(path_entities.size() == mpc.candidate_trajectories_.size());
+  for (int i = 0; i < path_entities.size(); ++i)
+  {
+    const auto cost = mpc.costs_index_pair_[i].first;
+    const auto exp_color_value_blue = std::exp(-10.0f * cost);
+    const auto exp_color_value_red = 1.0f - exp_color_value_blue;
+    const auto color = Magnum::Math::Color3(exp_color_value_red, 0.0f, exp_color_value_blue);
+    set_xy_helper(mpc.candidate_trajectories_.at(i), *path_entities.at(i), color);
+  }
+}
+
+IntelligentDriverModel::States calc_idm_lead_states_from_trajectory(
+    const IntelligentDriverModel &idm,
+    const IntelligentDriverModel::State &idm_state,
+    const EigenKinematicBicycle::Trajectory &trajectory,
+    const environment::Lane lane)
+{
+  // In this case we need to explicitly define the type
+  typename IntelligentDriverModel::States lead_states =
+      IntelligentDriverModel::States::Ones(IntelligentDriverModel::state_size, trajectory.states.cols());
+
+  lead_states.row(0).array() = 1000.0f; // initialize x positions with high value but not too high.
+  lead_states.row(1).array() = idm.config_.v0;
+
+  const auto agent_xy = P2D(idm_state[0], idm_state[1]);
+  const auto agent_dist_m = lane.centerline_.calc_progress_coord(agent_xy);
+
+  for (size_t i{0}; i < trajectory.states.cols(); ++i)
+  {
+    const auto ego_xy = P2D(trajectory.states(0, i), trajectory.states(1, i));
+    const auto ego_dist_m = lane.centerline_.calc_progress_coord(ego_xy);
+
+    if (lane.is_inside(ego_xy) && ego_dist_m > agent_dist_m)
+    {
+      lead_states(0, i) = trajectory.states(0, i); // x positions
+      lead_states(1, i) = trajectory.states(3, i); // speeds
+    }
+  }
+  return lead_states;
+}
+
 } // namespace
 
 CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examples::BaseApplication(arguments)
@@ -34,6 +98,8 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
       horizon,
       /* population= */ population,
       /* elites */ 16);
+
+  mpc_.cost_function_ = std::make_shared<QuadraticCostFunction>();
 
   trajectory_entities_ = Graphics::TrajectoryEntities(scene_, horizon);
   trajectory_entities_idm_ = Graphics::TrajectoryEntities(scene_, horizon);
@@ -132,81 +198,19 @@ void CEMMPCApplication::runCEM()
   {
     Dynamics::State new_state = trajectory.states.col(i);
     auto time_s = trajectory.times.at(i);
-    auto &object = trajectory_entities_.get_objects().at(i);
-
-    (*object)
-        .resetTransformation()
-        .scale(trajectory_entities_.get_vehicle_extent())
-        .translate(Magnum::Vector3(0.0f, 0.0f, SCALE(1.5f))) // move half wheelbase forward
-        .rotateY(Magnum::Math::Rad(static_cast<float>(new_state[2])))
-        .translate(Magnum::Vector3(SCALE(new_state[1]), SCALE(time_s), SCALE(new_state[0])));
+    // TODO: Create an SE2 utility function
+    trajectory_entities_.set_state_at(i, new_state[0], new_state[1], new_state[2]);
   }
 
-  const auto set_xy_helper = [this](const auto &_trajectory, auto &path_entity, auto color)
-  {
-    std::vector<double> x_vals;
-    std::vector<double> y_vals;
-    std::vector<double> t_vals;
-    for (int i = 0; i < _trajectory.states.cols(); ++i)
-    {
-      Dynamics::State new_state = _trajectory.states.col(i);
-      auto time_s = _trajectory.times.at(i);
+  draw_candidate_paths(mpc_, path_entities_);
 
-      x_vals.push_back(new_state[0]);
-      y_vals.push_back(new_state[1]);
-      t_vals.push_back(time_s);
-    }
-
-    path_entity.set_xy(x_vals, y_vals, t_vals, color);
-  };
-
-  const auto max_iter = std::max_element(mpc_.costs_index_pair_.begin(), mpc_.costs_index_pair_.end());
-  const auto min_iter = std::min_element(mpc_.costs_index_pair_.begin(), mpc_.costs_index_pair_.end());
-  const auto max_cost = max_iter != mpc_.costs_index_pair_.end() ? max_iter->first : 1e9;
-  const auto min_cost = min_iter != mpc_.costs_index_pair_.end() ? min_iter->first : -1e9;
-  assert(path_entities_.size() == mpc_.candidate_trajectories_.size());
-  for (int i = 0; i < path_entities_.size(); ++i)
-  {
-    const auto cost = mpc_.costs_index_pair_[i].first;
-    const auto exp_color_value_blue = std::exp(-10.0f * cost);
-    const auto exp_color_value_red = 1.0f - exp_color_value_blue;
-    const auto color = Magnum::Math::Color3(exp_color_value_red, 0.0f, exp_color_value_blue);
-    set_xy_helper(mpc_.candidate_trajectories_.at(i), *path_entities_.at(i), color);
-  }
-
-  typename IntelligentDriverModel::States lead_states =
-      IntelligentDriverModel::States::Ones(IntelligentDriverModel::state_size, trajectory.states.cols());
-
-  lead_states.row(0).array() = 1000.0f; // initialize x positions with high value but not too high.
-  lead_states.row(1).array() = idm_.config_.v0;
-
-  const auto agent_xy = P2D(idm_state_[0], idm_state_[1]);
-  const auto agent_dist_m = lane_.centerline_.calc_progress_coord(agent_xy);
-
-  for (size_t i{0}; i < trajectory.states.cols(); ++i)
-  {
-    const auto ego_xy = P2D(trajectory.states(0, i), trajectory.states(1, i));
-    const auto ego_dist_m = lane_.centerline_.calc_progress_coord(ego_xy);
-
-    if (lane_.is_inside(ego_xy) && ego_dist_m > agent_dist_m)
-    {
-      lead_states(0, i) = trajectory.states(0, i); // x positions
-      lead_states(1, i) = trajectory.states(3, i); // speeds
-    }
-  }
-
-  const IntelligentDriverModel::States idm_states = idm_.rollout(idm_state_, lead_states);
+  constexpr double idm_y_value_m = -5.0f;
+  const auto lead_states = calc_idm_lead_states_from_trajectory(idm_, idm_state_, trajectory, lane_);
+  const auto idm_states = idm_.rollout(idm_state_, lead_states);
   for (size_t i{0}; i < idm_states.cols(); ++i)
   {
-    IntelligentDriverModel::State new_state = idm_states.col(i);
-    auto time_s = trajectory.times.at(i);
-    auto &object = trajectory_entities_idm_.get_objects().at(i);
-
-    (*object)
-        .resetTransformation()
-        .scale(trajectory_entities_idm_.get_vehicle_extent())
-        .translate(Magnum::Vector3(0.0f, 0.0f, SCALE(1.5f))) // move half wheelbase forward
-        .translate(Magnum::Vector3(SCALE(-5.0f), SCALE(time_s), SCALE(new_state[0])));
+    auto new_state = idm_states.col(i);
+    trajectory_entities_idm_.set_state_at(i, new_state[0], idm_y_value_m, new_state[1], trajectory.times.at(i));
   }
 
   auto idm_action = idm_.get_action(idm_state_, lead_states.col(0));
@@ -215,10 +219,6 @@ void CEMMPCApplication::runCEM()
   idm_state_ = SingleIntegrator::step_(idm_state_, idm_action);
 
   const auto ego_xy = P2D(current_state_[0], current_state_[1]);
-  const auto ego_dist_m = lane_.centerline_.calc_progress_coord(ego_xy);
-
-  std::cout << "progress: -- " << ego_dist_m << std::endl;
-
   EASY_END_BLOCK;
 }
 
@@ -252,19 +252,25 @@ void CEMMPCApplication::show_menu()
 
   ImGui::SliderInt("Num Iterations", &mpc_.get_num_iters_mutable(), 1, 100);
 
-  double v_min = 0.0;
-  double v_max = 10.0;
-  ImGui::SliderScalarN("Cost Weights - States", ImGuiDataType_Double, &mpc_.cost_function_.w_s_, 6, &v_min, &v_max, "%.3f", 0);
-  ImGui::SliderScalarN("Cost Weights - Actions", ImGuiDataType_Double, &mpc_.cost_function_.w_a_, 2, &v_min, &v_max, "%.3f", 0);
-  ImGui::SliderScalarN("Terminal Cost Weights - States", ImGuiDataType_Double, &mpc_.cost_function_.W_s_, 6, &v_min, &v_max, "%.3f", 0);
-  ImGui::SliderScalarN("TerminalCost Weights - Actions", ImGuiDataType_Double, &mpc_.cost_function_.W_a_, 2, &v_min, &v_max, "%.3f", 0);
+  auto maybe_quadratic_cost_function_ptr = std::dynamic_pointer_cast<QuadraticCostFunction>(mpc_.cost_function_);
+  if (maybe_quadratic_cost_function_ptr)
+  {
+    auto &cost_function = *maybe_quadratic_cost_function_ptr;
 
-  double v_min_r = -100.0;
-  double v_max_r = 100.0;
-  ImGui::SliderScalarN("Ref values - States", ImGuiDataType_Double, &mpc_.cost_function_.r_s_, 6, &v_min_r, &v_max_r, "%.3f", 0);
-  ImGui::SliderScalarN("Ref values - Actions", ImGuiDataType_Double, &mpc_.cost_function_.r_a_, 2, &v_min_r, &v_max_r, "%.3f", 0);
-  ImGui::SliderScalarN("Terminal Ref values - States", ImGuiDataType_Double, &mpc_.cost_function_.R_s_, 6, &v_min_r, &v_max_r, "%.3f", 0);
-  ImGui::SliderScalarN("Terminal Ref values - Actions", ImGuiDataType_Double, &mpc_.cost_function_.R_a_, 2, &v_min_r, &v_max_r, "%.3f", 0);
+    double v_min = 0.0;
+    double v_max = 10.0;
+    ImGui::SliderScalarN("Cost Weights - States", ImGuiDataType_Double, &cost_function.w_s_, 6, &v_min, &v_max, "%.3f", 0);
+    ImGui::SliderScalarN("Cost Weights - Actions", ImGuiDataType_Double, &cost_function.w_a_, 2, &v_min, &v_max, "%.3f", 0);
+    ImGui::SliderScalarN("Terminal Cost Weights - States", ImGuiDataType_Double, &cost_function.W_s_, 6, &v_min, &v_max, "%.3f", 0);
+    ImGui::SliderScalarN("TerminalCost Weights - Actions", ImGuiDataType_Double, &cost_function.W_a_, 2, &v_min, &v_max, "%.3f", 0);
+
+    double v_min_r = -100.0;
+    double v_max_r = 100.0;
+    ImGui::SliderScalarN("Ref values - States", ImGuiDataType_Double, &cost_function.r_s_, 6, &v_min_r, &v_max_r, "%.3f", 0);
+    ImGui::SliderScalarN("Ref values - Actions", ImGuiDataType_Double, &cost_function.r_a_, 2, &v_min_r, &v_max_r, "%.3f", 0);
+    ImGui::SliderScalarN("Terminal Ref values - States", ImGuiDataType_Double, &cost_function.R_s_, 6, &v_min_r, &v_max_r, "%.3f", 0);
+    ImGui::SliderScalarN("Terminal Ref values - Actions", ImGuiDataType_Double, &cost_function.R_a_, 2, &v_min_r, &v_max_r, "%.3f", 0);
+  }
 
   const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
   {

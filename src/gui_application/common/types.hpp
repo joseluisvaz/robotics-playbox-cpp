@@ -168,8 +168,17 @@ public:
   }
 };
 
-struct CostFunction
+class CostFunction
 {
+  using D = EigenKinematicBicycle;
+
+public:
+  virtual double operator()(const Ref<const D::States> &states, const Ref<const D::Actions> &actions) const = 0;
+};
+
+class QuadraticCostFunction : public CostFunction
+{
+public:
   using D = EigenKinematicBicycle;
 
   double evaluate_state_action_pair(
@@ -211,17 +220,19 @@ struct CostFunction
     return cost;
   }
 
-  double w_s_[D::state_size]{0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f}; // state costs
-  double w_a_[D::action_size]{1.0f, 1.0f};                        // action costs
+  double w_s_[D::state_size]{0.0f, 10.0f, 10.0f, 1.0f, 1.0f, 1.0f}; // state costs
+  double w_a_[D::action_size]{1.0f, 1.0f};                          // action costs
 
-  double W_s_[D::state_size]{0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f}; // terminal state costs
-  double W_a_[D::action_size]{1.0f, 1.0f};                        // terminal action costs
+  double W_s_[D::state_size]{0.0f, 10.0f, 10.0f, 1.0f, 1.0f, 1.0f}; // terminal state costs
+  double W_a_[D::action_size]{1.0f, 1.0f};                          // terminal action costs
 
-  double r_s_[D::state_size]{0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f}; // state reference
+  double r_s_[D::state_size]{0.0f, 0.0f, 0.0f, 8.0f, 0.0f, 0.0f}; // state reference
   double r_a_[D::state_size]{0.0f, 0.0f};                         // action reference
 
-  double R_s_[D::state_size]{0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f}; // terminal state reference
+  double R_s_[D::state_size]{0.0f, 0.0f, 0.0f, 8.0f, 0.0f, 0.0f}; // terminal state reference
   double R_a_[D::state_size]{0.0f, 0.0f};                         // terminal action reference
 };
+
+
 
 } // namespace mpex

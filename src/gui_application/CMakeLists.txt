@@ -46,6 +46,17 @@ add_subdirectory(ilqr_mpc)
 add_subdirectory(example_application)
 add_subdirectory(tsdf_application)
 
+# add_executable(add add.cu)
+# set_target_properties(add 
+#              PROPERTIES
+#                  CUDA_SEPARABLE_COMPILATION ON
+#                  CUDA_ARCHITECTURES 80)
+# target_compile_features(add PUBLIC cxx_std_11)
+# target_compile_options(add PUBLIC
+#              "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:--compiler-options -Werror=return-type,-Wall>"
+#              "$<$<COMPILE_LANGUAGE:CXX>:-Werror;-Wall>")
+# target_compile_options(add PUBLIC -Werror -Wall)
+
 # Compiles tests for the repo
 # file(GLOB_RECURSE TEST_FILES "*_test.cpp")
 # add_executable(mpex-tests main.cpp ${TEST_FILES} common/finite_diff.hpp environment/lane_map.hpp geometry/geometry.hpp)
