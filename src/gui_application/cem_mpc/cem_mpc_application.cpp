@@ -30,15 +30,15 @@ void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::
   {
     std::vector<double> x_vals;
     std::vector<double> y_vals;
-    std::vector<double> t_vals;
+    std::vector<double> z_vals;
     for (int i = 0; i < candidate_trajectory.states.cols(); ++i)
     {
       const EigenKinematicBicycle::State new_state = candidate_trajectory.states.col(i);
       x_vals.push_back(new_state[0]);
       y_vals.push_back(new_state[1]);
-      t_vals.push_back(candidate_trajectory.times.at(i));
+      z_vals.push_back(new_state[3]);
     }
-    path_entity.set_xy(x_vals, y_vals, t_vals, color);
+    path_entity.set_xy(x_vals, y_vals, z_vals, color);
   };
 
   const auto max_iter = std::max_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
@@ -46,9 +46,11 @@ void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::
   const auto max_cost = max_iter != mpc.costs_index_pair_.end() ? max_iter->first : 1e9;
   const auto min_cost = min_iter != mpc.costs_index_pair_.end() ? min_iter->first : -1e9;
   assert(path_entities.size() == mpc.candidate_trajectories_.size());
-  for (int i = 0; i < path_entities.size(); ++i)
+  for (int i = 0; i < mpc.candidate_trajectories_.size(); ++i)
   {
-    const auto cost = mpc.costs_index_pair_[i].first;
+    float cost = mpc.costs_index_pair_[i].first;
+    cost = (cost - min_cost) / (max_cost - min_cost); // normalize
+
     const auto exp_color_value_blue = std::exp(-10.0f * cost);
     const auto exp_color_value_red = 1.0f - exp_color_value_blue;
     const auto color = Magnum::Math::Color3(exp_color_value_red, 0.0f, exp_color_value_blue);
@@ -58,7 +60,7 @@ void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::
 
 IntelligentDriverModel::States calc_idm_lead_states_from_trajectory(
     const IntelligentDriverModel &idm,
-    const IntelligentDriverModel::State &idm_state,
+    const IntelligentDriverModel::State idm_state,
     const EigenKinematicBicycle::Trajectory &trajectory,
     const environment::Lane lane)
 {
@@ -97,7 +99,7 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
       /* iters= */ 20,
       horizon,
       /* population= */ population,
-      /* elites */ 16);
+      /* elites */ 10);
 
   mpc_.cost_function_ = std::make_shared<QuadraticCostFunction>();
 
@@ -210,7 +212,7 @@ void CEMMPCApplication::runCEM()
   for (size_t i{0}; i < idm_states.cols(); ++i)
   {
     auto new_state = idm_states.col(i);
-    trajectory_entities_idm_.set_state_at(i, new_state[0], idm_y_value_m, new_state[1], trajectory.times.at(i));
+    trajectory_entities_idm_.set_state_at(i, new_state[0], idm_y_value_m, /* heading */ 0.0);
   }
 
   auto idm_action = idm_.get_action(idm_state_, lead_states.col(0));
@@ -251,6 +253,8 @@ void CEMMPCApplication::show_menu()
   }
 
   ImGui::SliderInt("Num Iterations", &mpc_.get_num_iters_mutable(), 1, 100);
+  ImGui::SliderInt("Num Elites", &mpc_.elites_, 1, 20);
+  ImGui::SliderInt("Num Population", &mpc_.population_, 8, 2048);
 
   auto maybe_quadratic_cost_function_ptr = std::dynamic_pointer_cast<QuadraticCostFunction>(mpc_.cost_function_);
   if (maybe_quadratic_cost_function_ptr)

@@ -17,7 +17,7 @@ template <typename DynamicsT>
 CEM_MPC<DynamicsT>::CEM_MPC(const int num_iters, const int horizon, const int population, const int elites)
     : num_iters_(num_iters), horizon_(horizon), population_(population), elites_(elites), trajectory_(horizon)
 {
-  costs_index_pair_ = std::vector<std::pair<float, int>>(population_, std::make_pair(0.0f, 0));
+  costs_index_pair_ = std::vector<std::pair<double, int>>(population_, std::make_pair(0.0f, 0));
 
   for (int i = 0; i < population_; ++i)
   {
@@ -31,7 +31,7 @@ CEM_MPC<DynamicsT>::CEM_MPC(const int num_iters, const int horizon, const int po
 template <typename DynamicsT>
 void CEM_MPC<DynamicsT>::rollout(Trajectory &trajectory)
 {
-  float current_time_s{0.0f};
+  double current_time_s{0.0f};
   for (size_t i = 0; i + 1 < static_cast<size_t>(horizon_); ++i)
   {
     trajectory.times.at(i) = current_time_s;

@@ -49,7 +49,11 @@ public:
 
   std::vector<Trajectory> candidate_trajectories_;
 
-  std::vector<std::pair<float, int>> costs_index_pair_;
+  std::vector<std::pair<double, int>> costs_index_pair_;
+
+  int num_iters_;
+  int population_;
+  int elites_;
 
 private:
   /// Runs a single rollout for a trajectory.
@@ -63,10 +67,8 @@ private:
   /// Runs a full iteration of the CEM method using multiple threads, parallelizing the rollouts.
   void update_action_distribution();
 
-  int num_iters_;
+  /// Horizon, needed at compile time
   int horizon_;
-  int population_;
-  int elites_;
 
   Trajectory trajectory_;
   Sampler sampler_;
