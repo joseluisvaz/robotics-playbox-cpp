@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <ostream>
 #include <stdexcept>
 
 #include <Eigen/Dense>
@@ -59,12 +60,13 @@ autodiff::dual2nd terminal_cost_function_diff(VectorXdual2nd x, VectorXdual2nd u
 
 } // namespace
 
-iLQR_MPC::iLQR_MPC(const int horizon, const int iters) : horizon_(horizon), iters_(iters)
+IterativeLinearQuadraticRegulator::IterativeLinearQuadraticRegulator(const int horizon, const int iters, const bool debug)
+    : horizon_(horizon), iters_(iters), debug_(debug)
 {
   initialize_matrices(horizon_);
 }
 
-void iLQR_MPC::plot_trajectory(const Trajectory &trajectory)
+void IterativeLinearQuadraticRegulator::plot_trajectory(const Trajectory &trajectory)
 {
   vector<double> x_vals;
   vector<double> y_vals;
@@ -76,14 +78,13 @@ void iLQR_MPC::plot_trajectory(const Trajectory &trajectory)
   plt::plot(x_vals, y_vals);
 }
 
-void iLQR_MPC::rollout(Trajectory &trajectory)
+void IterativeLinearQuadraticRegulator::rollout(Trajectory &trajectory, const bool use_warmstart)
 {
   auto &u = trajectory.actions;
   auto &x = trajectory.states;
 
-  // u = Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
-  sampler_.mean_ = Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
-  sampler_.stddev_ = Actions::Ones(trajectory.actions.rows(), trajectory.actions.cols());
+  sampler_.mean_ = use_warmstart ? u : Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
+  sampler_.stddev_ = 1e-5 * Actions::Ones(trajectory.actions.rows(), trajectory.actions.cols());
   u = sampler_();
 
   double current_time_s{0.0f};
@@ -96,19 +97,29 @@ void iLQR_MPC::rollout(Trajectory &trajectory)
   trajectory.times.at(horizon_) = current_time_s;
 }
 
-iLQR_MPC::Trajectory iLQR_MPC::solve(const Ref<State> &x0)
+IterativeLinearQuadraticRegulator::Trajectory
+IterativeLinearQuadraticRegulator::solve(const Ref<State> &x0, const std::optional<Trajectory> &maybe_trajectory)
 {
   EASY_FUNCTION(profiler::colors::Grey);
-  auto trajectory = Trajectory(horizon_ + 1);
+
+  if (debug_)
+  {
+    cout << "----------------- iLQR Debug -----------------" << endl << endl;
+  }
+
+  auto trajectory = maybe_trajectory ? *maybe_trajectory : Trajectory(horizon_ + 1);
   trajectory.states.col(0) = x0; // Add initial state
-  this->rollout(trajectory);
+  this->rollout(trajectory, /* use_warmstart */ maybe_trajectory.has_value());
 
   cout.precision(17);
   for (int i{0}; i < iters_; ++i)
   {
     this->backward_pass(trajectory);
     auto cost = compute_cost(trajectory);
-    cout << "iter: " << i << " cost: " << std::fixed << cost << endl;
+    if (debug_)
+    {
+      cout << "iter: " << i << " cost: " << std::fixed << cost << endl;
+    }
 
     // Do backtracking line search to find when the cost decreases the most, forward passes are inexpesive,
     // so this it is ok to iterate for maximum of "backtracking_iterations".
@@ -118,10 +129,11 @@ iLQR_MPC::Trajectory iLQR_MPC::solve(const Ref<State> &x0)
       // The value of alpha will be decreased exponentially with each iteration to find a decreasing cost.
       auto new_trajectory = this->forward_pass(trajectory, /* alpha= */ pow(0.5, j));
       auto new_cost = compute_cost(new_trajectory);
-
-      if (std ::abs((cost - new_cost) / (cost + 1e-4)) < tol_)
+      const auto error = std ::abs((cost - new_cost) / (cost + 1e-4));
+      if (error < tol_)
       {
         // First check for convergence
+        cout << "early exit -- error: " << error << ", exit_cost: " << new_cost << endl << endl;
         return new_trajectory;
       }
 
@@ -137,7 +149,8 @@ iLQR_MPC::Trajectory iLQR_MPC::solve(const Ref<State> &x0)
   return trajectory;
 }
 
-iLQR_MPC::Trajectory iLQR_MPC::forward_pass(const Trajectory &trajectory, const double alpha)
+IterativeLinearQuadraticRegulator::Trajectory
+IterativeLinearQuadraticRegulator::forward_pass(const Trajectory &trajectory, const double alpha)
 {
   EASY_FUNCTION(profiler::colors::Blue);
   Trajectory new_trajectory = Trajectory(horizon_ + 1);
@@ -160,7 +173,7 @@ iLQR_MPC::Trajectory iLQR_MPC::forward_pass(const Trajectory &trajectory, const 
   return new_trajectory;
 }
 
-double iLQR_MPC::compute_cost(const Trajectory &trajectory)
+double IterativeLinearQuadraticRegulator::compute_cost(const Trajectory &trajectory)
 {
   double cost = 0.0;
   for (int i{0}; i < horizon_; ++i)
@@ -174,7 +187,7 @@ double iLQR_MPC::compute_cost(const Trajectory &trajectory)
   return cost;
 }
 
-void iLQR_MPC::backward_pass(const Trajectory &trajectory)
+void IterativeLinearQuadraticRegulator::backward_pass(const Trajectory &trajectory)
 {
   EASY_FUNCTION(profiler::colors::Green);
   this->compute_derivatives(trajectory);
@@ -205,7 +218,7 @@ void iLQR_MPC::backward_pass(const Trajectory &trajectory)
   }
 }
 
-void iLQR_MPC::compute_derivatives(const Trajectory &trajectory)
+void IterativeLinearQuadraticRegulator::compute_derivatives(const Trajectory &trajectory)
 {
   VectorXdual2nd x; // placeholder for the current state as differentiable type
   VectorXdual2nd u; // placeholder for the current action as differentiable type
@@ -239,7 +252,7 @@ void iLQR_MPC::compute_derivatives(const Trajectory &trajectory)
   lxx[horizon_] = hessian(terminal_cost_function_diff, wrt(x), at(x, u), cost, lx[horizon_]);
 }
 
-void iLQR_MPC::initialize_matrices(const int horizon)
+void IterativeLinearQuadraticRegulator::initialize_matrices(const int horizon)
 {
   const int state_size = DynamicsT::state_size;
   const int action_size = DynamicsT::action_size;

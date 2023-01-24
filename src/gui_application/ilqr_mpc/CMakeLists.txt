@@ -1,4 +1,4 @@
-set(CMAKE_FOLDER "Magnum/imgui_integration/ilqr_mpc/")
+set(CMAKE_FOLDER "Magnum/imgui_integration/IterativeLinearQuadraticRegulator/")
 
 find_package(CUDA)
 message(ERROR this_message)

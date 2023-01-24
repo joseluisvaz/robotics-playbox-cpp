@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
 #include <array>
+#include <optional>
 
 #include "common/dynamics.h"
 #include "common/math.hpp"
@@ -15,7 +16,7 @@ using namespace Eigen;
 namespace plt = matplotlibcpp;
 
 /* Implementation of a simple Cross Entropy Method Model Predictive Control (CEM-MPC) */
-class iLQR_MPC
+class IterativeLinearQuadraticRegulator
 {
   using DynamicsT = EigenKinematicBicycle;
 
@@ -37,23 +38,26 @@ class iLQR_MPC
   void plot_trajectory(const Trajectory &trajectory);
 
 public:
-  iLQR_MPC() = default;
-  iLQR_MPC(const int horizon, const int iters);
+  IterativeLinearQuadraticRegulator() = default;
+  IterativeLinearQuadraticRegulator(const int horizon, const int iters, const bool debug);
 
-  Trajectory solve(const Ref<State> &x0);
+  Trajectory solve(const Ref<State> &x0, const std::optional<Trajectory>& maybe_warmstart = {});
+
+  int horizon_;
 
 private:
   /// Runs a single rollout for a trajectory.
   ///@param[in, out] trajectory The modified trajectory after a rollout.
-  void rollout(Trajectory &trajectory);
+  ///@param[in] use_warmstart Whether to use warmstart 
+  void rollout(Trajectory &trajectory, const bool use_warmstart);
   void backward_pass(const Trajectory &trajectory);
   Trajectory forward_pass(const Trajectory &trajectory, const double alpha);
   double compute_cost(const Trajectory &trajectory);
 
-  int horizon_;
   int iters_;
   double mu_{0.5};
-  double tol_{1e-6};
+  double tol_{1e-5};
+  bool debug_;
 
   // Instantiate sampler for initial action distribution
   Sampler sampler_;

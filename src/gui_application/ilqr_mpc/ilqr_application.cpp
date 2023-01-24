@@ -34,7 +34,7 @@ IlqrMain::IlqrMain(const Arguments &arguments) : Magnum::Examples::BaseApplicati
     color = gray; // the rest of the wireframes will be gray.
   }
 
-  ilqr_mpc = iLQR_MPC(/* horizon */ horizon, /* iters */ 20);
+  policy_ = IterativeLinearQuadraticRegulator(/* horizon */ horizon, /* iters */ 30, /* debug */ true);
 
   // Initialize current state for the simulation, kinematic bicycle.
   current_state_ = Dynamics::State();
@@ -46,29 +46,28 @@ void IlqrMain::execute()
   if (is_running_)
   {
     run_ilqr();
+    is_running_ = false;
   }
 }
 
 void IlqrMain::run_ilqr()
 {
   EASY_FUNCTION(profiler::colors::Red);
-
-  Dynamics::Trajectory trajectory = ilqr_mpc.solve(current_state_);
-  Dynamics::Action current_action = trajectory.actions.col(1);
-
-  for (int i = 0; i < trajectory.states.cols() - 1; ++i)
+  const auto run_policy = [&](auto &policy, auto &entities)
   {
-    Dynamics::State new_state = trajectory.states.col(i);
-    auto time_s = trajectory.times.at(i);
-    auto &object = trajectory_entities_.get_objects().at(i);
+    Dynamics::Trajectory trajectory = policy.solve(current_state_, maybe_current_trajectory_);
+    maybe_current_trajectory_ = trajectory;
+    Dynamics::Action current_action = trajectory.actions.col(1);
 
-    (*object)
-        .resetTransformation()
-        .scale(trajectory_entities_.get_vehicle_extent())
-        .translate(Magnum::Vector3(0.0f, 0.0f, SCALE(1.5f))) // move half wheelbase forward
-        .rotateY(Magnum::Math::Rad(static_cast<float>(new_state[2])))
-        .translate(Magnum::Vector3(SCALE(new_state[1]), SCALE(time_s), SCALE(new_state[0])));
-  }
+    for (int i = 0; i < trajectory.states.cols() - 1; ++i)
+    {
+      Dynamics::State new_state = trajectory.states.col(i);
+      entities.set_state_at(i, new_state[0], new_state[1], new_state[2]);
+    }
+    return current_action;
+  };
+
+  auto current_action = run_policy(policy_, trajectory_entities_);
 
   current_state_ = Dynamics::step_(current_state_, current_action);
   // std::this_thread::sleep_for(std::chrono::milliseconds(100));
