@@ -1,5 +1,5 @@
-#include "cem_mpc.hpp"
-#include "cem_mpc.tpp"
+#include "cem_mpc.h"
+#include "cem_mpc_inl.h"
 
 namespace mpex
 {

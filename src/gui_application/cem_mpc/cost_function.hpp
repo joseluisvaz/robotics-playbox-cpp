@@ -22,7 +22,7 @@
 
 #include <Eigen/Dense>
 
-#include "common/dynamics.hpp"
+#include "common/dynamics.h"
 #include "common/types.hpp"
 
 namespace mpex

@@ -4,7 +4,7 @@
 #include <Eigen/StdVector>
 #include <array>
 
-#include "common/dynamics.hpp"
+#include "common/dynamics.h"
 #include "common/math.hpp"
 #include "common/types.hpp"
 #include "third_party/matplotlibcpp.h"

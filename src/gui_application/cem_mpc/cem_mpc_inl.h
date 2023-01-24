@@ -6,7 +6,7 @@
 #include <random>
 #include <thread>
 
-#include "cem_mpc/cem_mpc.hpp"
+#include "cem_mpc/cem_mpc.h"
 #include "common/math.hpp"
 #include "common/types.hpp"
 

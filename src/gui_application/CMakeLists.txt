@@ -29,6 +29,8 @@ endif()
 find_package(Corrade REQUIRED Main)
 find_package(Magnum REQUIRED Sdl2Application)
 find_package(easy_profiler REQUIRED)
+find_package(OpenGL REQUIRED)
+find_package(GLUT REQUIRED)
 
 #******** Add ImPlot
 #END ******** Add ImPlot
@@ -46,7 +48,31 @@ add_subdirectory(ilqr_mpc)
 add_subdirectory(example_application)
 add_subdirectory(tsdf_application)
 
-# add_executable(add add.cu)
+find_package(CUDA)
+message(ERROR this_message)
+if(CUDA_FOUND)
+    message(ERROR this_message_other)
+    enable_language(CUDA)
+    include(FindCUDA)
+    set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+    set(CUDA_NVCC_FLAGS
+        ${CUDA_NVCC_FLAGS};
+        -std=c++17
+        -maxrregcount=80;
+        -O3;
+        -arch=sm_80;
+        -gencode=arch=compute_80,code=sm_80;
+        -w)
+ENDIF()
+
+cuda_add_executable(add add.cu)
+target_include_directories(add PUBLIC ${OPENGL_INCLUDE_DIRS})
+target_link_libraries(add ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} Common Eigen3::Eigen)
+
+cuda_add_executable(julia julia.cu)
+target_include_directories(julia PUBLIC ${OPENGL_INCLUDE_DIRS})
+target_link_libraries(julia ${OPENGL_LIBRARIES} ${GLUT_LIBRARY})
+
 # set_target_properties(add 
 #              PROPERTIES
 #                  CUDA_SEPARABLE_COMPILATION ON
@@ -55,7 +81,6 @@ add_subdirectory(tsdf_application)
 # target_compile_options(add PUBLIC
 #              "$<$<COMPILE_LANGUAGE:CUDA>:SHELL:--compiler-options -Werror=return-type,-Wall>"
 #              "$<$<COMPILE_LANGUAGE:CXX>:-Werror;-Wall>")
-# target_compile_options(add PUBLIC -Werror -Wall)
 
 # Compiles tests for the repo
 # file(GLOB_RECURSE TEST_FILES "*_test.cpp")

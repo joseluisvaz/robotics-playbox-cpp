@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "base_application/base_application.hpp"
-#include "cem_mpc/cem_mpc.hpp"
+#include "cem_mpc/cem_mpc.h"
 #include "cem_mpc/intelligent_driver_model.hpp"
 #include "common/types.hpp"
 #include "environment/lane_map.hpp"

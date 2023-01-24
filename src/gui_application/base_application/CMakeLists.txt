@@ -18,4 +18,4 @@ target_link_libraries(base_application PUBLIC
     Magnum::Shaders
     Corrade::Main
     Eigen3::Eigen
-    CEM_MPC)
+    cem_mpc)
