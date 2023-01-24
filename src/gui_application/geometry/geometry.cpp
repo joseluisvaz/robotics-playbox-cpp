@@ -34,34 +34,34 @@ Polyline2D::Polyline2D(Eigen::Matrix2d &data) : data_(data){};
 Polyline2D::Polyline2D(const std::vector<double> &x, const std::vector<double> &y)
 {
   assert(x.size() == y.size());
-  data_ = Eigen::MatrixXd::Zero(2, x.size());
+  data_ = Eigen::MatrixXd::Zero(x.size(), 2);
   for (size_t i{0}; i < x.size(); ++i)
   {
-    data_(0, i) = x[i];
-    data_(1, i) = y[i];
+    data_(i, 0) = x[i];
+    data_(i, 1) = y[i];
   }
-
+  
   // Needs to be monotonically increasing ...
-  arclength_ = std::vector<double>(data_.cols(), 0.0);
+  arclength_ = std::vector<double>(data_.rows(), 0.0);
   for (size_t i{1}; i < x.size(); ++i)
   {
     // vector from p1 to p2
-    arclength_[i] = (data_.col(i) - data_.col(i - 1)).norm() + arclength_[i - 1];
+    arclength_[i] = (data_.row(i) - data_.row(i - 1)).norm() + arclength_[i - 1];
     assert(arclength_[i] > arclength_[i - 1]);
   }
 };
 
 [[nodiscard]] P2D Polyline2D::get_point(std::size_t i) const
 {
-  return P2D(data_.col(i));
+  return P2D(data_.row(i));
 };
 
 [[nodiscard]] std::size_t Polyline2D::size() const
 {
-  return data_.cols();
+  return data_.rows();
 };
 
-Eigen::Matrix2Xd Polyline2D::get_data() const
+Eigen::MatrixX2d Polyline2D::get_data() const
 {
   return data_;
 }

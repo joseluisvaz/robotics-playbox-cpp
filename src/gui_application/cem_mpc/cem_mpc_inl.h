@@ -24,6 +24,11 @@ CEM_MPC<DynamicsT>::CEM_MPC(const int num_iters, const int horizon, const int po
     candidate_trajectories_.emplace_back(Trajectory(horizon_));
   }
 
+  for (int j = 0; j < num_iters; ++j)
+  {
+    candidate_trajectories_all_.push_back(candidate_trajectories_);
+  }
+
   sampler_.mean_ = Actions::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
   sampler_.stddev_ = Actions::Ones(trajectory_.actions.rows(), trajectory_.actions.cols());
 }
@@ -83,6 +88,8 @@ void CEM_MPC<DynamicsT>::run_cem_iteration(const Ref<State> &initial_state)
 template <typename DynamicsT>
 void CEM_MPC<DynamicsT>::update_action_distribution()
 {
+  auto &candidate_trajectories = candidate_trajectories_;
+
   //  Sort the cost index pairs to get the best trajectories at the beginning.
   std::sort(costs_index_pair_.begin(), costs_index_pair_.end(), [](const auto &lhs, const auto &rhs) { return lhs.first < rhs.first; });
 
@@ -91,7 +98,7 @@ void CEM_MPC<DynamicsT>::update_action_distribution()
   for (int i = 0; i < elites_; ++i)
   {
     const auto &elite_index = costs_index_pair_.at(i).second;
-    mean_actions += candidate_trajectories_.at(elite_index).actions;
+    mean_actions += candidate_trajectories.at(elite_index).actions;
   }
 
   mean_actions = mean_actions / elites_;
@@ -101,7 +108,7 @@ void CEM_MPC<DynamicsT>::update_action_distribution()
   for (int i = 0; i < elites_; ++i)
   {
     const auto &elite_index = costs_index_pair_.at(i).second;
-    Actions temp = candidate_trajectories_.at(elite_index).actions - mean_actions;
+    Actions temp = candidate_trajectories.at(elite_index).actions - mean_actions;
     stddev = stddev + temp.cwiseProduct(temp);
   }
 
@@ -122,6 +129,7 @@ typename CEM_MPC<DynamicsT>::Trajectory &CEM_MPC<DynamicsT>::execute(const Ref<S
   for (int i = 0; i < num_iters_; ++i)
   {
     run_cem_iteration(initial_state);
+    candidate_trajectories_all_[i] = candidate_trajectories_;
   }
 
   trajectory_.states.col(0) = initial_state; // Set first state

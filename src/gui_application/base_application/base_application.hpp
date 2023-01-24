@@ -64,6 +64,9 @@ public:
   // Shader to render meshes with color information
   Shaders::MeshVisualizerGL3D wireframe_shader_{NoCreate};
 
+  // Shader to render flat meshes with fixed color information
+  Shaders::FlatGL3D flat_shader_{NoCreate};
+
 private:
   Float depthAt(const Vector2i &windowPosition);
   Vector3 unproject(const Vector2i &windowPosition, Float depth) const;
@@ -83,7 +86,6 @@ private:
   void drawEvent() override;
 
   ImGuiIntegration::Context _imgui{NoCreate};
-  Shaders::FlatGL3D _flatShader{NoCreate};
   GL::Mesh grid_mesh_{NoCreate}, origin_axis_mesh_{NoCreate};
 
   Object3D *camera_object_;

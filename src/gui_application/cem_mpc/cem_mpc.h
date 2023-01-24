@@ -49,6 +49,7 @@ public:
   std::shared_ptr<CostFunction> cost_function_;
 
   std::vector<Trajectory> candidate_trajectories_;
+  std::vector<std::vector<Trajectory>> candidate_trajectories_all_;
 
   std::vector<std::pair<double, int>> costs_index_pair_;
 

@@ -18,12 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE
 
-
 #include <Magnum/Math/Color.h>
 #include <Magnum/SceneGraph/Object.h>
 #include <cstddef>
 #include <easy/profiler.h>
 #include <memory>
+#include <vector>
 
 #include "base_application/base_application.hpp"
 #include "cem_mpc/cem_mpc_application.hpp"
@@ -40,6 +40,8 @@ namespace
 
 using geometry::P2D;
 using geometry::Polyline2D;
+
+constexpr int pop = 512;
 
 const auto red_color = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
 const auto blue_color = Magnum::Math::Color3(0.0f, 0.6f, 1.0f);
@@ -58,15 +60,16 @@ void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::
       y_vals.push_back(new_state[1]);
       z_vals.push_back(new_state[3]);
     }
-    path_entity.set_xy(x_vals, y_vals, z_vals, color);
+    path_entity.set_xy(x_vals.size(), x_vals.data(), y_vals.data(), z_vals.data(), color);
   };
 
   const auto max_iter = std::max_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
   const auto min_iter = std::min_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
   const auto max_cost = max_iter != mpc.costs_index_pair_.end() ? max_iter->first : 1e9;
   const auto min_cost = min_iter != mpc.costs_index_pair_.end() ? min_iter->first : -1e9;
+
   assert(path_entities.size() == mpc.candidate_trajectories_.size());
-  for (int i = 0; i < mpc.candidate_trajectories_.size(); ++i)
+  for (int i = 0; i < path_entities.size(); ++i)
   {
     float cost = mpc.costs_index_pair_[i].first;
     cost = (cost - min_cost) / (max_cost - min_cost); // normalize
@@ -74,7 +77,9 @@ void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::
     const auto exp_color_value_blue = std::exp(-10.0f * cost);
     const auto exp_color_value_red = 1.0f - exp_color_value_blue;
     const auto color = Magnum::Math::Color3(exp_color_value_red, 0.0f, exp_color_value_blue);
-    set_xy_helper(mpc.candidate_trajectories_.at(i), *path_entities.at(i), color);
+
+    auto &candidate_traj = mpc.candidate_trajectories_[i];
+    set_xy_helper(candidate_traj, *path_entities.at(i), color);
   }
 }
 
@@ -113,8 +118,9 @@ IntelligentDriverModel::States calc_idm_lead_states_from_trajectory(
 CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examples::BaseApplication(arguments)
 {
 
+  constexpr int iters = 20;
   constexpr int horizon = 20;
-  constexpr int population = 1024;
+  constexpr int population = pop;
   mpc_ = CEM_MPC<EigenKinematicBicycle>(
       /* iters= */ 20,
       horizon,
@@ -139,52 +145,13 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
   for (int i = 0; i < population; ++i)
   {
     path_entities_.push_back(std::make_shared<Graphics::LineEntity>(scene_));
-    new Graphics::
-        VertexColorDrawable{*path_entities_.back()->object_ptr_, vertex_color_shader_, path_entities_.back()->mesh_, drawable_group_};
+    // new Graphics::
+    //     VertexColorDrawable{*path_entities_.back()->object_ptr_, vertex_color_shader_, path_entities_.back()->mesh_, drawable_group_};
+    new Graphics::FlatDrawable{*path_entities_.back()->object_ptr_, flat_shader_, path_entities_.back()->mesh_, drawable_group_};
   }
 
-  centerline_ = std::make_shared<Graphics::LineEntity>(scene_);
-  new Graphics::VertexColorDrawable{*centerline_->object_ptr_, vertex_color_shader_, centerline_->mesh_, drawable_group_};
-  left_boundary_ = std::make_shared<Graphics::LineEntity>(scene_);
-  new Graphics::VertexColorDrawable{*left_boundary_->object_ptr_, vertex_color_shader_, left_boundary_->mesh_, drawable_group_};
-  right_boundary_ = std::make_shared<Graphics::LineEntity>(scene_);
-  new Graphics::VertexColorDrawable{*right_boundary_->object_ptr_, vertex_color_shader_, right_boundary_->mesh_, drawable_group_};
-
-  std::vector<double> x_vals;
-  std::vector<double> y_vals;
-  std::vector<double> z_vals;
-  for (int i{0}; i < 100; ++i)
-  {
-    x_vals.push_back(i * 2.0);
-    y_vals.push_back(0.0);
-    z_vals.push_back(0.0);
-  }
-
-  auto centerline = Polyline2D(x_vals, y_vals);
-  const auto gray_color = Magnum::Math::Color3(0.63f, 0.63f, 0.63f);
-  centerline_->set_xy(x_vals, y_vals, z_vals, gray_color);
-
-  x_vals.clear();
-  y_vals.clear();
-  for (int i{0}; i < 100; ++i)
-  {
-    x_vals.push_back(i * 2.0);
-    y_vals.push_back(4.0);
-  }
-  auto left_boundary = Polyline2D(x_vals, y_vals);
-  left_boundary_->set_xy(x_vals, y_vals, z_vals, gray_color);
-
-  x_vals.clear();
-  y_vals.clear();
-  for (int i{0}; i < 100; ++i)
-  {
-    x_vals.push_back(i * 2.0);
-    y_vals.push_back(-4.0);
-  }
-  auto right_boundary = Polyline2D(x_vals, y_vals);
-  right_boundary_->set_xy(x_vals, y_vals, z_vals, gray_color);
-
-  lane_ = environment::Lane(centerline, left_boundary, right_boundary);
+  lane_ = environment::create_line_helper(/* n_points */ 200);
+  lane_entity_ = Graphics::LaneEntity(lane_, scene_, vertex_color_shader_, drawable_group_);
 
   IntelligentDriverModel::Config config;
   config.v0 = 10.0;
@@ -303,12 +270,14 @@ void CEMMPCApplication::show_menu()
     {
       ImPlot::SetupAxes("time[s]", value_name);
 
+      ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0, 0.5f, 0.0f, 0.05f));
       for (auto traj : this->mpc_.candidate_trajectories_)
       {
         std::vector<double> values;
         std::transform(traj.states.colwise().begin(), traj.states.colwise().end(), std::back_inserter(values), getter_fn);
         ImPlot::PlotLine(value_name, traj.times.data(), values.data(), values.size());
       }
+      ImPlot::PopStyleColor();
 
       std::vector<double> values;
       std::transform(

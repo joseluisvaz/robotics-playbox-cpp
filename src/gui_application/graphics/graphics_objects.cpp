@@ -2,6 +2,7 @@
 #include "gui_application/graphics/graphics_objects.hpp"
 
 #include "Magnum/GL/DefaultFramebuffer.h"
+#include "graphics_objects.hpp"
 
 namespace mpex::Graphics
 {
@@ -48,24 +49,6 @@ const Vector3 &TrajectoryEntities::get_vehicle_extent() const
   return vehicle_extent_;
 }
 
-LineEntity::LineEntity(Scene3D &scene) : mesh_{GL::MeshPrimitive::LineStrip}
-{
-  mesh_.addVertexBuffer(buffer_, 0, Shaders::VertexColorGL3D::Position{}, Shaders::VertexColorGL3D::Color3{});
-  object_ptr_ = std::make_shared<Object3D>(&scene);
-};
-
-void LineEntity::set_xy(std::vector<double> &x, std::vector<double> &y, std::vector<double> &z, const Color3 &color)
-{
-  data_.clear();
-  for (int i = 0; i < x.size(); i++)
-  {
-    data_.push_back(
-        Vertex{Vector3{SCALE(static_cast<float>(y[i])), SCALE(static_cast<float>(z[i])), SCALE(static_cast<float>(x[i]))}, color});
-  }
-  buffer_.setData(data_, GL::BufferUsage::StaticDraw);
-  mesh_.setCount(data_.size());
-};
-
 VertexColorDrawable::VertexColorDrawable(
     Object3D &object, Shaders::VertexColorGL3D &shader, GL::Mesh &mesh, SceneGraph::DrawableGroup3D &drawables)
     : SceneGraph::Drawable3D{object, &drawables}, _shader(shader), _mesh(mesh)
@@ -100,9 +83,38 @@ FlatDrawable::FlatDrawable(Object3D &object, Shaders::FlatGL3D &shader, GL::Mesh
 void FlatDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph::Camera3D &camera)
 {
   _shader
-      .setColor(0x747474_rgbf) // gray color
+      //.setColor(0x74747492_rgbaf) // gray color
       .setTransformationProjectionMatrix(camera.projectionMatrix() * transformation)
       .draw(_mesh);
+}
+
+LaneEntity::LaneEntity(
+    environment::Lane &lane, Scene3D &scene, Shaders::VertexColorGL3D &vertex_color_shader, SceneGraph::DrawableGroup3D &drawable_group)
+    : lane_(lane)
+{
+
+  centerline_drawable_ = std::make_shared<Graphics::LineEntity>(scene);
+  left_boundary_drawable_ = std::make_shared<Graphics::LineEntity>(scene);
+  right_boundary_drawable_ = std::make_shared<Graphics::LineEntity>(scene);
+
+  auto new_drawable = [&](auto &drawable) {
+    new Graphics::VertexColorDrawable{*drawable->object_ptr_, vertex_color_shader, drawable->mesh_, drawable_group};
+  };
+  new_drawable(centerline_drawable_);
+  new_drawable(left_boundary_drawable_);
+  new_drawable(right_boundary_drawable_);
+
+  const auto gray_color = Magnum::Math::Color3(0.63f, 0.63f, 0.63f);
+
+  auto centerline_data = lane_.centerline_.get_data();
+  auto lb_data = lane_.left_boundary_.get_data();
+  auto rb_data = lane_.right_boundary_.get_data();
+
+  std::vector<double> z_vals(centerline_data.rows(), 0.0);
+  const std::size_t N = centerline_data.rows();
+  centerline_drawable_->set_xy(N, centerline_data.data(), centerline_data.data() + N, z_vals.data(), gray_color);
+  left_boundary_drawable_->set_xy(N, lb_data.data(), lb_data.data() + N, z_vals.data(), gray_color);
+  right_boundary_drawable_->set_xy(N, rb_data.data(), rb_data.data() + N, z_vals.data(), gray_color);
 }
 
 } // namespace mpex::Graphics

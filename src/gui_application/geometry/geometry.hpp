@@ -32,11 +32,11 @@ public:
   Polyline2D(const std::vector<double> &x, const std::vector<double> &y);
   [[nodiscard]] P2D get_point(std::size_t i) const;
   [[nodiscard]] std::size_t size() const;
-  Eigen::Matrix2Xd get_data() const;
+  Eigen::MatrixX2d get_data() const;
   double calc_progress_coord(const P2D &point) const;
 
 private:
-  Eigen::Matrix2Xd data_;
+  Eigen::MatrixX2d data_;
   std::vector<double> arclength_;
 };
 

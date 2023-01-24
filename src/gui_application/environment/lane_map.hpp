@@ -17,6 +17,7 @@ namespace mpex
 namespace environment
 {
 
+
 using geometry::P2D;
 using geometry::Polyline2D;
 
@@ -42,6 +43,9 @@ public:
 };
 
 using LaneMap = std::unordered_map<uint32_t, Lane>;
+
+[[nodiscard]] Lane create_line_helper(std::size_t n_points);
+
 } // namespace environment
 
 } // namespace mpex

@@ -20,6 +20,7 @@
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/Shaders/FlatGL.h>
 #include <Magnum/Shaders/MeshVisualizerGL.h>
+#include <Magnum/Shaders/Shaders.h>
 #include <Magnum/Shaders/VertexColorGL.h>
 #include <Magnum/Trade/MeshData.h>
 
@@ -63,25 +64,27 @@ BaseApplication::BaseApplication(const Arguments &arguments) : Platform::Applica
     ImGui::StyleColorsDark();
 
     /* Setup proper blending to be used by ImGui */
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+    GL::Renderer::enable(GL::Renderer::Feature::Blending);
     GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha, GL::Renderer::BlendFunction::OneMinusSourceAlpha);
-    GL::Renderer::setLineWidth(3.0f);
+    GL::Renderer::setLineWidth(4.0f);
   }
 
   /* Shaders, renderer setup */
   vertex_color_shader_ = Shaders::VertexColorGL3D{};
-  _flatShader = Shaders::FlatGL3D{};
+  flat_shader_ = Shaders::FlatGL3D{Shaders::FlatGL3D::Flag::AlphaMask | Shaders::FlatGL3D::Flag::VertexColor};
+  flat_shader_.setAlphaMask(0.1f);
+
   // NOTE: NoGeometryShader is needed for rendering
   wireframe_shader_ = Shaders::MeshVisualizerGL3D{Shaders::MeshVisualizerGL3D::Configuration{}.setFlags(
       Shaders::MeshVisualizerGL3D::Flag::Wireframe | Shaders::MeshVisualizerGL3D::Flag::NoGeometryShader)};
-
-  GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
 
   /* Grid */
   grid_mesh_ = MeshTools::compile(Primitives::grid3DWireframe({15, 15}));
   auto grid_object = new Object3D{&scene_};
   (*grid_object).rotateX(90.0_degf).scale(Vector3{15.0f});
-  new Graphics::FlatDrawable{*grid_object, _flatShader, grid_mesh_, drawable_group_};
+  new Graphics::FlatDrawable{*grid_object, flat_shader_, grid_mesh_, drawable_group_};
 
   /* Origin Axis */
   origin_axis_mesh_ = MeshTools::compile(Primitives::axis3D());
@@ -293,7 +296,9 @@ void BaseApplication::drawEvent()
   // Execute the main content of the application, data generation, adding to drawables etc.
   execute();
 
+  GL::Renderer::enable(GL::Renderer::Feature::Blending);
   camera_->draw(drawable_group_);
+  GL::Renderer::disable(GL::Renderer::Feature::Blending);
 
   // Set Imgui drawables
   show_menu();

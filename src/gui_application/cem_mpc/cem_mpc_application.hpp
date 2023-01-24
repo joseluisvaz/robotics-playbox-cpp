@@ -54,6 +54,7 @@ private:
 
   // enviroment
   environment::Lane lane_;
+  Graphics::LaneEntity lane_entity_;
 };
 
 } // namespace mpex
