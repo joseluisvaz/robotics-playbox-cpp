@@ -5,6 +5,7 @@
 #include <memory>
 #include <thread>
 
+#include "cost_function.hpp"
 #include "common/math.hpp"
 #include "common/types.hpp"
 
