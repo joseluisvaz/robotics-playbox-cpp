@@ -67,6 +67,9 @@ public:
   // Shader to render flat meshes with fixed color information
   Shaders::FlatGL3D flat_shader_{NoCreate};
 
+  // Camera object
+  Object3D *camera_object_;
+
 private:
   Float depthAt(const Vector2i &windowPosition);
   Vector3 unproject(const Vector2i &windowPosition, Float depth) const;
@@ -88,7 +91,6 @@ private:
   ImGuiIntegration::Context _imgui{NoCreate};
   GL::Mesh grid_mesh_{NoCreate}, origin_axis_mesh_{NoCreate};
 
-  Object3D *camera_object_;
   SceneGraph::Camera3D *camera_;
 
   Float _lastDepth;

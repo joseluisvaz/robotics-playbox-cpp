@@ -18,8 +18,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE
 
+#include <Magnum/Math/Angle.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/SceneGraph/Object.h>
+#include <Magnum/SceneGraph/SceneGraph.h>
 #include <cstddef>
 #include <easy/profiler.h>
 #include <memory>
@@ -40,6 +42,8 @@ namespace
 
 using geometry::P2D;
 using geometry::Polyline2D;
+
+using namespace Magnum::Math::Literals;
 
 constexpr int pop = 512;
 
@@ -173,6 +177,14 @@ void CEMMPCApplication::execute()
   if (is_running_)
   {
     runCEM();
+
+    camera_object_->resetTransformation()
+        .translate(Magnum::Vector3::zAxis(SCALE(200.0f)))
+        .translate(Magnum::Vector3::xAxis(SCALE(50.0f)))
+        .rotateX(-90.0_degf)
+        .rotateY(-90.0_degf)
+        .translate(Magnum::Vector3::zAxis(SCALE(current_state_[0])))
+        .translate(Magnum::Vector3::xAxis(SCALE(current_state_[1])));
   }
 }
 
@@ -213,6 +225,8 @@ void CEMMPCApplication::runCEM()
 
 void CEMMPCApplication::show_menu()
 {
+
+  ImGui::ShowDemoWindow();
 
   // ImGui::ShowDemoWindow();
   EASY_FUNCTION(profiler::colors::Blue);

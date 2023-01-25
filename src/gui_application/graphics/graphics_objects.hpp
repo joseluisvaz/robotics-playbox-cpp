@@ -73,7 +73,7 @@ public:
     data_.clear();
     for (int i = 0; i < n; i++)
     {
-      auto color_4 = Magnum::Color4(color[0], color[1], color[2], 0.2f);
+      auto color_4 = Magnum::Color4(color[0], color[1], color[2], 0.4f);
       auto pos = Magnum::Vector3(SCALE(static_cast<float>(y[i])), SCALE(static_cast<float>(z[i])), SCALE(static_cast<float>(x[i])));
       data_.push_back(Vertex(pos, color_4));
     }

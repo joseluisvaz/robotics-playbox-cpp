@@ -60,6 +60,7 @@ BaseApplication::BaseApplication(const Arguments &arguments) : Platform::Applica
   /* Setup ImGui, load a better font */
   {
     _imgui = ImGuiIntegration::Context(Vector2{windowSize()} / dpiScaling(), windowSize(), framebufferSize());
+
     ImPlot::CreateContext();
     ImGui::StyleColorsDark();
 
@@ -331,8 +332,8 @@ void BaseApplication::resetCameraPosition()
   {
     return;
   }
-  (*camera_object_)
-      .resetTransformation()
+
+  camera_object_->resetTransformation()
       .translate(Vector3::zAxis(SCALE(200.0f)))
       .translate(Vector3::xAxis(SCALE(50.0f)))
       .rotateX(-90.0_degf)
