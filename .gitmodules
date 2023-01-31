@@ -1,3 +1,12 @@
 [submodule "toolchains"]
 	path = toolchains
 	url = https://github.com/mosra/toolchains.git
+[submodule "src/gui_application/third_party/olcPixelGameEngine"]
+	path = src/gui_application/third_party/olcPixelGameEngine
+	url = https://github.com/OneLoneCoder/olcPixelGameEngine.git
+[submodule "src/gui_application/third_party/imgui"]
+	path = src/gui_application/third_party/imgui
+	url = https://github.com/ocornut/imgui
+[submodule "src/gui_application/third_party/olcPGEDearImGui"]
+	path = src/gui_application/third_party/olcPGEDearImGui
+	url = https://github.com/dandistine/olcPGEDearImGui.git

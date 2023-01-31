@@ -73,6 +73,22 @@ cuda_add_executable(julia julia.cu)
 target_include_directories(julia PUBLIC ${OPENGL_INCLUDE_DIRS})
 target_link_libraries(julia ${OPENGL_LIBRARIES} ${GLUT_LIBRARY})
 
+add_executable(olc_example 
+    olc_example.cpp 
+    third_party/imgui/imgui.cpp 
+    third_party/imgui/imgui_demo.cpp 
+    third_party/imgui/imgui_draw.cpp 
+    third_party/imgui/imgui_widgets.cpp 
+    third_party/imgui/imgui_tables.cpp 
+    third_party/imgui/backends/imgui_impl_opengl2.cpp)
+target_include_directories(olc_example PUBLIC 
+    ${PROJECT_SOURCE_DIR}/src/gui_application/third_party/imgui
+    ${PROJECT_SOURCE_DIR}/src/gui_application/third_party/imgui/backends
+    ${PROJECT_SOURCE_DIR}/src/gui_application/third_party/olcPixelGameEngine
+    ${PROJECT_SOURCE_DIR}/src/gui_application/third_party/olcPGEDearImGui)
+target_compile_features(olc_example PUBLIC cxx_std_17)
+target_link_libraries(olc_example X11 GL pthread png stdc++fs Eigen3::Eigen)
+
 # set_target_properties(add 
 #              PROPERTIES
 #                  CUDA_SEPARABLE_COMPILATION ON

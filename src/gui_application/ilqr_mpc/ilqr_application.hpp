@@ -19,6 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE
 
+#include <algorithm>
 #include <optional>
 
 #include <Magnum/Platform/Sdl2Application.h>
@@ -27,7 +28,10 @@
 #include <Magnum/SceneGraph/Scene.h>
 
 #include "base_application/base_application.hpp"
+#include "common/containers.h"
 #include "common/types.hpp"
+#include "environment/lane_map.hpp"
+#include "graphics/graphics_objects.hpp"
 #include "ilqr_mpc/ilqr_mpc.hpp"
 
 namespace mpex
@@ -49,9 +53,18 @@ private:
   Magnum::GL::Mesh mesh_{Magnum::NoCreate};
   Graphics::TrajectoryEntities trajectory_entities_;
   IterativeLinearQuadraticRegulator policy_;
-  Dynamics::State current_state_;
   std::optional<Dynamics::Trajectory> maybe_current_trajectory_;
   bool is_running_{false};
+
+  // State
+  Dynamics::State current_state_;
+  double time_;
+
+  // enviroment
+  environment::Lane lane_;
+  Graphics::LaneEntity lane_entity_;
+
+  std::unordered_map<std::string, containers::Buffer<double>> history_buffer_;
 };
 
 } // namespace mpex

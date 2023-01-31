@@ -12,6 +12,7 @@
 #include "common/types.hpp"
 #include "environment/lane_map.hpp"
 #include "graphics/graphics_objects.hpp"
+#include "common/containers.h"
 
 namespace mpex
 {
@@ -51,10 +52,14 @@ private:
   // state of the vehicle
   Dynamics::State current_state_;
   IntelligentDriverModel::State idm_state_;
+  double time_s_;
 
   // enviroment
   environment::Lane lane_;
   Graphics::LaneEntity lane_entity_;
+
+  // history buffer of states and actions
+  std::unordered_map<std::string, containers::Buffer<double>> history_buffer_;
 };
 
 } // namespace mpex

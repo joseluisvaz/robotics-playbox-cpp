@@ -40,6 +40,8 @@ namespace mpex
 namespace
 {
 
+constexpr size_t n_buffer_capacity = 50;
+
 using geometry::P2D;
 using geometry::Polyline2D;
 
@@ -168,6 +170,12 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
   idm_state_ = IntelligentDriverModel::State();
   idm_state_ << -30.0, 5.0;
 
+  history_buffer_["time_s"] = containers::Buffer<double>(n_buffer_capacity);
+  history_buffer_["speed_mps"] = containers::Buffer<double>(n_buffer_capacity);
+  history_buffer_["accel_mpss"] = containers::Buffer<double>(n_buffer_capacity);
+  history_buffer_["yaw_rad"] = containers::Buffer<double>(n_buffer_capacity);
+  history_buffer_["steering_rad"] = containers::Buffer<double>(n_buffer_capacity);
+
   // run one iteration of CEM to show in the window
   runCEM();
 }
@@ -218,6 +226,13 @@ void CEMMPCApplication::runCEM()
 
   current_state_ = Dynamics::step_(current_state_, current_action);
   idm_state_ = SingleIntegrator::step_(idm_state_, idm_action);
+  time_s_ += Dynamics::ts;
+
+  history_buffer_["time_s"].push(time_s_);
+  history_buffer_["speed_mps"].push(current_state_[3]);
+  history_buffer_["accel_mpss"].push(current_state_[4]);
+  history_buffer_["yaw_rad"].push(current_state_[2]);
+  history_buffer_["steering_rad"].push(current_state_[5]);
 
   const auto ego_xy = P2D(current_state_[0], current_state_[1]);
   EASY_END_BLOCK;
@@ -225,10 +240,6 @@ void CEMMPCApplication::runCEM()
 
 void CEMMPCApplication::show_menu()
 {
-
-  ImGui::ShowDemoWindow();
-
-  // ImGui::ShowDemoWindow();
   EASY_FUNCTION(profiler::colors::Blue);
   ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowBgAlpha(0.5f);
@@ -244,6 +255,11 @@ void CEMMPCApplication::show_menu()
   {
     current_state_ << -10.0, 0.0, 0.0, 10.0, 0.0, 0.0;
     idm_state_ << -30.0, 5.0;
+    history_buffer_["time_s"] = containers::Buffer<double>(n_buffer_capacity);
+    history_buffer_["speed_mps"] = containers::Buffer<double>(n_buffer_capacity);
+    history_buffer_["accel_mpss"] = containers::Buffer<double>(n_buffer_capacity);
+    history_buffer_["yaw_rad"] = containers::Buffer<double>(n_buffer_capacity);
+    history_buffer_["steering_rad"] = containers::Buffer<double>(n_buffer_capacity);
     redraw();
   }
 
@@ -284,26 +300,43 @@ void CEMMPCApplication::show_menu()
     {
       ImPlot::SetupAxes("time[s]", value_name);
 
+      // Plot history
+      if (history_buffer_.find("time_s") != history_buffer_.end() && history_buffer_.find(value_name) != history_buffer_.end())
+      {
+        std::vector<double> t_past_values;
+        std::vector<double> v_past_values;
+        for (int i{0}; i < history_buffer_["time_s"].size(); ++i)
+        {
+          t_past_values.push_back(history_buffer_["time_s"][i]);
+          v_past_values.push_back(history_buffer_[value_name][i]);
+        }
+
+        ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+        ImPlot::PlotLine(std::string(value_name).append("_past").c_str(), t_past_values.data(), v_past_values.data(), v_past_values.size());
+        ImPlot::PopStyleColor();
+      }
+
       ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0, 0.5f, 0.0f, 0.05f));
       for (auto traj : this->mpc_.candidate_trajectories_)
       {
+        std::vector<double> t_values;
+        std::transform(traj.times.begin(), traj.times.end(), std::back_inserter(t_values), [&](auto t) { return time_s_ + t; });
         std::vector<double> values;
         std::transform(traj.states.colwise().begin(), traj.states.colwise().end(), std::back_inserter(values), getter_fn);
-        ImPlot::PlotLine(value_name, traj.times.data(), values.data(), values.size());
+        ImPlot::PlotLine(value_name, t_values.data(), values.data(), values.size());
       }
       ImPlot::PopStyleColor();
 
+      const auto &traj = mpc_.get_trajectory();
+      std::vector<double> t_values;
+      std::transform(traj.times.begin(), traj.times.end(), std::back_inserter(t_values), [&](auto t) { return time_s_ + t; });
       std::vector<double> values;
-      std::transform(
-          mpc_.get_trajectory().states.colwise().cbegin(),
-          mpc_.get_trajectory().states.colwise().cend(),
-          std::back_inserter(values),
-          getter_fn);
+      std::transform(traj.states.colwise().begin(), traj.states.colwise().end(), std::back_inserter(values), getter_fn);
 
       ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
       ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-      ImPlot::
-          PlotLine(std::string(value_name).append("_hola").c_str(), this->mpc_.get_trajectory().times.data(), values.data(), values.size());
+      ImPlot::PlotLine(std::string(value_name).append("_hola").c_str(), t_values.data(), values.data(), values.size());
       ImPlot::PopStyleColor();
 
       ImPlot::EndPlot();
@@ -316,12 +349,14 @@ void CEMMPCApplication::show_menu()
     if (ImPlot::BeginPlot(title))
     {
       ImPlot::SetupAxes("time[s]", value_name);
+      ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0, 0.5f, 0.0f, 0.05f));
       for (auto traj : this->mpc_.candidate_trajectories_)
       {
         std::vector<double> values;
         std::transform(traj.actions.colwise().begin(), traj.actions.colwise().end(), std::back_inserter(values), getter_fn);
         ImPlot::PlotLine(value_name, traj.times.data(), values.data(), values.size());
       }
+      ImPlot::PopStyleColor();
 
       std::vector<double> values;
       std::transform(
@@ -339,10 +374,10 @@ void CEMMPCApplication::show_menu()
   };
 
   EASY_BLOCK("Make plots");
-  make_plot("Speed Plot", "speed[mps]", [](const Ref<const typename Dynamics::State> &state) { return state[3]; });
-  make_plot("Accel Plot", "accel[mpss]", [](const Ref<const typename Dynamics::State> &state) { return state[4]; });
-  make_plot("Yaw Plot", "yaw[rad]", [](const Ref<const typename Dynamics::State> &state) { return state[2]; });
-  make_plot("Steering Plot", "steering[rad]", [](const Ref<const typename Dynamics::State> &state) { return state[5]; });
+  make_plot("Speed Plot", "speed_mps", [](const Ref<const typename Dynamics::State> &state) { return state[3]; });
+  make_plot("Accel Plot", "accel_mpss", [](const Ref<const typename Dynamics::State> &state) { return state[4]; });
+  make_plot("Yaw Plot", "yaw_rad", [](const Ref<const typename Dynamics::State> &state) { return state[2]; });
+  make_plot("Steering Plot", "steering_rad", [](const Ref<const typename Dynamics::State> &state) { return state[5]; });
   make_action_plot(
       "Jerk Plot", "jerk[mpsss]", [](const Ref<const typename Dynamics::Action> &action) { return 0.6 * std::tanh(action[0]); });
   make_action_plot(

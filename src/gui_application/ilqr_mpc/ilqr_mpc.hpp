@@ -41,14 +41,17 @@ public:
   IterativeLinearQuadraticRegulator() = default;
   IterativeLinearQuadraticRegulator(const int horizon, const int iters, const bool debug);
 
-  Trajectory solve(const Ref<State> &x0, const std::optional<Trajectory>& maybe_warmstart = {});
+  Trajectory solve(const Ref<State> &x0, const std::optional<Trajectory> &maybe_warmstart = {});
 
   int horizon_;
+
+  // Trajectories for each iteration
+  std::vector<Trajectory> debug_iterations_;
 
 private:
   /// Runs a single rollout for a trajectory.
   ///@param[in, out] trajectory The modified trajectory after a rollout.
-  ///@param[in] use_warmstart Whether to use warmstart 
+  ///@param[in] use_warmstart Whether to use warmstart
   void rollout(Trajectory &trajectory, const bool use_warmstart);
   void backward_pass(const Trajectory &trajectory);
   Trajectory forward_pass(const Trajectory &trajectory, const double alpha);

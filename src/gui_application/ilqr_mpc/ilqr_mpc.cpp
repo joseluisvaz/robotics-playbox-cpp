@@ -25,15 +25,15 @@ namespace
 autodiff::dual2nd cost_function_diff(VectorXdual2nd x, VectorXdual2nd u)
 {
   VectorXdual2nd x_ref = VectorXdual2nd::Zero(x.size());
-  x_ref(0) = 100.0;
+  x_ref(0) = 0.0;
   x_ref(1) = 0.0;
   x_ref(2) = 0.0;
-  x_ref(3) = 0.0;
+  x_ref(3) = 5.0;
   x_ref(4) = 0.0;
   x_ref(5) = 0.0;
 
   VectorXdual2nd Q(x.size());
-  Q << 0.0, 0.0, 1.0, 0.0, 1.0, 1.0;
+  Q << 0.0, 1.0, 1.0, 1.0, 1.0, 1.0;
   VectorXdual2nd R(u.size());
   R << 0.1, 0.1;
 
@@ -43,15 +43,15 @@ autodiff::dual2nd cost_function_diff(VectorXdual2nd x, VectorXdual2nd u)
 autodiff::dual2nd terminal_cost_function_diff(VectorXdual2nd x, VectorXdual2nd u)
 {
   VectorXdual2nd x_ref = VectorXdual2nd::Zero(x.size());
-  x_ref(0) = 100.0;
+  x_ref(0) = 0.0;
   x_ref(1) = 0.0;
   x_ref(2) = 0.0;
-  x_ref(3) = 0.0;
+  x_ref(3) = 5.0;
   x_ref(4) = 0.0;
   x_ref(5) = 0.0;
 
   VectorXdual2nd Q(x.size());
-  Q << 100.0, 100.0, 10.0, 10.0, 1.0, 1.0;
+  Q << 0.0, 100.0, 10.0, 10.0, 1.0, 1.0;
   VectorXdual2nd R(u.size());
   R << 0.1, 0.1;
 
@@ -84,7 +84,7 @@ void IterativeLinearQuadraticRegulator::rollout(Trajectory &trajectory, const bo
   auto &x = trajectory.states;
 
   sampler_.mean_ = use_warmstart ? u : Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
-  sampler_.stddev_ = 1e-5 * Actions::Ones(trajectory.actions.rows(), trajectory.actions.cols());
+  sampler_.stddev_ = 1.0 * Actions::Ones(trajectory.actions.rows(), trajectory.actions.cols());
   u = sampler_();
 
   double current_time_s{0.0f};
@@ -111,6 +111,9 @@ IterativeLinearQuadraticRegulator::solve(const Ref<State> &x0, const std::option
   trajectory.states.col(0) = x0; // Add initial state
   this->rollout(trajectory, /* use_warmstart */ maybe_trajectory.has_value());
 
+  // Clear debug iterations trajectory information
+  debug_iterations_.clear();
+
   cout.precision(17);
   for (int i{0}; i < iters_; ++i)
   {
@@ -120,6 +123,8 @@ IterativeLinearQuadraticRegulator::solve(const Ref<State> &x0, const std::option
     {
       cout << "iter: " << i << " cost: " << std::fixed << cost << endl;
     }
+
+    debug_iterations_.push_back(trajectory);
 
     // Do backtracking line search to find when the cost decreases the most, forward passes are inexpesive,
     // so this it is ok to iterate for maximum of "backtracking_iterations".
