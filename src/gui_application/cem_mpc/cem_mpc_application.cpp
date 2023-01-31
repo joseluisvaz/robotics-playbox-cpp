@@ -47,7 +47,9 @@ using geometry::Polyline2D;
 
 using namespace Magnum::Math::Literals;
 
-constexpr int pop = 512;
+constexpr int population = 1024;
+constexpr int iters = 20;
+constexpr int horizon = 20;
 
 const auto red_color = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
 const auto blue_color = Magnum::Math::Color3(0.0f, 0.6f, 1.0f);
@@ -124,9 +126,6 @@ IntelligentDriverModel::States calc_idm_lead_states_from_trajectory(
 CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examples::BaseApplication(arguments)
 {
 
-  constexpr int iters = 20;
-  constexpr int horizon = 20;
-  constexpr int population = pop;
   mpc_ = CEM_MPC<EigenKinematicBicycle>(
       /* iters= */ 20,
       horizon,
@@ -176,7 +175,6 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
   history_buffer_["yaw_rad"] = containers::Buffer<double>(n_buffer_capacity);
   history_buffer_["steering_rad"] = containers::Buffer<double>(n_buffer_capacity);
 
-  // run one iteration of CEM to show in the window
   runCEM();
 }
 
@@ -200,7 +198,9 @@ void CEMMPCApplication::runCEM()
 {
   EASY_FUNCTION(profiler::colors::Red);
 
-  Dynamics::Trajectory &trajectory = mpc_.execute(current_state_);
+  auto trajectory = mpc_.solve(current_state_, maybe_current_trajectory_);
+  maybe_current_trajectory_ = trajectory;
+  // auto trajectory = mpc_.solve(current_state_);
   Dynamics::Action current_action = trajectory.actions.col(0);
 
   for (int i = 0; i < trajectory.states.cols(); ++i)

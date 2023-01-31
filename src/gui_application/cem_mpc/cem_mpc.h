@@ -1,13 +1,15 @@
 #pragma once
 
-#include <Eigen/Dense>
 #include <array>
 #include <memory>
+#include <optional>
 #include <thread>
 
-#include "cost_function.hpp"
+#include <Eigen/Dense>
+
 #include "common/math.hpp"
 #include "common/types.hpp"
+#include "cost_function.hpp"
 
 namespace mpex
 {
@@ -39,8 +41,9 @@ public:
   /// Execute the cross entropy method mpc, it return the full state-action trajectory. Extract the first action to
   /// control your system.
   ///@param[in] initial_state The initial state
+  ///@param[in] maybe_trajectory The initial trajectory containing the initial control sequence for warm start
   ///@return Trajectory& A reference to the trajectory that the MPC computed.
-  Trajectory &execute(const Ref<State> &initial_state);
+  Trajectory solve(const Ref<State> &initial_state, const std::optional<Trajectory> &maybe_trajectory);
 
   int &get_num_iters_mutable();
 
@@ -49,7 +52,6 @@ public:
   std::shared_ptr<CostFunction> cost_function_;
 
   std::vector<Trajectory> candidate_trajectories_;
-  std::vector<std::vector<Trajectory>> candidate_trajectories_all_;
 
   std::vector<std::pair<double, int>> costs_index_pair_;
 

@@ -24,11 +24,6 @@ CEM_MPC<DynamicsT>::CEM_MPC(const int num_iters, const int horizon, const int po
     candidate_trajectories_.emplace_back(Trajectory(horizon_));
   }
 
-  for (int j = 0; j < num_iters; ++j)
-  {
-    candidate_trajectories_all_.push_back(candidate_trajectories_);
-  }
-
   sampler_.mean_ = Actions::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
   sampler_.stddev_ = Actions::Ones(trajectory_.actions.rows(), trajectory_.actions.cols());
 }
@@ -119,17 +114,18 @@ void CEM_MPC<DynamicsT>::update_action_distribution()
 }
 
 template <typename DynamicsT>
-typename CEM_MPC<DynamicsT>::Trajectory &CEM_MPC<DynamicsT>::execute(const Ref<State> &initial_state)
+typename CEM_MPC<DynamicsT>::Trajectory
+CEM_MPC<DynamicsT>::solve(const Ref<State> &initial_state, const std::optional<Trajectory> &maybe_trajectory)
 {
   EASY_FUNCTION(profiler::colors::Magenta);
 
-  sampler_.mean_ = Actions::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
+  sampler_.mean_ =
+      maybe_trajectory.has_value() ? maybe_trajectory->actions : Actions::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
   sampler_.stddev_ = Actions::Ones(trajectory_.actions.rows(), trajectory_.actions.cols());
 
   for (int i = 0; i < num_iters_; ++i)
   {
     run_cem_iteration(initial_state);
-    candidate_trajectories_all_[i] = candidate_trajectories_;
   }
 
   trajectory_.states.col(0) = initial_state; // Set first state

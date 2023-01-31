@@ -1,18 +1,20 @@
 
 #pragma once
 
+#include <memory>
+#include <optional>
+#include <vector>
+
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/Platform/Sdl2Application.h>
-#include <memory>
-#include <vector>
 
 #include "base_application/base_application.hpp"
 #include "cem_mpc/cem_mpc.h"
 #include "cem_mpc/intelligent_driver_model.hpp"
+#include "common/containers.h"
 #include "common/types.hpp"
 #include "environment/lane_map.hpp"
 #include "graphics/graphics_objects.hpp"
-#include "common/containers.h"
 
 namespace mpex
 {
@@ -53,6 +55,7 @@ private:
   Dynamics::State current_state_;
   IntelligentDriverModel::State idm_state_;
   double time_s_;
+  std::optional<Dynamics::Trajectory> maybe_current_trajectory_;
 
   // enviroment
   environment::Lane lane_;
