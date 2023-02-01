@@ -18,14 +18,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE
 
+#include <cstddef>
+#include <fstream>
+#include <memory>
+#include <sstream>
+#include <vector>
+
 #include <Magnum/Math/Angle.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/SceneGraph/SceneGraph.h>
-#include <cstddef>
 #include <easy/profiler.h>
-#include <memory>
-#include <vector>
 
 #include "base_application/base_application.hpp"
 #include "cem_mpc/cem_mpc_application.hpp"
@@ -53,6 +56,75 @@ constexpr int horizon = 20;
 
 const auto red_color = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
 const auto blue_color = Magnum::Math::Color3(0.0f, 0.6f, 1.0f);
+
+/// Utility to read track file from csv.
+///@param filename The filename where the track file resides, use the global path.
+///@returns map with the contents of the track file.
+std::unordered_map<std::string, std::vector<double>> read_track_from_csv(std::string filename)
+{
+  /// Gotten from stack overflow: https://stackoverflow.com/questions/1120140/how-can-i-read-and-parse-csv-files-in-c
+  auto split_next_line_into_tokens = [](std::istream &str)
+  {
+    std::vector<std::string> result;
+    std::string line;
+    std::getline(str, line);
+
+    std::stringstream lineStream(line);
+    std::string cell;
+
+    while (std::getline(lineStream, cell, ','))
+    {
+      result.push_back(cell);
+    }
+    return result;
+  };
+
+  std::ifstream file(filename.c_str());
+  if (!file)
+  {
+    throw std::invalid_argument("Track file not found.");
+    return {};
+  }
+
+  std::unordered_map<std::string, std::vector<double>> output;
+
+  const auto header_tokens = split_next_line_into_tokens(file);
+  for (const auto &header : header_tokens)
+  {
+    output[header] = std::vector<double>();
+  }
+
+  while (file)
+  {
+    auto value_tokens = split_next_line_into_tokens(file);
+    if (value_tokens.empty())
+    {
+      // This if statement handles when there is a last empty line.
+      continue;
+    }
+
+    for (size_t i{0}; i < header_tokens.size(); ++i)
+    {
+      output[header_tokens[i]].push_back(5.0 * std::stod(value_tokens[i]));
+    }
+  }
+  return output;
+}
+
+Polyline2D compute_centerline(const Polyline2D &left_boundary, const Polyline2D &right_boundary)
+{
+  geometry::Polyline2D centerline;
+  for (size_t i{0}; i < left_boundary.size(); ++i)
+  {
+    // Transform to vector because we have defined arithmetic operations
+    auto p_left = geometry::V2D(left_boundary[i]);
+    auto p_right = geometry::V2D(right_boundary[i]);
+    auto p_center = (p_right + p_left) / 2.0;
+    centerline.push_back(p_center.get_point());
+  }
+
+  return centerline;
+}
 
 void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::shared_ptr<Graphics::LineEntity>> &path_entities)
 {
@@ -133,7 +205,6 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
       /* elites */ 10);
 
   mpc_.cost_function_ = std::make_shared<QuadraticCostFunction>();
-
   trajectory_entities_ = Graphics::TrajectoryEntities(scene_, horizon);
   trajectory_entities_idm_ = Graphics::TrajectoryEntities(scene_, horizon);
 
@@ -155,8 +226,15 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
     new Graphics::FlatDrawable{*path_entities_.back()->object_ptr_, flat_shader_, path_entities_.back()->mesh_, drawable_group_};
   }
 
-  lane_ = environment::create_line_helper(/* n_points */ 200);
+  // lane_ = environment::create_line_helper(/* n_points */ 200);
+  auto track_map = read_track_from_csv("/home/vjose/code/robotics_project/src/gui_application/track.csv");
+  geometry::Polyline2D c_left_boundary(track_map["left_x"], track_map["left_y"]);
+  geometry::Polyline2D c_right_boundary(track_map["right_x"], track_map["right_y"]);
+  geometry::Polyline2D c_centerline = compute_centerline(c_left_boundary, c_right_boundary);
+  lane_ = environment::Lane(c_centerline, c_left_boundary, c_right_boundary);
   lane_entity_ = Graphics::LaneEntity(lane_, scene_, vertex_color_shader_, drawable_group_);
+  
+  std::cout << "reached here: " << std::endl;
 
   IntelligentDriverModel::Config config;
   config.v0 = 10.0;

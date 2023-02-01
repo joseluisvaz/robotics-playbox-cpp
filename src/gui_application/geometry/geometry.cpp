@@ -40,10 +40,15 @@ Polyline2D::Polyline2D(const std::vector<double> &x, const std::vector<double> &
     data_(i, 0) = x[i];
     data_(i, 1) = y[i];
   }
-  
+
+  recompute_arclength();
+};
+
+void Polyline2D::recompute_arclength()
+{
   // Needs to be monotonically increasing ...
   arclength_ = std::vector<double>(data_.rows(), 0.0);
-  for (size_t i{1}; i < x.size(); ++i)
+  for (size_t i{1}; i < data_.rows(); ++i)
   {
     // vector from p1 to p2
     arclength_[i] = (data_.row(i) - data_.row(i - 1)).norm() + arclength_[i - 1];
@@ -56,6 +61,11 @@ Polyline2D::Polyline2D(const std::vector<double> &x, const std::vector<double> &
   return P2D(data_.row(i));
 };
 
+[[nodiscard]] P2D Polyline2D::operator[](std::size_t i) const
+{
+  return get_point(i);
+};
+
 [[nodiscard]] std::size_t Polyline2D::size() const
 {
   return data_.rows();
@@ -64,6 +74,14 @@ Polyline2D::Polyline2D(const std::vector<double> &x, const std::vector<double> &
 Eigen::MatrixX2d Polyline2D::get_data() const
 {
   return data_;
+}
+
+void Polyline2D::push_back(const P2D &point)
+{
+  data_.conservativeResize(data_.rows() + 1, data_.cols());
+  data_(data_.rows() - 1, 0) = point.x();
+  data_(data_.rows() - 1, 1) = point.y();
+  recompute_arclength();
 }
 
 double Polyline2D::calc_progress_coord(const P2D &p) const

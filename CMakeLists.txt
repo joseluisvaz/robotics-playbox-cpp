@@ -42,13 +42,14 @@ if(POLICY CMP0077)
     cmake_policy(SET CMP0077 NEW)
 endif()
 
-project(MagnumIntegration CXX)
+project(MagnumIntegration CUDA CXX)
 
 # Use folders for nice tree in Visual Studio and XCode
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/modules/" ${CMAKE_MODULE_PATH})
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++17" )
 find_package(Magnum REQUIRED)
 
 # Parts of the library
