@@ -1,10 +1,12 @@
 #pragma once
 
-#include <Magnum/Magnum.h>
 #include <limits>
+#include <memory>
 #include <vector>
 
 #include <Eigen/Dense>
+#include <Magnum/Magnum.h>
+#include <interpolation.h>
 
 namespace geometry
 {
@@ -114,6 +116,72 @@ public:
   {
     return static_cast<Vector2D>(Eigen::Vector2d::operator/(v));
   };
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////// CubicSpline Utilities
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class Cubic1DSpline
+{
+public:
+  virtual ~Cubic1DSpline() = default;
+
+  virtual double eval(const double x) = 0;
+  virtual void eval_diff(const double x, double &v, double &dv, double &ddv) = 0;
+
+protected:
+  alglib::spline1dinterpolant interpolant_;
+};
+
+class Cubic2DSpline
+{
+public:
+  virtual ~Cubic2DSpline() = default;
+  virtual Point2D eval(const double x) = 0;
+};
+
+class AlglibCubic1DSpline : protected Cubic1DSpline
+{
+public:
+  ~AlglibCubic1DSpline() = default;
+  AlglibCubic1DSpline(const std::vector<double> &knots, const std::vector<double> &values)
+  {
+    alglib::real_1d_array alglib_knots;
+    alglib::real_1d_array alglib_values;
+    alglib_knots.setcontent(knots.size(), knots.data());
+    alglib_values.setcontent(values.size(), values.data());
+    alglib::spline1dbuildcubic(alglib_knots, alglib_values, interpolant_);
+  };
+
+  double eval(const double x) override final
+  {
+    return alglib::spline1dcalc(interpolant_, x);
+  }
+
+  void eval_diff(const double x, double &v, double &dv, double &ddv) override final
+  {
+    return alglib::spline1ddiff(interpolant_, x, v, dv, ddv);
+  }
+};
+
+class AlglibCubic2DSpline : protected Cubic2DSpline
+{
+  ~AlglibCubic2DSpline() = default;
+  AlglibCubic2DSpline(const std::vector<double> &knots, const std::vector<double> &x_values, const std::vector<double> &y_values)
+  {
+    x_spline_ = std::make_shared<AlglibCubic1DSpline>(knots, x_values);
+    y_spline_ = std::make_shared<AlglibCubic1DSpline>(knots, y_values);
+  };
+
+  Point2D eval(const double x)
+  {
+    return Point2D(x_spline_->eval(x), y_spline_->eval(x));
+  }
+
+protected:
+  std::shared_ptr<AlglibCubic1DSpline> x_spline_;
+  std::shared_ptr<AlglibCubic1DSpline> y_spline_;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
