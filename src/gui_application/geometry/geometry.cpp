@@ -84,50 +84,59 @@ void Polyline2D::push_back(const P2D &point)
   recompute_arclength();
 }
 
-double Polyline2D::calc_progress_coord(const P2D &p) const
+double Polyline2D::calc_curvilinear_coord(const P2D &p, double *signed_distance_m) const
 {
   EASY_FUNCTION(profiler::colors::Yellow);
 
   const auto calc_projection_and_vector_length = [&](const size_t curr_index)
   {
+    // Desciption of the vector operations.
+    //
+    //   v_ab
+    //    ^
+    //    |   p ^ v_ap
+    //    |    /
+    //    |   /
+    //    |  /
+    //    | /
+    //    ----------------------> v_ab
+    //    a                     b
+    //
+    //   v_ab: is the vector from point a to point b
+    //   v_ap: is the vector from point b to point p
+    //   ~v_ab: is the orthogonal vector from a to point b
+
     const auto a = get_point(curr_index);
     const auto b = get_point(curr_index + 1);
-    const auto a_to_b = geometry::V2D(a, b);
-    const auto a_to_p = geometry::V2D(a, p);
-    const double projection = a_to_p.dot(a_to_b);
-    const auto this_vector_length = geometry::V2D(a, b).norm();
-    return std::make_pair(projection, this_vector_length);
+    const auto v_ab = geometry::V2D(a, b);
+    const auto v_ap = geometry::V2D(a, p);
+    const double s_projection = v_ap.dot(v_ab);
+
+    auto v_ab_orth = v_ab;
+    v_ab_orth(0) = -v_ab(1);
+    v_ab_orth(1) = v_ab(0);
+
+    const double d_projection = v_ap.dot(v_ab_orth);
+    return std::make_pair(s_projection, d_projection);
   };
 
-  const auto curr_index = calc_closest_point(*this, p);
+  const auto closest_point_index = calc_closest_point(*this, p);
 
-  // If it is at the end then check if the projection is past the norm of the vector
-  if (curr_index == this->size() - 1) // Handle end of polyline
+  // Get the appropiate vector index by clamping the value to the last element.
+  auto closest_line_index = closest_point_index == this->size() - 1 ? closest_point_index - 1ULL : closest_point_index;
+  auto [projection_tmp, _] = calc_projection_and_vector_length(closest_line_index);
+
+  if (projection_tmp < 0) // If it projects backwards then use the previous line index, clamp it to 0
   {
-    auto [projection, vector_length] = calc_projection_and_vector_length(curr_index - 1ULL);
-    if (projection > vector_length)
-    {
-      return arclength_.back();
-    }
-
-    return arclength_[curr_index - 1] + projection;
+    closest_line_index = closest_line_index == 0 ? 0 : closest_line_index - 1ULL;
   }
 
-  if (curr_index == 0) // Handle start of polyline
+  auto [projection, distance_m] = calc_projection_and_vector_length(closest_line_index);
+  if (signed_distance_m)
   {
-    auto [projection, vector_length] = calc_projection_and_vector_length(0);
-    return projection < 0.0 ? arclength_.front() : arclength_[curr_index] + projection;
+    *signed_distance_m = distance_m;
   }
-
-  // Handle middle of polyline
-  auto [projection, _] = calc_projection_and_vector_length(curr_index);
-  if (projection < 0.0)
-  {
-    auto [projection_on_prev, _] = calc_projection_and_vector_length(curr_index - 1);
-    return arclength_[curr_index - 1] + projection_on_prev;
-  }
-
-  return arclength_[curr_index] + projection;
+  return std::max(std::min(arclength_[closest_line_index] + projection, arclength_.back()), arclength_.front());
 }
 
 std::size_t calc_closest_point(const Polyline2D &polyline, const P2D &point)

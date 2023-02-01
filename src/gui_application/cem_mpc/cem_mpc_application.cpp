@@ -177,12 +177,12 @@ IntelligentDriverModel::States calc_idm_lead_states_from_trajectory(
   lead_states.row(1).array() = idm.config_.v0;
 
   const auto agent_xy = P2D(idm_state[0], idm_state[1]);
-  const auto agent_dist_m = lane.centerline_.calc_progress_coord(agent_xy);
+  const auto agent_dist_m = lane.centerline_.calc_curvilinear_coord(agent_xy);
 
   for (size_t i{0}; i < trajectory.states.cols(); ++i)
   {
     const auto ego_xy = P2D(trajectory.states(0, i), trajectory.states(1, i));
-    const auto ego_dist_m = lane.centerline_.calc_progress_coord(ego_xy);
+    const auto ego_dist_m = lane.centerline_.calc_curvilinear_coord(ego_xy);
 
     if (lane.is_inside(ego_xy) && ego_dist_m > agent_dist_m)
     {
@@ -233,7 +233,7 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
   geometry::Polyline2D c_centerline = compute_centerline(c_left_boundary, c_right_boundary);
   lane_ = environment::Lane(c_centerline, c_left_boundary, c_right_boundary);
   lane_entity_ = Graphics::LaneEntity(lane_, scene_, vertex_color_shader_, drawable_group_);
-  
+
   std::cout << "reached here: " << std::endl;
 
   IntelligentDriverModel::Config config;

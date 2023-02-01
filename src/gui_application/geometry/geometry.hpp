@@ -36,7 +36,7 @@ public:
   void recompute_arclength();
   [[nodiscard]] std::size_t size() const;
   Eigen::MatrixX2d get_data() const;
-  double calc_progress_coord(const P2D &point) const;
+  double calc_curvilinear_coord(const P2D &point, double *signed_distance_m = nullptr) const;
 
 private:
   Eigen::MatrixX2d data_;
