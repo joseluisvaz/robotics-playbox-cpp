@@ -17,7 +17,7 @@
 #include <memory>
 #include <vector>
 
-#include "environment/lane_map.hpp"
+#include "gui_application/environment/lane_map.hpp"
 
 #ifndef SCALE
 #define SCALE(a) (a / 10.0f)

@@ -45,7 +45,7 @@ namespace
 
 constexpr size_t n_buffer_capacity = 50;
 
-using geometry::P2D;
+using geometry::Point2D;
 using geometry::Polyline2D;
 
 using namespace Magnum::Math::Literals;
@@ -117,8 +117,8 @@ Polyline2D compute_centerline(const Polyline2D &left_boundary, const Polyline2D 
   for (size_t i{0}; i < left_boundary.size(); ++i)
   {
     // Transform to vector because we have defined arithmetic operations
-    auto p_left = geometry::V2D(left_boundary[i]);
-    auto p_right = geometry::V2D(right_boundary[i]);
+    auto p_left = geometry::Vector2D(left_boundary[i]);
+    auto p_right = geometry::Vector2D(right_boundary[i]);
     auto p_center = (p_right + p_left) / 2.0;
     centerline.push_back(p_center.get_point());
   }
@@ -176,13 +176,14 @@ IntelligentDriverModel::States calc_idm_lead_states_from_trajectory(
   lead_states.row(0).array() = 1000.0f; // initialize x positions with high value but not too high.
   lead_states.row(1).array() = idm.config_.v0;
 
-  const auto agent_xy = P2D(idm_state[0], idm_state[1]);
-  const auto agent_dist_m = lane.centerline_.calc_curvilinear_coord(agent_xy);
+  const auto agent_xy = Point2D(idm_state[0], idm_state[1]);
+  const auto agent_dist_m = lane.centerline_.calc_curvilinear_coord(idm_state.head(2));
 
   for (size_t i{0}; i < trajectory.states.cols(); ++i)
   {
-    const auto ego_xy = P2D(trajectory.states(0, i), trajectory.states(1, i));
-    const auto ego_dist_m = lane.centerline_.calc_curvilinear_coord(ego_xy);
+    const auto ego_xy = Point2D(trajectory.states(0, i), trajectory.states(1, i));
+    const Vector2d current_ego_xy = trajectory.states.col(i).head(2);
+    const auto ego_dist_m = lane.centerline_.calc_curvilinear_coord(current_ego_xy);
 
     if (lane.is_inside(ego_xy) && ego_dist_m > agent_dist_m)
     {
@@ -312,7 +313,7 @@ void CEMMPCApplication::runCEM()
   history_buffer_["yaw_rad"].push(current_state_[2]);
   history_buffer_["steering_rad"].push(current_state_[5]);
 
-  const auto ego_xy = P2D(current_state_[0], current_state_[1]);
+  const auto ego_xy = Point2D(current_state_[0], current_state_[1]);
   EASY_END_BLOCK;
 }
 

@@ -14,8 +14,8 @@ target_include_directories(GraphicsObjects PRIVATE
     ${PROJECT_SOURCE_DIR}/src/
 )
 target_link_libraries(GraphicsObjects PUBLIC 
-   Corrade::Main
-   environment
-   Magnum::GL
+    Corrade::Main
+    environment
+    Magnum::GL
     Eigen3::Eigen
 )

@@ -6,7 +6,7 @@ add_library(environment
 
 target_compile_features(environment PUBLIC cxx_std_17)
 target_include_directories(environment PUBLIC
-    ${PROJECT_SOURCE_DIR}/src/gui_application/)
+    ${PROJECT_SOURCE_DIR}/src/)
 target_link_libraries(environment PRIVATE
    Eigen3::Eigen
    geometry)

@@ -1,4 +1,5 @@
 #include <Eigen/Dense>
+#include <Eigen/src/Core/Matrix.h>
 #include <cstddef>
 #include <easy/profiler.h>
 #include <iostream>
@@ -8,26 +9,18 @@
 #include "geometry.hpp"
 #include "geometry/geometry.hpp"
 
+namespace
+{
+
+using namespace Eigen;
+
+}
 namespace geometry
 {
 
-P2D::P2D(const Eigen::Vector2d &data) : data_(data){};
-
-P2D::P2D(const double x, const double y)
-{
-  data_ = Eigen::Vector2d::Zero();
-  data_ << x, y;
-};
-
-[[nodiscard]] double P2D::x() const noexcept
-{
-  return data_(0);
-};
-
-[[nodiscard]] double P2D::y() const noexcept
-{
-  return data_(1);
-};
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////// Polyline2D Implementation
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Polyline2D::Polyline2D(Eigen::Matrix2d &data) : data_(data){};
 
@@ -56,12 +49,12 @@ void Polyline2D::recompute_arclength()
   }
 };
 
-[[nodiscard]] P2D Polyline2D::get_point(std::size_t i) const
+[[nodiscard]] Point2D Polyline2D::get_point(std::size_t i) const
 {
-  return P2D(data_.row(i));
+  return Point2D(data_.row(i));
 };
 
-[[nodiscard]] P2D Polyline2D::operator[](std::size_t i) const
+[[nodiscard]] Point2D Polyline2D::operator[](std::size_t i) const
 {
   return get_point(i);
 };
@@ -76,7 +69,7 @@ Eigen::MatrixX2d Polyline2D::get_data() const
   return data_;
 }
 
-void Polyline2D::push_back(const P2D &point)
+void Polyline2D::push_back(const Point2D &point)
 {
   data_.conservativeResize(data_.rows() + 1, data_.cols());
   data_(data_.rows() - 1, 0) = point.x();
@@ -84,10 +77,17 @@ void Polyline2D::push_back(const P2D &point)
   recompute_arclength();
 }
 
-double Polyline2D::calc_curvilinear_coord(const P2D &p, double *signed_distance_m) const
+double Polyline2D::calc_curvilinear_coord(const Vector2d &p, double *signed_distance_m) const
 {
-  EASY_FUNCTION(profiler::colors::Yellow);
+  return geometry::calc_curvilinear_coord(*this, this->arclength_, Point2D(p), signed_distance_m);
+}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////// Polyline2D Utilities
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+double calc_curvilinear_coord(const Polyline2D &polyline, const std::vector<double> &knots, const Point2D &p, double *signed_distance_m)
+{
   const auto calc_projection_and_vector_length = [&](const size_t curr_index)
   {
     // Desciption of the vector operations.
@@ -106,10 +106,10 @@ double Polyline2D::calc_curvilinear_coord(const P2D &p, double *signed_distance_
     //   v_ap: is the vector from point b to point p
     //   ~v_ab: is the orthogonal vector from a to point b
 
-    const auto a = get_point(curr_index);
-    const auto b = get_point(curr_index + 1);
-    const auto v_ab = geometry::V2D(a, b);
-    const auto v_ap = geometry::V2D(a, p);
+    const auto a = polyline.get_point(curr_index);
+    const auto b = polyline.get_point(curr_index + 1);
+    const auto v_ab = Vector2D(a, b);
+    const auto v_ap = Vector2D(a, p);
     const double s_projection = v_ap.dot(v_ab);
 
     auto v_ab_orth = v_ab;
@@ -120,10 +120,10 @@ double Polyline2D::calc_curvilinear_coord(const P2D &p, double *signed_distance_
     return std::make_pair(s_projection, d_projection);
   };
 
-  const auto closest_point_index = calc_closest_point(*this, p);
+  const auto closest_point_index = calc_closest_point(polyline, p);
 
   // Get the appropiate vector index by clamping the value to the last element.
-  auto closest_line_index = closest_point_index == this->size() - 1 ? closest_point_index - 1ULL : closest_point_index;
+  auto closest_line_index = closest_point_index == polyline.size() - 1 ? closest_point_index - 1ULL : closest_point_index;
   auto [projection_tmp, _] = calc_projection_and_vector_length(closest_line_index);
 
   if (projection_tmp < 0) // If it projects backwards then use the previous line index, clamp it to 0
@@ -136,15 +136,10 @@ double Polyline2D::calc_curvilinear_coord(const P2D &p, double *signed_distance_
   {
     *signed_distance_m = distance_m;
   }
-  return std::max(std::min(arclength_[closest_line_index] + projection, arclength_.back()), arclength_.front());
-}
+  return std::max(std::min(knots[closest_line_index] + projection, knots.back()), knots.front());
+};
 
-std::size_t calc_closest_point(const Polyline2D &polyline, const P2D &point)
-{
-  return calc_closest_point_in_interval(polyline, point, 0, polyline.size());
-}
-
-std::size_t calc_closest_point_in_interval(const Polyline2D &polyline, const P2D &point, std::size_t x_min, std::size_t x_max)
+std::size_t calc_closest_point_in_interval(const Polyline2D &polyline, const Point2D &point, std::size_t x_min, std::size_t x_max)
 {
   std::size_t argmin = 0;
   auto min_squared_dist = std::numeric_limits<double>::max();
@@ -162,6 +157,16 @@ std::size_t calc_closest_point_in_interval(const Polyline2D &polyline, const P2D
     }
   }
   return argmin;
+}
+
+std::size_t calc_closest_point(const Polyline2D &polyline, const Point2D &point)
+{
+  return calc_closest_point_in_interval(polyline, point, 0, polyline.size());
+}
+
+std::size_t calc_closest_point(const Polyline2D &polyline, const Vector2d &point)
+{
+  return calc_closest_point_in_interval(polyline, Point2D(point), 0, polyline.size());
 }
 
 } // namespace geometry
