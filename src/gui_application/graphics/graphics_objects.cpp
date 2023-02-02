@@ -113,8 +113,8 @@ LaneEntity::LaneEntity(
   std::vector<double> z_vals(centerline_data.rows(), 0.0);
   const std::size_t N = centerline_data.rows();
   centerline_drawable_->set_xy(N, centerline_data.data(), centerline_data.data() + N, z_vals.data(), gray_color);
-  left_boundary_drawable_->set_xy(N, lb_data.data(), lb_data.data() + N, z_vals.data(), gray_color);
-  right_boundary_drawable_->set_xy(N, rb_data.data(), rb_data.data() + N, z_vals.data(), gray_color);
+  left_boundary_drawable_->set_xy(lb_data.rows(), lb_data.data(), lb_data.data() + lb_data.rows(), z_vals.data(), gray_color);
+  right_boundary_drawable_->set_xy(rb_data.rows(), rb_data.data(), rb_data.data() + rb_data.rows(), z_vals.data(), gray_color);
 }
 
 } // namespace mpex::Graphics

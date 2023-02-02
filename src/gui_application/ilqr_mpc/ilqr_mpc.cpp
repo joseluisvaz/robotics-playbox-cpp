@@ -86,12 +86,14 @@ void IterativeLinearQuadraticRegulator::rollout(Trajectory &trajectory, const bo
   sampler_.mean_ = use_warmstart ? u : Actions::Zero(trajectory.actions.rows(), trajectory.actions.cols());
   sampler_.stddev_ = 1.0 * Actions::Ones(trajectory.actions.rows(), trajectory.actions.cols());
   u = sampler_();
+  
+  Vector parameters = Vector::Zero(5); 
 
   double current_time_s{0.0f};
   for (size_t i = 0; i + 1 < static_cast<size_t>(horizon_ + 1); ++i)
   {
     trajectory.times.at(i) = current_time_s;
-    DynamicsT::step(x.col(i), u.col(i), x.col(i + 1));
+    DynamicsT::step(x.col(i), u.col(i), parameters, x.col(i + 1));
     current_time_s += DynamicsT::ts;
   }
   trajectory.times.at(horizon_) = current_time_s;
@@ -166,12 +168,14 @@ IterativeLinearQuadraticRegulator::forward_pass(const Trajectory &trajectory, co
 
   x.col(0) = x_bar.col(0);
 
+  Vector parameters = Vector::Zero(5);
+
   // Compute to horizon_ to account for the terminal state
   for (size_t i = 0; i + 1 < static_cast<size_t>(horizon_ + 1); ++i)
   {
     new_trajectory.times[i] = trajectory.times[i];
     u.col(i) = u_bar.col(i) + alpha * k[i] + K[i] * (x.col(i) - x_bar.col(i));
-    DynamicsT::step(x.col(i), u.col(i), x.col(i + 1));
+    DynamicsT::step(x.col(i), u.col(i), parameters, x.col(i + 1));
   }
 
   new_trajectory.times[horizon_] = trajectory.times[horizon_];

@@ -83,9 +83,9 @@ BaseApplication::BaseApplication(const Arguments &arguments) : Platform::Applica
 
   /* Grid */
   grid_mesh_ = MeshTools::compile(Primitives::grid3DWireframe({15, 15}));
-  auto grid_object = new Object3D{&scene_};
-  (*grid_object).rotateX(90.0_degf).scale(Vector3{15.0f});
-  new Graphics::FlatDrawable{*grid_object, flat_shader_, grid_mesh_, drawable_group_};
+  // auto grid_object = new Object3D{&scene_};
+  // (*grid_object).rotateX(90.0_degf).scale(Vector3{15.0f});
+  // new Graphics::FlatDrawable{*grid_object, flat_shader_, grid_mesh_, drawable_group_};
 
   /* Origin Axis */
   origin_axis_mesh_ = MeshTools::compile(Primitives::axis3D());

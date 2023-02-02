@@ -56,13 +56,18 @@ public:
   Polyline2D() = default;
   Polyline2D(Eigen::Matrix2d &data);
   Polyline2D(const std::vector<double> &x, const std::vector<double> &y);
-  [[nodiscard]] Point2D get_point(std::size_t i) const;
   Point2D operator[](std::size_t i) const;
   void push_back(const Point2D &point);
   void recompute_arclength();
   [[nodiscard]] std::size_t size() const;
-  Eigen::MatrixX2d get_data() const;
   double calc_curvilinear_coord(const Vector2d &point, double *signed_distance_m = nullptr) const;
+
+  ///
+  /// Setters and Getters
+  ///
+  [[nodiscard]] Eigen::MatrixX2d get_data() const;
+  [[nodiscard]] Point2D get_point(std::size_t i) const;
+  [[nodiscard]] std::vector<double> get_arclength() const;
 
 private:
   Eigen::MatrixX2d data_;
@@ -167,6 +172,7 @@ public:
 
 class AlglibCubic2DSpline : protected Cubic2DSpline
 {
+public:
   ~AlglibCubic2DSpline() = default;
   AlglibCubic2DSpline(const std::vector<double> &knots, const std::vector<double> &x_values, const std::vector<double> &y_values)
   {

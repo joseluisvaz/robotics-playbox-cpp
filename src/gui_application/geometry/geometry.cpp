@@ -69,6 +69,11 @@ Eigen::MatrixX2d Polyline2D::get_data() const
   return data_;
 }
 
+[[nodiscard]] std::vector<double> Polyline2D::get_arclength() const
+{
+  return arclength_;
+}
+
 void Polyline2D::push_back(const Point2D &point)
 {
   data_.conservativeResize(data_.rows() + 1, data_.cols());

@@ -36,7 +36,8 @@ void CEM_MPC<DynamicsT>::rollout(Trajectory &trajectory)
   {
     trajectory.times.at(i) = current_time_s;
 
-    DynamicsT::step(trajectory.states.col(i), trajectory.actions.col(i), trajectory.states.col(i + 1));
+    Vector parameters = Vector::Zero(5);
+    DynamicsT::step(trajectory.states.col(i), trajectory.actions.col(i), parameters, trajectory.states.col(i + 1));
     current_time_s += DynamicsT::ts;
   }
   trajectory.times.at(horizon_ - 1) = current_time_s;

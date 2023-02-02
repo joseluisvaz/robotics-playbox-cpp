@@ -35,6 +35,7 @@
 #include "cem_mpc/intelligent_driver_model.hpp"
 #include "common/types.hpp"
 #include "environment/lane_map.hpp"
+#include "geometry/geometry.hpp"
 #include "third_party/implot/implot.h"
 
 namespace mpex
@@ -228,11 +229,46 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
   }
 
   // lane_ = environment::create_line_helper(/* n_points */ 200);
-  auto track_map = read_track_from_csv("/home/vjose/code/robotics_project/src/gui_application/track.csv");
+  auto track_map_tmp = read_track_from_csv("/home/vjose/code/robotics_project/src/gui_application/track.csv");
+
+  decltype(track_map_tmp) track_map;
+  for (const auto &[key, values] : track_map_tmp)
+  {
+    for (int i{0}; i < values.size(); i += 10)
+    {
+      track_map[key].push_back(values[i]);
+    }
+  }
+
   geometry::Polyline2D c_left_boundary(track_map["left_x"], track_map["left_y"]);
   geometry::Polyline2D c_right_boundary(track_map["right_x"], track_map["right_y"]);
   geometry::Polyline2D c_centerline = compute_centerline(c_left_boundary, c_right_boundary);
-  lane_ = environment::Lane(c_centerline, c_left_boundary, c_right_boundary);
+
+  auto arclengths_m = c_centerline.get_arclength();
+
+  // auto x_values = std::vector<double>(c_centerline.get_data().col(0).data(), c_centerline.get_data().col(0).data() +
+  // c_centerline.get_data().rows()); auto y_values = std::vector<double>(c_centerline.get_data().col(1).data(),
+  // c_centerline.get_data().col(1).data() + c_centerline.get_data().rows());
+  auto x_values = std::vector<double>(arclengths_m.size(), 0);
+  auto y_values = std::vector<double>(arclengths_m.size(), 0);
+
+  Eigen::VectorXd::Map(&x_values[0], x_values.size()) = c_centerline.get_data().col(0);
+  Eigen::VectorXd::Map(&y_values[0], y_values.size()) = c_centerline.get_data().col(1);
+
+  Eigen::VectorXd subsampled_m = Eigen::VectorXd::LinSpaced(arclengths_m.size() * 10, arclengths_m.front(), arclengths_m.back());
+  auto cubic_spline_ptr = std::make_shared<geometry::AlglibCubic2DSpline>(arclengths_m, x_values, y_values);
+
+  std::vector<double> x_new;
+  std::vector<double> y_new;
+  for (int i{0}; i < subsampled_m.size(); ++i)
+  {
+    auto point2d = cubic_spline_ptr->eval(subsampled_m(i));
+    x_new.push_back(point2d.x());
+    y_new.push_back(point2d.y());
+  }
+
+  geometry::Polyline2D centerline(x_new, y_new);
+  lane_ = environment::Lane(centerline, c_left_boundary, c_right_boundary);
   lane_entity_ = Graphics::LaneEntity(lane_, scene_, vertex_color_shader_, drawable_group_);
 
   std::cout << "reached here: " << std::endl;
@@ -303,7 +339,8 @@ void CEMMPCApplication::runCEM()
 
   auto idm_action = idm_.get_action(idm_state_, lead_states.col(0));
 
-  current_state_ = Dynamics::step_(current_state_, current_action);
+  Vector parameters = Vector::Zero(5);
+  current_state_ = Dynamics::step_(current_state_, current_action, parameters);
   idm_state_ = SingleIntegrator::step_(idm_state_, idm_action);
   time_s_ += Dynamics::ts;
 

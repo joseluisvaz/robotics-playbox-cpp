@@ -41,7 +41,7 @@ class Dynamics
 public:
   constexpr static int state_size = _state_size;
   constexpr static int action_size = _action_size;
-  
+
   using FloatT = T;
 
   using State = EigenState<state_size, T>;
@@ -83,13 +83,7 @@ public:
   }
 
   __host__ __device__ static void cu_step(
-      const T *state,
-      const T *action,
-      double *new_state,
-      const T ts,
-      const T one_over_wheelbase,
-      const T max_jerk,
-      const T max_steering_rate)
+      const T *state, const T *action, T *new_state, const T ts, const T one_over_wheelbase, const T max_jerk, const T max_steering_rate)
   {
 
     new_state[0] = state[0] + ts * state[3] * cos(state[2]);
@@ -100,15 +94,76 @@ public:
     new_state[5] = state[5] + ts * max_steering_rate * tanh(action[1]);
   };
 
-  static void step(const Ref<const typename D::State> &state, const Ref<const typename D::Action> &action, Ref<typename D::State> new_state)
+  static void step(
+      const Ref<const typename D::State> &state,
+      const Ref<const typename D::Action> &action,
+      const Ref<const Vector> &parameters,
+      Ref<typename D::State> new_state)
   {
     cu_step(state.data(), action.data(), new_state.data(), ts, one_over_wheelbase, max_jerk, max_steering_rate);
   }
 
-  static typename D::State step_(const Ref<const typename D::State> &state, const Ref<const typename D::Action> &action)
+  static typename D::State
+  step_(const Ref<const typename D::State> &state, const Ref<const typename D::Action> &action, const Ref<const Vector> &parameters)
   {
     typename D::State new_state = D::State::Zero();
-    step(state, action, new_state);
+    step(state, action, parameters, new_state);
+    return new_state;
+  }
+};
+
+template <typename T>
+class CurvilinearKinematicBicycleT : public Dynamics<6, 2, T>
+{
+
+  using D = Dynamics<6, 2, T>;
+
+public:
+  constexpr static T ts{0.5f};
+  constexpr static T one_over_wheelbase{1.0f / 3.0f};
+  constexpr static T max_steering{0.52f};
+  constexpr static T max_steering_rate{0.1f};
+  constexpr static T max_jerk{1.0f};
+
+  template <typename VectorT>
+  static VectorT step_diff(const VectorT &state, const VectorT &action)
+  {
+    VectorT new_state = VectorT::Zero(state.size());
+    new_state[0] = state[0] + ts * state[3] * cos(state[2]);
+    new_state[1] = state[1] + ts * state[3] * sin(state[2]);
+    new_state[2] = state[2] + ts * state[3] * one_over_wheelbase * tan(state[5]);
+    new_state[3] = state[3] + ts * state[4];
+    new_state[4] = state[4] + ts * max_jerk * tanh(action[0]);
+    new_state[5] = state[5] + ts * max_steering_rate * tanh(action[1]);
+    return new_state;
+  }
+
+  __host__ __device__ static void cu_step(
+      const T *state, const T *action, T *new_state, const T K, const T ts, const T one_over_wheelbase, const T max_jerk, const T max_steering_rate)
+  {
+    double ds = (state[3] * cos(state[2])) / (std::abs(1 - state[1] * K) + 1e-8);
+    new_state[0] = state[0] + ts * ds;
+    new_state[1] = state[1] + ts * state[3] * sin(state[2]);
+    new_state[2] = state[2] + ts * ((state[3] * one_over_wheelbase * tan(state[5])) - K * ds);
+    new_state[3] = state[3] + ts * state[4];
+    new_state[4] = state[4] + ts * max_jerk * tanh(action[0]);
+    new_state[5] = state[5] + ts * max_steering_rate * tanh(action[1]);
+  };
+
+  static void step(
+      const Ref<const typename D::State> &state,
+      const Ref<const typename D::Action> &action,
+      const Ref<const Vector> &parameters,
+      Ref<typename D::State> new_state)
+  {
+    cu_step(state.data(), action.data(), new_state.data(), parameters(0), ts, one_over_wheelbase, max_jerk, max_steering_rate);
+  }
+
+  static typename D::State
+  step_(const Ref<const typename D::State> &state, const Ref<const typename D::Action> &action, const Ref<const Vector> &parameters)
+  {
+    typename D::State new_state = D::State::Zero();
+    step(state, action, parameters, new_state);
     return new_state;
   }
 };

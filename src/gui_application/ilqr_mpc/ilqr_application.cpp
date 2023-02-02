@@ -92,7 +92,8 @@ void IlqrMain::run_ilqr()
 
   auto current_action = run_policy(policy_, trajectory_entities_);
 
-  current_state_ = Dynamics::step_(current_state_, current_action);
+  Vector parameters = Vector::Zero(5);
+  current_state_ = Dynamics::step_(current_state_, current_action, parameters);
   // std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   time_ += Dynamics::ts;
