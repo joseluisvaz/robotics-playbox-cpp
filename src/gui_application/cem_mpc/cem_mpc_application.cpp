@@ -348,7 +348,7 @@ void CEMMPCApplication::show_menu()
             }
             ImPlot::PopStyleColor();
 
-            const auto &traj = ego_policy_.get_trajectory();
+            const auto &traj = ego_policy_.get_last_solution();
             std::vector<double> t_values;
             std::transform(traj.times.begin(), traj.times.end(), std::back_inserter(t_values), [&](auto t) { return time_s_ + t; });
             std::vector<double> values;
@@ -379,15 +379,18 @@ void CEMMPCApplication::show_menu()
 
             std::vector<double> values;
             std::transform(
-                this->ego_policy_.get_trajectory().actions.colwise().cbegin(),
-                this->ego_policy_.get_trajectory().actions.colwise().cend(),
+                this->ego_policy_.get_last_solution().actions.colwise().cbegin(),
+                this->ego_policy_.get_last_solution().actions.colwise().cend(),
                 std::back_inserter(values),
                 getter_fn);
 
             ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
             ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
             ImPlot::PlotLine(
-                std::string(value_name).append("_hola").c_str(), ego_policy_.get_trajectory().times.data(), values.data(), values.size());
+                std::string(value_name).append("_hola").c_str(),
+                ego_policy_.get_last_solution().times.data(),
+                values.data(),
+                values.size());
             ImPlot::PopStyleColor();
             ImPlot::EndPlot();
         }
@@ -429,7 +432,7 @@ void CEMMPCApplication::show_menu()
             ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
             ImPlot::PlotLine(
                 std::string(value_name).append("_hola").c_str(),
-                this->ego_policy_.get_trajectory().times.data(),
+                this->ego_policy_.get_last_solution().times.data(),
                 values.data(),
                 values.size());
             ImPlot::PopStyleColor();

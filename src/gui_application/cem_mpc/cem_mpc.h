@@ -46,7 +46,8 @@ class CEM_MPC
 
     int &get_num_iters_mutable();
 
-    const Trajectory &get_trajectory() const;
+    // Gets the last available trajectory as a const ref.
+    const Trajectory &get_last_solution() const;
 
     std::shared_ptr<CostFunction> cost_function_;
 

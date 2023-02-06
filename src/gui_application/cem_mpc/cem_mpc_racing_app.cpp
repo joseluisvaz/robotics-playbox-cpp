@@ -35,6 +35,7 @@
 #include "cem_mpc/intelligent_driver_model.hpp"
 #include "common/types.hpp"
 #include "environment/lane_map.hpp"
+#include "environment/track_utiilities.hpp"
 #include "geometry/geometry.hpp"
 #include "third_party/implot/implot.h"
 
@@ -56,59 +57,6 @@ constexpr int horizon = 20;
 const auto red_color = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
 const auto blue_color = Magnum::Math::Color3(0.0f, 0.6f, 1.0f);
 
-/// Utility to read track file from csv.
-///@param filename The filename where the track file resides, use the global path.
-///@returns map with the contents of the track file.
-std::unordered_map<std::string, std::vector<double>> read_track_from_csv(std::string filename)
-{
-    /// Gotten from stack overflow: https://stackoverflow.com/questions/1120140/how-can-i-read-and-parse-csv-files-in-c
-    auto split_next_line_into_tokens = [](std::istream &str) {
-        std::vector<std::string> result;
-        std::string line;
-        std::getline(str, line);
-
-        std::stringstream lineStream(line);
-        std::string cell;
-
-        while (std::getline(lineStream, cell, ','))
-        {
-            result.push_back(cell);
-        }
-        return result;
-    };
-
-    std::ifstream file(filename.c_str());
-    if (!file)
-    {
-        throw std::invalid_argument("Track file not found.");
-        return {};
-    }
-
-    std::unordered_map<std::string, std::vector<double>> output;
-
-    const auto header_tokens = split_next_line_into_tokens(file);
-    for (const auto &header : header_tokens)
-    {
-        output[header] = std::vector<double>();
-    }
-
-    while (file)
-    {
-        auto value_tokens = split_next_line_into_tokens(file);
-        if (value_tokens.empty())
-        {
-            // This if statement handles when there is a last empty line.
-            continue;
-        }
-
-        for (size_t i{0}; i < header_tokens.size(); ++i)
-        {
-            output[header_tokens[i]].push_back(5.0 * std::stod(value_tokens[i]));
-        }
-    }
-    return output;
-}
-
 Polyline2D compute_centerline(const Polyline2D &left_boundary, const Polyline2D &right_boundary)
 {
     geometry::Polyline2D centerline;
@@ -124,70 +72,11 @@ Polyline2D compute_centerline(const Polyline2D &left_boundary, const Polyline2D 
     return centerline;
 }
 
-void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::shared_ptr<Graphics::LineEntity>> &path_entities)
-{
-    const auto set_xy_helper = [](const auto &candidate_trajectory, auto &path_entity, auto color) {
-        std::vector<double> x_vals;
-        std::vector<double> y_vals;
-        std::vector<double> z_vals;
-        for (int i = 0; i < candidate_trajectory.states.cols(); ++i)
-        {
-            const EigenKinematicBicycle::State new_state = candidate_trajectory.states.col(i);
-            x_vals.push_back(new_state[0]);
-            y_vals.push_back(new_state[1]);
-            z_vals.push_back(new_state[3]);
-        }
-        path_entity.set_xy(x_vals.size(), x_vals.data(), y_vals.data(), z_vals.data(), color);
-    };
-
-    const auto max_iter = std::max_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
-    const auto min_iter = std::min_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
-    const auto max_cost = max_iter != mpc.costs_index_pair_.end() ? max_iter->first : 1e9;
-    const auto min_cost = min_iter != mpc.costs_index_pair_.end() ? min_iter->first : -1e9;
-
-    assert(path_entities.size() == mpc.candidate_trajectories_.size());
-    for (int i = 0; i < path_entities.size(); ++i)
-    {
-        float cost = mpc.costs_index_pair_[i].first;
-        cost = (cost - min_cost) / (max_cost - min_cost); // normalize
-
-        const auto exp_color_value_blue = std::exp(-10.0f * cost);
-        const auto exp_color_value_red = 1.0f - exp_color_value_blue;
-        const auto color = Magnum::Math::Color3(exp_color_value_red, 0.0f, exp_color_value_blue);
-
-        auto &candidate_traj = mpc.candidate_trajectories_[i];
-        set_xy_helper(candidate_traj, *path_entities.at(i), color);
-    }
-}
-
 } // namespace
 
 CEMMPCRacingApp::CEMMPCRacingApp(const Arguments &arguments) : Magnum::Examples::BaseApplication(arguments)
 {
-
-    ego_policy_ = CEM_MPC<EigenKinematicBicycle>(
-        /* iters= */ 20,
-        horizon,
-        /* population= */ population,
-        /* elites */ 10);
-
-    ego_policy_.cost_function_ = std::make_shared<QuadraticCostFunction>();
-    trajectory_entities_ = Graphics::TrajectoryEntities(scene_, horizon);
-
-    _mesh = Magnum::MeshTools::compile(Magnum::Primitives::cubeWireframe());
-    for (auto &object : trajectory_entities_.get_objects())
-    {
-        new Graphics::WireframeDrawable{*object, wireframe_shader_, _mesh, drawable_group_, red_color};
-    }
-
-    for (int i = 0; i < population; ++i)
-    {
-        path_entities_.push_back(std::make_shared<Graphics::LineEntity>(scene_));
-        new Graphics::FlatDrawable{*path_entities_.back()->object_ptr_, flat_shader_, path_entities_.back()->mesh_, drawable_group_};
-    }
-
-    // lane_ = environment::create_line_helper(/* n_points */ 200);
-    auto track_map_tmp = read_track_from_csv("/home/vjose/code/robotics_project/src/gui_application/track.csv");
+    auto track_map_tmp = environment::read_track_from_csv("/home/vjose/code/robotics_project/src/gui_application/track.csv");
 
     decltype(track_map_tmp) track_map;
     for (const auto &[key, values] : track_map_tmp)
@@ -226,9 +115,17 @@ CEMMPCRacingApp::CEMMPCRacingApp(const Arguments &arguments) : Magnum::Examples:
     corridor_ = environment::Corridor(densified_centerline, c_left_boundary, c_right_boundary);
 
     // Create the visualization of the track
-    new Graphics::LaneEntity(lane_, scene_, vertex_color_shader_, drawable_group_);
+    new Graphics::LaneEntity(corridor_, scene_, vertex_color_shader_, drawable_group_);
 
-    std::cout << "reached here: " << std::endl;
+    // Set Policy and cost function
+    ego_policy_ptr_ = std::make_shared<CEM_MPC<EigenKinematicBicycle>>(
+        /* iters= */ 20,
+        horizon,
+        /* population= */ population,
+        /* elites */ 10);
+
+    ego_policy_ptr_->cost_function_ = std::make_shared<QuadraticCostFunction>();
+    mpc_viewer_ = KinematicBicycleCemViewer(ego_policy_ptr_, scene_, wireframe_shader_, flat_shader_, drawable_group_, horizon, population);
 
     // Initialize current state for the simulation, kinematic bicycle.
     ego_state_ = Dynamics::State();
@@ -263,20 +160,11 @@ void CEMMPCRacingApp::runCEM()
 {
     EASY_FUNCTION(profiler::colors::Red);
 
-    auto trajectory = ego_policy_.solve(ego_state_, maybe_current_trajectory_);
+    auto trajectory = ego_policy_ptr_->solve(ego_state_, maybe_current_trajectory_);
     maybe_current_trajectory_ = trajectory;
-    // auto trajectory = ego_policy_.solve(ego_state_);
     Dynamics::Action current_action = trajectory.actions.col(0);
 
-    for (int i = 0; i < trajectory.states.cols(); ++i)
-    {
-        Dynamics::State new_state = trajectory.states.col(i);
-        auto time_s = trajectory.times.at(i);
-        // TODO: Create an SE2 utility function
-        trajectory_entities_.set_state_at(i, new_state[0], new_state[1], new_state[2]);
-    }
-
-    draw_candidate_paths(ego_policy_, path_entities_);
+    mpc_viewer_.draw();
 
     Vector parameters = Vector::Zero(5);
     ego_state_ = Dynamics::step_(ego_state_, current_action, parameters);
@@ -321,11 +209,13 @@ void CEMMPCRacingApp::show_menu()
         redraw();
     }
 
-    ImGui::SliderInt("Num Iterations", &ego_policy_.get_num_iters_mutable(), 1, 100);
-    ImGui::SliderInt("Num Elites", &ego_policy_.elites_, 1, 20);
-    ImGui::SliderInt("Num Population", &ego_policy_.population_, 8, 2048);
+    auto &ego_policy = *ego_policy_ptr_;
 
-    auto maybe_quadratic_cost_function_ptr = std::dynamic_pointer_cast<QuadraticCostFunction>(ego_policy_.cost_function_);
+    ImGui::SliderInt("Num Iterations", &ego_policy.get_num_iters_mutable(), 1, 100);
+    ImGui::SliderInt("Num Elites", &ego_policy.elites_, 1, 20);
+    ImGui::SliderInt("Num Population", &ego_policy.population_, 8, 2048);
+
+    auto maybe_quadratic_cost_function_ptr = std::dynamic_pointer_cast<QuadraticCostFunction>(ego_policy.cost_function_);
     if (maybe_quadratic_cost_function_ptr)
     {
         auto &cost_function = *maybe_quadratic_cost_function_ptr;
@@ -345,7 +235,7 @@ void CEMMPCRacingApp::show_menu()
         ImGui::SliderScalarN("Terminal Ref values - Actions", ImGuiDataType_Double, &cost_function.R_a_, 2, &v_min_r, &v_max_r, "%.3f", 0);
     }
 
-    const auto make_plot = [this](auto title, auto value_name, auto getter_fn) {
+    const auto make_plot = [&, this](auto title, auto value_name, auto getter_fn) {
         ImPlot::SetNextAxesToFit();
         if (ImPlot::BeginPlot(title))
         {
@@ -370,7 +260,7 @@ void CEMMPCRacingApp::show_menu()
             }
 
             ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0, 0.5f, 0.0f, 0.05f));
-            for (auto traj : this->ego_policy_.candidate_trajectories_)
+            for (auto traj : ego_policy.candidate_trajectories_)
             {
                 std::vector<double> t_values;
                 std::transform(traj.times.begin(), traj.times.end(), std::back_inserter(t_values), [&](auto t) { return time_s_ + t; });
@@ -380,7 +270,7 @@ void CEMMPCRacingApp::show_menu()
             }
             ImPlot::PopStyleColor();
 
-            const auto &traj = ego_policy_.get_trajectory();
+            const auto &traj = ego_policy.get_last_solution();
             std::vector<double> t_values;
             std::transform(traj.times.begin(), traj.times.end(), std::back_inserter(t_values), [&](auto t) { return time_s_ + t; });
             std::vector<double> values;
@@ -395,13 +285,13 @@ void CEMMPCRacingApp::show_menu()
         }
     };
 
-    const auto make_action_plot = [this](auto title, auto value_name, auto getter_fn) {
+    const auto make_action_plot = [&, this](auto title, auto value_name, auto getter_fn) {
         ImPlot::SetNextAxesToFit();
         if (ImPlot::BeginPlot(title))
         {
             ImPlot::SetupAxes("time[s]", value_name);
             ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0, 0.5f, 0.0f, 0.05f));
-            for (auto traj : this->ego_policy_.candidate_trajectories_)
+            for (auto traj : ego_policy.candidate_trajectories_)
             {
                 std::vector<double> values;
                 std::transform(traj.actions.colwise().begin(), traj.actions.colwise().end(), std::back_inserter(values), getter_fn);
@@ -411,15 +301,15 @@ void CEMMPCRacingApp::show_menu()
 
             std::vector<double> values;
             std::transform(
-                this->ego_policy_.get_trajectory().actions.colwise().cbegin(),
-                this->ego_policy_.get_trajectory().actions.colwise().cend(),
+                ego_policy.get_last_solution().actions.colwise().cbegin(),
+                ego_policy.get_last_solution().actions.colwise().cend(),
                 std::back_inserter(values),
                 getter_fn);
 
             ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
             ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
             ImPlot::PlotLine(
-                std::string(value_name).append("_hola").c_str(), ego_policy_.get_trajectory().times.data(), values.data(), values.size());
+                std::string(value_name).append("_hola").c_str(), ego_policy.get_last_solution().times.data(), values.data(), values.size());
             ImPlot::PopStyleColor();
             ImPlot::EndPlot();
         }

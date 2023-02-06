@@ -11,6 +11,7 @@
 #include "base_application/base_application.hpp"
 #include "cem_mpc/cem_mpc.h"
 #include "cem_mpc/intelligent_driver_model.hpp"
+#include "cem_mpc/kinematic_bicycle_cem_viewer.hpp"
 #include "common/containers.h"
 #include "common/dynamics.h"
 #include "common/types.hpp"
@@ -35,9 +36,7 @@ class CEMMPCRacingApp : public Magnum::Examples::BaseApplication
     void runCEM();
 
     // Visualization entities for plotting using Magnum
-    Magnum::GL::Mesh _mesh{Magnum::NoCreate};
-    Graphics::TrajectoryEntities trajectory_entities_;
-    std::vector<std::shared_ptr<Graphics::LineEntity>> path_entities_;
+    KinematicBicycleCemViewer mpc_viewer_;
     std::shared_ptr<Graphics::LineEntity> left_boundary_;
     std::shared_ptr<Graphics::LineEntity> centerline_;
     std::shared_ptr<Graphics::LineEntity> right_boundary_;
@@ -46,7 +45,7 @@ class CEMMPCRacingApp : public Magnum::Examples::BaseApplication
     bool is_running_{false};
 
     // Ego policy and state information, used to control the agent that is using the MPC
-    CEM_MPC<Dynamics> ego_policy_;
+    std::shared_ptr<CEM_MPC<Dynamics>> ego_policy_ptr_;
     Dynamics::State ego_state_;
 
     // Enviroment information such as the lane and the corresponding lanes

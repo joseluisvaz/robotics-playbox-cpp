@@ -3,6 +3,7 @@
 
 #include "Magnum/GL/DefaultFramebuffer.h"
 #include "graphics_objects.hpp"
+#include <Magnum/Primitives/Cube.h>
 
 namespace mpex::Graphics {
 
@@ -15,7 +16,12 @@ constexpr float avg_height_m{SCALE(1.75f)};
 
 } // namespace
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////// TrajectoryEntities
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 TrajectoryEntities::TrajectoryEntities(Scene3D &scene, const int horizon_points)
+    : mesh_(Magnum::MeshTools::compile(Magnum::Primitives::cubeWireframe()))
 {
     vehicle_extent_ = Vector3{avg_width_m, avg_height_m, avg_length_m};
 
@@ -46,6 +52,10 @@ const Vector3 &TrajectoryEntities::get_vehicle_extent() const
 {
     return vehicle_extent_;
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////// VertexColorDrawable
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 VertexColorDrawable::VertexColorDrawable(
     Object3D &object, Shaders::VertexColorGL3D &shader, GL::Mesh &mesh, SceneGraph::DrawableGroup3D &drawables)

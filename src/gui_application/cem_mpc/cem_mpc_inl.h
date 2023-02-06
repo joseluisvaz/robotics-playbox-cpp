@@ -140,7 +140,7 @@ int &CEM_MPC<DynamicsT>::get_num_iters_mutable()
 }
 
 template <typename DynamicsT>
-const typename DynamicsT::Trajectory &CEM_MPC<DynamicsT>::get_trajectory() const
+const typename DynamicsT::Trajectory &CEM_MPC<DynamicsT>::get_last_solution() const
 {
     return trajectory_;
 }
