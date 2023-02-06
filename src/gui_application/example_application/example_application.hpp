@@ -2,18 +2,17 @@
 
 #include "base_application/base_application.hpp"
 
-namespace mpex
-{
+namespace mpex {
 
 class TemplateApplication : public Magnum::Examples::BaseApplication
 {
 
-public:
-  explicit TemplateApplication(const Arguments &arguments);
+  public:
+    explicit TemplateApplication(const Arguments &arguments);
 
-private:
-  virtual void show_menu();
-  virtual void execute();
+  private:
+    virtual void show_menu();
+    virtual void execute();
 };
 
 } // namespace mpex

@@ -2,8 +2,7 @@
 #include <Eigen/Dense>
 #include <random>
 
-namespace mpex
-{
+namespace mpex {
 
 using namespace Eigen;
 
@@ -28,20 +27,20 @@ double angle_diff(double a, double b);
 template <typename MatrixT>
 struct NormalRandomVariable
 {
-  NormalRandomVariable() = default;
+    NormalRandomVariable() = default;
 
-  MatrixT operator()() const
-  {
-    static std::mt19937 gen{std::random_device{}()};
-    static std::normal_distribution<double> dist;
+    MatrixT operator()() const
+    {
+        static std::mt19937 gen{std::random_device{}()};
+        static std::normal_distribution<double> dist;
 
-    return mean_.array() + stddev_.array() * (MatrixT::Zero(mean_.rows(), mean_.cols())
-                                                  .unaryExpr([&](auto /* unused */) { return dist(gen); })
-                                                  .array());
-  }
+        return mean_.array() +
+               stddev_.array() *
+                   (MatrixT::Zero(mean_.rows(), mean_.cols()).unaryExpr([&](auto /* unused */) { return dist(gen); }).array());
+    }
 
-  MatrixT mean_;
-  MatrixT stddev_;
+    MatrixT mean_;
+    MatrixT stddev_;
 };
 
 } // namespace mpex

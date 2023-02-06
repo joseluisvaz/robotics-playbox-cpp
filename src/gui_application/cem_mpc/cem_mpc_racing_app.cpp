@@ -38,11 +38,9 @@
 #include "geometry/geometry.hpp"
 #include "third_party/implot/implot.h"
 
-namespace mpex
-{
+namespace mpex {
 
-namespace
-{
+namespace {
 
 constexpr size_t n_buffer_capacity = 50;
 
@@ -63,105 +61,103 @@ const auto blue_color = Magnum::Math::Color3(0.0f, 0.6f, 1.0f);
 ///@returns map with the contents of the track file.
 std::unordered_map<std::string, std::vector<double>> read_track_from_csv(std::string filename)
 {
-  /// Gotten from stack overflow: https://stackoverflow.com/questions/1120140/how-can-i-read-and-parse-csv-files-in-c
-  auto split_next_line_into_tokens = [](std::istream &str)
-  {
-    std::vector<std::string> result;
-    std::string line;
-    std::getline(str, line);
+    /// Gotten from stack overflow: https://stackoverflow.com/questions/1120140/how-can-i-read-and-parse-csv-files-in-c
+    auto split_next_line_into_tokens = [](std::istream &str) {
+        std::vector<std::string> result;
+        std::string line;
+        std::getline(str, line);
 
-    std::stringstream lineStream(line);
-    std::string cell;
+        std::stringstream lineStream(line);
+        std::string cell;
 
-    while (std::getline(lineStream, cell, ','))
+        while (std::getline(lineStream, cell, ','))
+        {
+            result.push_back(cell);
+        }
+        return result;
+    };
+
+    std::ifstream file(filename.c_str());
+    if (!file)
     {
-      result.push_back(cell);
-    }
-    return result;
-  };
-
-  std::ifstream file(filename.c_str());
-  if (!file)
-  {
-    throw std::invalid_argument("Track file not found.");
-    return {};
-  }
-
-  std::unordered_map<std::string, std::vector<double>> output;
-
-  const auto header_tokens = split_next_line_into_tokens(file);
-  for (const auto &header : header_tokens)
-  {
-    output[header] = std::vector<double>();
-  }
-
-  while (file)
-  {
-    auto value_tokens = split_next_line_into_tokens(file);
-    if (value_tokens.empty())
-    {
-      // This if statement handles when there is a last empty line.
-      continue;
+        throw std::invalid_argument("Track file not found.");
+        return {};
     }
 
-    for (size_t i{0}; i < header_tokens.size(); ++i)
+    std::unordered_map<std::string, std::vector<double>> output;
+
+    const auto header_tokens = split_next_line_into_tokens(file);
+    for (const auto &header : header_tokens)
     {
-      output[header_tokens[i]].push_back(5.0 * std::stod(value_tokens[i]));
+        output[header] = std::vector<double>();
     }
-  }
-  return output;
+
+    while (file)
+    {
+        auto value_tokens = split_next_line_into_tokens(file);
+        if (value_tokens.empty())
+        {
+            // This if statement handles when there is a last empty line.
+            continue;
+        }
+
+        for (size_t i{0}; i < header_tokens.size(); ++i)
+        {
+            output[header_tokens[i]].push_back(5.0 * std::stod(value_tokens[i]));
+        }
+    }
+    return output;
 }
 
 Polyline2D compute_centerline(const Polyline2D &left_boundary, const Polyline2D &right_boundary)
 {
-  geometry::Polyline2D centerline;
-  for (size_t i{0}; i < left_boundary.size(); ++i)
-  {
-    // Transform to vector because we have defined arithmetic operations
-    auto p_left = geometry::Vector2D(left_boundary[i]);
-    auto p_right = geometry::Vector2D(right_boundary[i]);
-    auto p_center = (p_right + p_left) / 2.0;
-    centerline.push_back(p_center.get_point());
-  }
+    geometry::Polyline2D centerline;
+    for (size_t i{0}; i < left_boundary.size(); ++i)
+    {
+        // Transform to vector because we have defined arithmetic operations
+        auto p_left = geometry::Vector2D(left_boundary[i]);
+        auto p_right = geometry::Vector2D(right_boundary[i]);
+        auto p_center = (p_right + p_left) / 2.0;
+        centerline.push_back(p_center.get_point());
+    }
 
-  return centerline;
+    return centerline;
 }
 
 void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::shared_ptr<Graphics::LineEntity>> &path_entities)
 {
-  const auto set_xy_helper = [](const auto &candidate_trajectory, auto &path_entity, auto color)
-  {
-    std::vector<double> x_vals;
-    std::vector<double> y_vals;
-    std::vector<double> z_vals;
-    for (int i = 0; i < candidate_trajectory.states.cols(); ++i)
+    const auto set_xy_helper = [](const auto &candidate_trajectory, auto &path_entity, auto color) {
+        std::vector<double> x_vals;
+        std::vector<double> y_vals;
+        std::vector<double> z_vals;
+        for (int i = 0; i < candidate_trajectory.states.cols(); ++i)
+        {
+            const EigenKinematicBicycle::State new_state = candidate_trajectory.states.col(i);
+            x_vals.push_back(new_state[0]);
+            y_vals.push_back(new_state[1]);
+            z_vals.push_back(new_state[3]);
+        }
+        path_entity.set_xy(x_vals.size(), x_vals.data(), y_vals.data(), z_vals.data(), color);
+    };
+
+    const auto max_iter = std::max_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
+    const auto min_iter = std::min_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
+    const auto max_cost = max_iter != mpc.costs_index_pair_.end() ? max_iter->first : 1e9;
+    const auto min_cost = min_iter != mpc.costs_index_pair_.end() ? min_iter->first : -1e9;
+
+    assert(path_entities.size() == mpc.candidate_trajectories_.size());
+    for (int i = 0; i < path_entities.size(); ++i)
     {
-      const EigenKinematicBicycle::State new_state = candidate_trajectory.states.col(i);
-      x_vals.push_back(new_state[0]);
-      y_vals.push_back(new_state[1]);
-      z_vals.push_back(new_state[3]);
+        float cost = mpc.costs_index_pair_[i].first;
+        cost = (cost - min_cost) / (max_cost - min_cost); // normalize
+
+        const auto exp_color_value_blue = std::exp(-10.0f * cost);
+        const auto exp_color_value_red = 1.0f - exp_color_value_blue;
+        const auto color = Magnum::Math::Color3(exp_color_value_red, 0.0f, exp_color_value_blue);
+
+        auto &candidate_traj = mpc.candidate_trajectories_[i];
+        set_xy_helper(candidate_traj, *path_entities.at(i), color);
     }
-    path_entity.set_xy(x_vals.size(), x_vals.data(), y_vals.data(), z_vals.data(), color);
-  };
-
-  const auto max_iter = std::max_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
-  const auto min_iter = std::min_element(mpc.costs_index_pair_.begin(), mpc.costs_index_pair_.end());
-  const auto max_cost = max_iter != mpc.costs_index_pair_.end() ? max_iter->first : 1e9;
-  const auto min_cost = min_iter != mpc.costs_index_pair_.end() ? min_iter->first : -1e9;
-
-  assert(path_entities.size() == mpc.candidate_trajectories_.size());
-  for (int i = 0; i < path_entities.size(); ++i)
-  {
-    float cost = mpc.costs_index_pair_[i].first;
-    cost = (cost - min_cost) / (max_cost - min_cost); // normalize
-
-    const auto exp_color_value_blue = std::exp(-10.0f * cost);
-    const auto exp_color_value_red = 1.0f - exp_color_value_blue;
-    const auto color = Magnum::Math::Color3(exp_color_value_red, 0.0f, exp_color_value_blue);
-
-    auto &candidate_traj = mpc.candidate_trajectories_[i];
-    set_xy_helper(candidate_traj, *path_entities.at(i), color);
-  }
 }
 
 } // namespace
@@ -169,278 +165,280 @@ void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::
 CEMMPCRacingApp::CEMMPCRacingApp(const Arguments &arguments) : Magnum::Examples::BaseApplication(arguments)
 {
 
-  ego_policy_ = CEM_MPC<EigenKinematicBicycle>(
-      /* iters= */ 20,
-      horizon,
-      /* population= */ population,
-      /* elites */ 10);
+    ego_policy_ = CEM_MPC<EigenKinematicBicycle>(
+        /* iters= */ 20,
+        horizon,
+        /* population= */ population,
+        /* elites */ 10);
 
-  ego_policy_.cost_function_ = std::make_shared<QuadraticCostFunction>();
-  trajectory_entities_ = Graphics::TrajectoryEntities(scene_, horizon);
+    ego_policy_.cost_function_ = std::make_shared<QuadraticCostFunction>();
+    trajectory_entities_ = Graphics::TrajectoryEntities(scene_, horizon);
 
-  _mesh = Magnum::MeshTools::compile(Magnum::Primitives::cubeWireframe());
-  for (auto &object : trajectory_entities_.get_objects())
-  {
-    new Graphics::WireframeDrawable{*object, wireframe_shader_, _mesh, drawable_group_, red_color};
-  }
-
-  for (int i = 0; i < population; ++i)
-  {
-    path_entities_.push_back(std::make_shared<Graphics::LineEntity>(scene_));
-    new Graphics::FlatDrawable{*path_entities_.back()->object_ptr_, flat_shader_, path_entities_.back()->mesh_, drawable_group_};
-  }
-
-  // lane_ = environment::create_line_helper(/* n_points */ 200);
-  auto track_map_tmp = read_track_from_csv("/home/vjose/code/robotics_project/src/gui_application/track.csv");
-
-  decltype(track_map_tmp) track_map;
-  for (const auto &[key, values] : track_map_tmp)
-  {
-    for (int i{0}; i < values.size(); i += 10)
+    _mesh = Magnum::MeshTools::compile(Magnum::Primitives::cubeWireframe());
+    for (auto &object : trajectory_entities_.get_objects())
     {
-      track_map[key].push_back(values[i]);
+        new Graphics::WireframeDrawable{*object, wireframe_shader_, _mesh, drawable_group_, red_color};
     }
-  }
 
-  // Construct the polylines from the track information
-  geometry::Polyline2D c_left_boundary(track_map["left_x"], track_map["left_y"]);
-  geometry::Polyline2D c_right_boundary(track_map["right_x"], track_map["right_y"]);
-  geometry::Polyline2D c_centerline = compute_centerline(c_left_boundary, c_right_boundary);
+    for (int i = 0; i < population; ++i)
+    {
+        path_entities_.push_back(std::make_shared<Graphics::LineEntity>(scene_));
+        new Graphics::FlatDrawable{*path_entities_.back()->object_ptr_, flat_shader_, path_entities_.back()->mesh_, drawable_group_};
+    }
 
-  // Map the centerline values to the x and y values that are used to fit the spline
-  auto arclengths_m = c_centerline.get_arclength();
-  auto x_values = std::vector<double>(arclengths_m.size(), 0);
-  auto y_values = std::vector<double>(arclengths_m.size(), 0);
-  Eigen::VectorXd::Map(&x_values[0], x_values.size()) = c_centerline.get_data().col(0);
-  Eigen::VectorXd::Map(&y_values[0], y_values.size()) = c_centerline.get_data().col(1);
-  auto cubic_spline_ptr = std::make_shared<geometry::AlglibCubic2DSpline>(arclengths_m, x_values, y_values);
+    // lane_ = environment::create_line_helper(/* n_points */ 200);
+    auto track_map_tmp = read_track_from_csv("/home/vjose/code/robotics_project/src/gui_application/track.csv");
 
-  // Subsample the spline to create a more dense centerline
-  Eigen::VectorXd subsampled_m = Eigen::VectorXd::LinSpaced(arclengths_m.size() * 10, arclengths_m.front(), arclengths_m.back());
-  std::vector<double> x_subsampled;
-  std::vector<double> y_subsampled;
-  for (int i{0}; i < subsampled_m.size(); ++i)
-  {
-    auto point2d = cubic_spline_ptr->eval(subsampled_m(i));
-    x_subsampled.push_back(point2d.x());
-    y_subsampled.push_back(point2d.y());
-  }
-  geometry::Polyline2D densified_centerline(x_subsampled, y_subsampled);
+    decltype(track_map_tmp) track_map;
+    for (const auto &[key, values] : track_map_tmp)
+    {
+        for (int i{0}; i < values.size(); i += 10)
+        {
+            track_map[key].push_back(values[i]);
+        }
+    }
 
-  // Create the visualization of the track
-  lane_ = environment::Lane(densified_centerline, c_left_boundary, c_right_boundary);
-  lane_entity_ = Graphics::LaneEntity(lane_, scene_, vertex_color_shader_, drawable_group_);
+    // Construct the polylines from the track information
+    geometry::Polyline2D c_left_boundary(track_map["left_x"], track_map["left_y"]);
+    geometry::Polyline2D c_right_boundary(track_map["right_x"], track_map["right_y"]);
+    geometry::Polyline2D c_centerline = compute_centerline(c_left_boundary, c_right_boundary);
 
-  std::cout << "reached here: " << std::endl;
+    // Map the centerline values to the x and y values that are used to fit the spline
+    auto arclengths_m = c_centerline.get_arclength();
+    auto x_values = std::vector<double>(arclengths_m.size(), 0);
+    auto y_values = std::vector<double>(arclengths_m.size(), 0);
+    Eigen::VectorXd::Map(&x_values[0], x_values.size()) = c_centerline.get_data().col(0);
+    Eigen::VectorXd::Map(&y_values[0], y_values.size()) = c_centerline.get_data().col(1);
+    auto cubic_spline_ptr = std::make_shared<geometry::AlglibCubic2DSpline>(arclengths_m, x_values, y_values);
 
-  // Initialize current state for the simulation, kinematic bicycle.
-  ego_state_ = Dynamics::State();
-  ego_state_ << -10.0, 0.0, 0.0, 10.0, 0.0, 0.0;
+    // Subsample the spline to create a more dense centerline
+    Eigen::VectorXd subsampled_m = Eigen::VectorXd::LinSpaced(arclengths_m.size() * 10, arclengths_m.front(), arclengths_m.back());
+    std::vector<double> x_subsampled;
+    std::vector<double> y_subsampled;
+    for (int i{0}; i < subsampled_m.size(); ++i)
+    {
+        auto point2d = cubic_spline_ptr->eval(subsampled_m(i));
+        x_subsampled.push_back(point2d.x());
+        y_subsampled.push_back(point2d.y());
+    }
+    geometry::Polyline2D densified_centerline(x_subsampled, y_subsampled);
 
-  history_buffer_["time_s"] = containers::Buffer<double>(n_buffer_capacity);
-  history_buffer_["speed_mps"] = containers::Buffer<double>(n_buffer_capacity);
-  history_buffer_["accel_mpss"] = containers::Buffer<double>(n_buffer_capacity);
-  history_buffer_["yaw_rad"] = containers::Buffer<double>(n_buffer_capacity);
-  history_buffer_["steering_rad"] = containers::Buffer<double>(n_buffer_capacity);
+    corridor_ = environment::Corridor(densified_centerline, c_left_boundary, c_right_boundary);
 
-  runCEM();
-}
+    // Create the visualization of the track
+    new Graphics::LaneEntity(lane_, scene_, vertex_color_shader_, drawable_group_);
 
-void CEMMPCRacingApp::execute()
-{
-  if (is_running_)
-  {
-    runCEM();
+    std::cout << "reached here: " << std::endl;
 
-    camera_object_->resetTransformation()
-        .translate(Magnum::Vector3::zAxis(SCALE(200.0f)))
-        .translate(Magnum::Vector3::xAxis(SCALE(50.0f)))
-        .rotateX(-90.0_degf)
-        .rotateY(-90.0_degf)
-        .translate(Magnum::Vector3::zAxis(SCALE(ego_state_[0])))
-        .translate(Magnum::Vector3::xAxis(SCALE(ego_state_[1])));
-  }
-}
-
-void CEMMPCRacingApp::runCEM()
-{
-  EASY_FUNCTION(profiler::colors::Red);
-
-  auto trajectory = ego_policy_.solve(ego_state_, maybe_current_trajectory_);
-  maybe_current_trajectory_ = trajectory;
-  // auto trajectory = ego_policy_.solve(ego_state_);
-  Dynamics::Action current_action = trajectory.actions.col(0);
-
-  for (int i = 0; i < trajectory.states.cols(); ++i)
-  {
-    Dynamics::State new_state = trajectory.states.col(i);
-    auto time_s = trajectory.times.at(i);
-    // TODO: Create an SE2 utility function
-    trajectory_entities_.set_state_at(i, new_state[0], new_state[1], new_state[2]);
-  }
-
-  draw_candidate_paths(ego_policy_, path_entities_);
-
-  Vector parameters = Vector::Zero(5);
-  ego_state_ = Dynamics::step_(ego_state_, current_action, parameters);
-  time_s_ += Dynamics::ts;
-
-  history_buffer_["time_s"].push(time_s_);
-  history_buffer_["speed_mps"].push(ego_state_[3]);
-  history_buffer_["accel_mpss"].push(ego_state_[4]);
-  history_buffer_["yaw_rad"].push(ego_state_[2]);
-  history_buffer_["steering_rad"].push(ego_state_[5]);
-
-  EASY_END_BLOCK;
-}
-
-void CEMMPCRacingApp::show_menu()
-{
-  EASY_FUNCTION(profiler::colors::Blue);
-  ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
-  ImGui::SetNextWindowBgAlpha(0.5f);
-  ImGui::Begin("Options", nullptr);
-
-  if (ImGui::Button("Reset scene"))
-  {
-    resetCameraPosition();
-    redraw();
-  }
-
-  if (ImGui::Button("Reset state"))
-  {
+    // Initialize current state for the simulation, kinematic bicycle.
+    ego_state_ = Dynamics::State();
     ego_state_ << -10.0, 0.0, 0.0, 10.0, 0.0, 0.0;
+
     history_buffer_["time_s"] = containers::Buffer<double>(n_buffer_capacity);
     history_buffer_["speed_mps"] = containers::Buffer<double>(n_buffer_capacity);
     history_buffer_["accel_mpss"] = containers::Buffer<double>(n_buffer_capacity);
     history_buffer_["yaw_rad"] = containers::Buffer<double>(n_buffer_capacity);
     history_buffer_["steering_rad"] = containers::Buffer<double>(n_buffer_capacity);
-    redraw();
-  }
 
-  if (ImGui::Button("Run MPC"))
-  {
-    is_running_ = is_running_ ? false : true;
-    redraw();
-  }
+    runCEM();
+}
 
-  ImGui::SliderInt("Num Iterations", &ego_policy_.get_num_iters_mutable(), 1, 100);
-  ImGui::SliderInt("Num Elites", &ego_policy_.elites_, 1, 20);
-  ImGui::SliderInt("Num Population", &ego_policy_.population_, 8, 2048);
-
-  auto maybe_quadratic_cost_function_ptr = std::dynamic_pointer_cast<QuadraticCostFunction>(ego_policy_.cost_function_);
-  if (maybe_quadratic_cost_function_ptr)
-  {
-    auto &cost_function = *maybe_quadratic_cost_function_ptr;
-
-    double v_min = 0.0;
-    double v_max = 10.0;
-    ImGui::SliderScalarN("Cost Weights - States", ImGuiDataType_Double, &cost_function.w_s_, 6, &v_min, &v_max, "%.3f", 0);
-    ImGui::SliderScalarN("Cost Weights - Actions", ImGuiDataType_Double, &cost_function.w_a_, 2, &v_min, &v_max, "%.3f", 0);
-    ImGui::SliderScalarN("Terminal Cost Weights - States", ImGuiDataType_Double, &cost_function.W_s_, 6, &v_min, &v_max, "%.3f", 0);
-    ImGui::SliderScalarN("TerminalCost Weights - Actions", ImGuiDataType_Double, &cost_function.W_a_, 2, &v_min, &v_max, "%.3f", 0);
-
-    double v_min_r = -100.0;
-    double v_max_r = 100.0;
-    ImGui::SliderScalarN("Ref values - States", ImGuiDataType_Double, &cost_function.r_s_, 6, &v_min_r, &v_max_r, "%.3f", 0);
-    ImGui::SliderScalarN("Ref values - Actions", ImGuiDataType_Double, &cost_function.r_a_, 2, &v_min_r, &v_max_r, "%.3f", 0);
-    ImGui::SliderScalarN("Terminal Ref values - States", ImGuiDataType_Double, &cost_function.R_s_, 6, &v_min_r, &v_max_r, "%.3f", 0);
-    ImGui::SliderScalarN("Terminal Ref values - Actions", ImGuiDataType_Double, &cost_function.R_a_, 2, &v_min_r, &v_max_r, "%.3f", 0);
-  }
-
-  const auto make_plot = [this](auto title, auto value_name, auto getter_fn)
-  {
-    ImPlot::SetNextAxesToFit();
-    if (ImPlot::BeginPlot(title))
+void CEMMPCRacingApp::execute()
+{
+    if (is_running_)
     {
-      ImPlot::SetupAxes("time[s]", value_name);
+        runCEM();
 
-      // Plot history
-      if (history_buffer_.find("time_s") != history_buffer_.end() && history_buffer_.find(value_name) != history_buffer_.end())
-      {
-        std::vector<double> t_past_values;
-        std::vector<double> v_past_values;
-        for (int i{0}; i < history_buffer_["time_s"].size(); ++i)
+        camera_object_->resetTransformation()
+            .translate(Magnum::Vector3::zAxis(SCALE(200.0f)))
+            .translate(Magnum::Vector3::xAxis(SCALE(50.0f)))
+            .rotateX(-90.0_degf)
+            .rotateY(-90.0_degf)
+            .translate(Magnum::Vector3::zAxis(SCALE(ego_state_[0])))
+            .translate(Magnum::Vector3::xAxis(SCALE(ego_state_[1])));
+    }
+}
+
+void CEMMPCRacingApp::runCEM()
+{
+    EASY_FUNCTION(profiler::colors::Red);
+
+    auto trajectory = ego_policy_.solve(ego_state_, maybe_current_trajectory_);
+    maybe_current_trajectory_ = trajectory;
+    // auto trajectory = ego_policy_.solve(ego_state_);
+    Dynamics::Action current_action = trajectory.actions.col(0);
+
+    for (int i = 0; i < trajectory.states.cols(); ++i)
+    {
+        Dynamics::State new_state = trajectory.states.col(i);
+        auto time_s = trajectory.times.at(i);
+        // TODO: Create an SE2 utility function
+        trajectory_entities_.set_state_at(i, new_state[0], new_state[1], new_state[2]);
+    }
+
+    draw_candidate_paths(ego_policy_, path_entities_);
+
+    Vector parameters = Vector::Zero(5);
+    ego_state_ = Dynamics::step_(ego_state_, current_action, parameters);
+    time_s_ += Dynamics::ts;
+
+    history_buffer_["time_s"].push(time_s_);
+    history_buffer_["speed_mps"].push(ego_state_[3]);
+    history_buffer_["accel_mpss"].push(ego_state_[4]);
+    history_buffer_["yaw_rad"].push(ego_state_[2]);
+    history_buffer_["steering_rad"].push(ego_state_[5]);
+
+    EASY_END_BLOCK;
+}
+
+void CEMMPCRacingApp::show_menu()
+{
+    EASY_FUNCTION(profiler::colors::Blue);
+    ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowBgAlpha(0.5f);
+    ImGui::Begin("Options", nullptr);
+
+    if (ImGui::Button("Reset scene"))
+    {
+        resetCameraPosition();
+        redraw();
+    }
+
+    if (ImGui::Button("Reset state"))
+    {
+        ego_state_ << -10.0, 0.0, 0.0, 10.0, 0.0, 0.0;
+        history_buffer_["time_s"] = containers::Buffer<double>(n_buffer_capacity);
+        history_buffer_["speed_mps"] = containers::Buffer<double>(n_buffer_capacity);
+        history_buffer_["accel_mpss"] = containers::Buffer<double>(n_buffer_capacity);
+        history_buffer_["yaw_rad"] = containers::Buffer<double>(n_buffer_capacity);
+        history_buffer_["steering_rad"] = containers::Buffer<double>(n_buffer_capacity);
+        redraw();
+    }
+
+    if (ImGui::Button("Run MPC"))
+    {
+        is_running_ = is_running_ ? false : true;
+        redraw();
+    }
+
+    ImGui::SliderInt("Num Iterations", &ego_policy_.get_num_iters_mutable(), 1, 100);
+    ImGui::SliderInt("Num Elites", &ego_policy_.elites_, 1, 20);
+    ImGui::SliderInt("Num Population", &ego_policy_.population_, 8, 2048);
+
+    auto maybe_quadratic_cost_function_ptr = std::dynamic_pointer_cast<QuadraticCostFunction>(ego_policy_.cost_function_);
+    if (maybe_quadratic_cost_function_ptr)
+    {
+        auto &cost_function = *maybe_quadratic_cost_function_ptr;
+
+        double v_min = 0.0;
+        double v_max = 10.0;
+        ImGui::SliderScalarN("Cost Weights - States", ImGuiDataType_Double, &cost_function.w_s_, 6, &v_min, &v_max, "%.3f", 0);
+        ImGui::SliderScalarN("Cost Weights - Actions", ImGuiDataType_Double, &cost_function.w_a_, 2, &v_min, &v_max, "%.3f", 0);
+        ImGui::SliderScalarN("Terminal Cost Weights - States", ImGuiDataType_Double, &cost_function.W_s_, 6, &v_min, &v_max, "%.3f", 0);
+        ImGui::SliderScalarN("TerminalCost Weights - Actions", ImGuiDataType_Double, &cost_function.W_a_, 2, &v_min, &v_max, "%.3f", 0);
+
+        double v_min_r = -100.0;
+        double v_max_r = 100.0;
+        ImGui::SliderScalarN("Ref values - States", ImGuiDataType_Double, &cost_function.r_s_, 6, &v_min_r, &v_max_r, "%.3f", 0);
+        ImGui::SliderScalarN("Ref values - Actions", ImGuiDataType_Double, &cost_function.r_a_, 2, &v_min_r, &v_max_r, "%.3f", 0);
+        ImGui::SliderScalarN("Terminal Ref values - States", ImGuiDataType_Double, &cost_function.R_s_, 6, &v_min_r, &v_max_r, "%.3f", 0);
+        ImGui::SliderScalarN("Terminal Ref values - Actions", ImGuiDataType_Double, &cost_function.R_a_, 2, &v_min_r, &v_max_r, "%.3f", 0);
+    }
+
+    const auto make_plot = [this](auto title, auto value_name, auto getter_fn) {
+        ImPlot::SetNextAxesToFit();
+        if (ImPlot::BeginPlot(title))
         {
-          t_past_values.push_back(history_buffer_["time_s"][i]);
-          v_past_values.push_back(history_buffer_[value_name][i]);
+            ImPlot::SetupAxes("time[s]", value_name);
+
+            // Plot history
+            if (history_buffer_.find("time_s") != history_buffer_.end() && history_buffer_.find(value_name) != history_buffer_.end())
+            {
+                std::vector<double> t_past_values;
+                std::vector<double> v_past_values;
+                for (int i{0}; i < history_buffer_["time_s"].size(); ++i)
+                {
+                    t_past_values.push_back(history_buffer_["time_s"][i]);
+                    v_past_values.push_back(history_buffer_[value_name][i]);
+                }
+
+                ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+                ImPlot::PlotLine(
+                    std::string(value_name).append("_past").c_str(), t_past_values.data(), v_past_values.data(), v_past_values.size());
+                ImPlot::PopStyleColor();
+            }
+
+            ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0, 0.5f, 0.0f, 0.05f));
+            for (auto traj : this->ego_policy_.candidate_trajectories_)
+            {
+                std::vector<double> t_values;
+                std::transform(traj.times.begin(), traj.times.end(), std::back_inserter(t_values), [&](auto t) { return time_s_ + t; });
+                std::vector<double> values;
+                std::transform(traj.states.colwise().begin(), traj.states.colwise().end(), std::back_inserter(values), getter_fn);
+                ImPlot::PlotLine(value_name, t_values.data(), values.data(), values.size());
+            }
+            ImPlot::PopStyleColor();
+
+            const auto &traj = ego_policy_.get_trajectory();
+            std::vector<double> t_values;
+            std::transform(traj.times.begin(), traj.times.end(), std::back_inserter(t_values), [&](auto t) { return time_s_ + t; });
+            std::vector<double> values;
+            std::transform(traj.states.colwise().begin(), traj.states.colwise().end(), std::back_inserter(values), getter_fn);
+
+            ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
+            ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+            ImPlot::PlotLine(std::string(value_name).append("_hola").c_str(), t_values.data(), values.data(), values.size());
+            ImPlot::PopStyleColor();
+
+            ImPlot::EndPlot();
         }
+    };
 
-        ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-        ImPlot::PlotLine(std::string(value_name).append("_past").c_str(), t_past_values.data(), v_past_values.data(), v_past_values.size());
-        ImPlot::PopStyleColor();
-      }
+    const auto make_action_plot = [this](auto title, auto value_name, auto getter_fn) {
+        ImPlot::SetNextAxesToFit();
+        if (ImPlot::BeginPlot(title))
+        {
+            ImPlot::SetupAxes("time[s]", value_name);
+            ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0, 0.5f, 0.0f, 0.05f));
+            for (auto traj : this->ego_policy_.candidate_trajectories_)
+            {
+                std::vector<double> values;
+                std::transform(traj.actions.colwise().begin(), traj.actions.colwise().end(), std::back_inserter(values), getter_fn);
+                ImPlot::PlotLine(value_name, traj.times.data(), values.data(), values.size());
+            }
+            ImPlot::PopStyleColor();
 
-      ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0, 0.5f, 0.0f, 0.05f));
-      for (auto traj : this->ego_policy_.candidate_trajectories_)
-      {
-        std::vector<double> t_values;
-        std::transform(traj.times.begin(), traj.times.end(), std::back_inserter(t_values), [&](auto t) { return time_s_ + t; });
-        std::vector<double> values;
-        std::transform(traj.states.colwise().begin(), traj.states.colwise().end(), std::back_inserter(values), getter_fn);
-        ImPlot::PlotLine(value_name, t_values.data(), values.data(), values.size());
-      }
-      ImPlot::PopStyleColor();
+            std::vector<double> values;
+            std::transform(
+                this->ego_policy_.get_trajectory().actions.colwise().cbegin(),
+                this->ego_policy_.get_trajectory().actions.colwise().cend(),
+                std::back_inserter(values),
+                getter_fn);
 
-      const auto &traj = ego_policy_.get_trajectory();
-      std::vector<double> t_values;
-      std::transform(traj.times.begin(), traj.times.end(), std::back_inserter(t_values), [&](auto t) { return time_s_ + t; });
-      std::vector<double> values;
-      std::transform(traj.states.colwise().begin(), traj.states.colwise().end(), std::back_inserter(values), getter_fn);
+            ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
+            ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+            ImPlot::PlotLine(
+                std::string(value_name).append("_hola").c_str(), ego_policy_.get_trajectory().times.data(), values.data(), values.size());
+            ImPlot::PopStyleColor();
+            ImPlot::EndPlot();
+        }
+    };
 
-      ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
-      ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-      ImPlot::PlotLine(std::string(value_name).append("_hola").c_str(), t_values.data(), values.data(), values.size());
-      ImPlot::PopStyleColor();
+    EASY_BLOCK("Make plots");
+    make_plot("Speed Plot", "speed_mps", [](const Ref<const typename Dynamics::State> &state) { return state[3]; });
+    make_plot("Accel Plot", "accel_mpss", [](const Ref<const typename Dynamics::State> &state) { return state[4]; });
+    make_plot("Yaw Plot", "yaw_rad", [](const Ref<const typename Dynamics::State> &state) { return state[2]; });
+    make_plot("Steering Plot", "steering_rad", [](const Ref<const typename Dynamics::State> &state) { return state[5]; });
+    make_action_plot("Jerk Plot", "jerk[mpsss]", [](const Ref<const typename Dynamics::Action> &action) {
+        return 0.6 * std::tanh(action[0]);
+    });
+    make_action_plot("Steering Rate Plot", "srate[rad/s]", [](const Ref<const typename Dynamics::Action> &action) {
+        return 0.1 * std::tanh(action[1]);
+    });
+    EASY_END_BLOCK;
 
-      ImPlot::EndPlot();
-    }
-  };
-
-  const auto make_action_plot = [this](auto title, auto value_name, auto getter_fn)
-  {
-    ImPlot::SetNextAxesToFit();
-    if (ImPlot::BeginPlot(title))
-    {
-      ImPlot::SetupAxes("time[s]", value_name);
-      ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0, 0.5f, 0.0f, 0.05f));
-      for (auto traj : this->ego_policy_.candidate_trajectories_)
-      {
-        std::vector<double> values;
-        std::transform(traj.actions.colwise().begin(), traj.actions.colwise().end(), std::back_inserter(values), getter_fn);
-        ImPlot::PlotLine(value_name, traj.times.data(), values.data(), values.size());
-      }
-      ImPlot::PopStyleColor();
-
-      std::vector<double> values;
-      std::transform(
-          this->ego_policy_.get_trajectory().actions.colwise().cbegin(),
-          this->ego_policy_.get_trajectory().actions.colwise().cend(),
-          std::back_inserter(values),
-          getter_fn);
-
-      ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
-      ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-      ImPlot::PlotLine(
-          std::string(value_name).append("_hola").c_str(), ego_policy_.get_trajectory().times.data(), values.data(), values.size());
-      ImPlot::PopStyleColor();
-      ImPlot::EndPlot();
-    }
-  };
-
-  EASY_BLOCK("Make plots");
-  make_plot("Speed Plot", "speed_mps", [](const Ref<const typename Dynamics::State> &state) { return state[3]; });
-  make_plot("Accel Plot", "accel_mpss", [](const Ref<const typename Dynamics::State> &state) { return state[4]; });
-  make_plot("Yaw Plot", "yaw_rad", [](const Ref<const typename Dynamics::State> &state) { return state[2]; });
-  make_plot("Steering Plot", "steering_rad", [](const Ref<const typename Dynamics::State> &state) { return state[5]; });
-  make_action_plot(
-      "Jerk Plot", "jerk[mpsss]", [](const Ref<const typename Dynamics::Action> &action) { return 0.6 * std::tanh(action[0]); });
-  make_action_plot(
-      "Steering Rate Plot", "srate[rad/s]", [](const Ref<const typename Dynamics::Action> &action) { return 0.1 * std::tanh(action[1]); });
-  EASY_END_BLOCK;
-
-  ImGui::End();
+    ImGui::End();
 }
 
 } // namespace mpex

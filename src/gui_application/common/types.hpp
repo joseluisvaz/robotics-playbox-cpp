@@ -27,8 +27,7 @@
 
 #include "math.hpp"
 
-namespace mpex
-{
+namespace mpex {
 
 using namespace Eigen;
 
@@ -56,27 +55,27 @@ using EigenActionSequence = Eigen::Matrix<T, action_size, Eigen::Dynamic>;
 template <int state_size, int action_size, typename T = double>
 struct EigenTrajectory
 {
-  std::vector<T> times{};
-  EigenStateSequence<state_size, T> states;
-  EigenActionSequence<action_size, T> actions;
+    std::vector<T> times{};
+    EigenStateSequence<state_size, T> states;
+    EigenActionSequence<action_size, T> actions;
 
-  EigenTrajectory() = default;
-  EigenTrajectory(int horizon)
-  {
-    states = EigenStateSequence<state_size, T>::Zero(state_size, horizon);
-    actions = EigenActionSequence<action_size, T>::Zero(action_size, horizon);
-    times = std::vector<T>(horizon, 0.0f);
-  };
+    EigenTrajectory() = default;
+    EigenTrajectory(int horizon)
+    {
+        states = EigenStateSequence<state_size, T>::Zero(state_size, horizon);
+        actions = EigenActionSequence<action_size, T>::Zero(action_size, horizon);
+        times = std::vector<T>(horizon, 0.0f);
+    };
 
-  EigenState<state_size, T> state_at(int i) const
-  {
-    return this->states.col(i);
-  };
+    EigenState<state_size, T> state_at(int i) const
+    {
+        return this->states.col(i);
+    };
 
-  EigenState<action_size, T> action_at(int i) const
-  {
-    return this->actions.col(i);
-  };
+    EigenState<action_size, T> action_at(int i) const
+    {
+        return this->actions.col(i);
+    };
 };
 
 } // namespace mpex

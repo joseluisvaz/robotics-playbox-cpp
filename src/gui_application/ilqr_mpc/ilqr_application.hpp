@@ -34,37 +34,36 @@
 #include "graphics/graphics_objects.hpp"
 #include "ilqr_mpc/ilqr_mpc.hpp"
 
-namespace mpex
-{
+namespace mpex {
 
 using namespace Eigen;
 
 class IlqrMain : public Magnum::Examples::BaseApplication
 {
 
-public:
-  using Dynamics = EigenKinematicBicycle;
-  explicit IlqrMain(const Arguments &arguments);
+  public:
+    using Dynamics = EigenKinematicBicycle;
+    explicit IlqrMain(const Arguments &arguments);
 
-private:
-  virtual void show_menu() final;
-  virtual void execute() final;
-  void run_ilqr();
-  Magnum::GL::Mesh mesh_{Magnum::NoCreate};
-  Graphics::TrajectoryEntities trajectory_entities_;
-  IterativeLinearQuadraticRegulator ego_policy_;
-  std::optional<Dynamics::Trajectory> maybe_current_trajectory_;
-  bool is_running_{false};
+  private:
+    virtual void show_menu() final;
+    virtual void execute() final;
+    void run_ilqr();
+    Magnum::GL::Mesh mesh_{Magnum::NoCreate};
+    Graphics::TrajectoryEntities trajectory_entities_;
+    IterativeLinearQuadraticRegulator ego_policy_;
+    std::optional<Dynamics::Trajectory> maybe_current_trajectory_;
+    bool is_running_{false};
 
-  // State
-  Dynamics::State ego_state_;
-  double time_;
+    // State
+    Dynamics::State ego_state_;
+    double time_;
 
-  // enviroment
-  environment::Lane lane_;
-  Graphics::LaneEntity lane_entity_;
+    // enviroment
+    environment::Corridor lane_;
+    Graphics::LaneEntity lane_entity_;
 
-  std::unordered_map<std::string, containers::Buffer<double>> history_buffer_;
+    std::unordered_map<std::string, containers::Buffer<double>> history_buffer_;
 };
 
 } // namespace mpex

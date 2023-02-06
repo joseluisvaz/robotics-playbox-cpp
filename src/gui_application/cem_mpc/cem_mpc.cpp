@@ -1,8 +1,7 @@
 #include "cem_mpc.h"
 #include "cem_mpc_inl.h"
 
-namespace mpex
-{
+namespace mpex {
 
 template class CEM_MPC<EigenKinematicBicycle>;
 

@@ -18,39 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE
 
-#include <deque>
+namespace mpex { namespace environment {
 
-namespace mpex { namespace containers {
-
-template <typename T>
-class Buffer
+struct ThisClasss
 {
-
-  public:
-    Buffer() = default;
-    Buffer(size_t capacity) : capacity_(capacity){};
-
-    void push(T val)
-    {
-        array_.push_back(val);
-        if (array_.size() > capacity_)
-        {
-            array_.pop_front();
-        }
-    }
-
-    T operator[](size_t i)
-    {
-        return array_[i];
-    }
-
-    size_t size() const
-    {
-        return array_.size();
-    }
-
-    std::deque<T> array_;
-    size_t capacity_;
+    int x;
 };
 
-}} // namespace mpex::containers
+}} // namespace mpex::environment
