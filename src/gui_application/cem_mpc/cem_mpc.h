@@ -14,6 +14,18 @@
 namespace mpex {
 using namespace Eigen;
 
+struct CEM_MPC_Config
+{
+    /// The number of iterations of the CEM method.
+    int num_iters = 10;
+    /// The number of points in the horizon.
+    int horizon = 20;
+    /// The population size per iteration.
+    int population = 128;
+    /// The number of samples elite samples to use per iteration. Must be less than population.
+    int elites = 2;
+};
+
 /* Implementation of a simple Cross Entropy Method Model Predictive Control (CEM-MPC) */
 template <typename DynamicsT>
 class CEM_MPC
@@ -31,11 +43,7 @@ class CEM_MPC
     CEM_MPC() = default;
 
     /// Construct a new cem_mpc object, preallocates memory for trajectories.
-    ///@param num_iters The number of iterations of the CEM method.
-    ///@param horizon The number of points in the horizon.
-    ///@param population  The population size per iteration.
-    ///@param elites The number of samples elite samples to use per iteration. Must be less than population.
-    CEM_MPC(const int num_iters, const int horizon, const int population, const int elites);
+    CEM_MPC(const CEM_MPC_Config &config);
 
     /// Execute the cross entropy method mpc, it return the full state-action trajectory. Extract the first action to
     /// control your system.
@@ -44,20 +52,13 @@ class CEM_MPC
     ///@return Trajectory& A reference to the trajectory that the MPC computed.
     Trajectory solve(const Ref<State> &initial_state, const std::optional<Trajectory> &maybe_trajectory);
 
-    int &get_num_iters_mutable();
-
-    // Gets the last available trajectory as a const ref.
+    const CEM_MPC_Config &get_config() const;
+    CEM_MPC_Config &get_config_mutable();
     const Trajectory &get_last_solution() const;
 
     std::shared_ptr<CostFunction> cost_function_;
-
     std::vector<Trajectory> candidate_trajectories_;
-
     std::vector<std::pair<double, int>> costs_index_pair_;
-
-    int num_iters_;
-    int population_;
-    int elites_;
 
   private:
     /// Runs a single rollout for a trajectory.
@@ -71,13 +72,11 @@ class CEM_MPC
     /// Runs a full iteration of the CEM method using multiple threads, parallelizing the rollouts.
     void update_action_distribution();
 
-    /// Horizon, needed at compile time
-    int horizon_;
-
+    std::vector<std::thread> threads_{16};
+    CEM_MPC_Config config_;
     Trajectory trajectory_;
     Sampler sampler_;
 
-    std::vector<std::thread> threads_{16};
 };
 
 } // namespace mpex

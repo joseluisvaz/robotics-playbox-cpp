@@ -68,6 +68,7 @@ target_link_libraries(cem_mpc_racing_app
         base_application
         Common
         Eigen3::Eigen
+        # Magnum::GL
         geometry
         environment
     )

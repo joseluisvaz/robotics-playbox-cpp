@@ -13,14 +13,13 @@
 namespace mpex {
 
 template <typename DynamicsT>
-CEM_MPC<DynamicsT>::CEM_MPC(const int num_iters, const int horizon, const int population, const int elites)
-    : num_iters_(num_iters), horizon_(horizon), population_(population), elites_(elites), trajectory_(horizon)
+CEM_MPC<DynamicsT>::CEM_MPC(const CEM_MPC_Config &config) : config_(config), trajectory_(config.horizon)
 {
-    costs_index_pair_ = std::vector<std::pair<double, int>>(population_, std::make_pair(0.0f, 0));
+    costs_index_pair_ = std::vector<std::pair<double, int>>(config.population, std::make_pair(0.0f, 0));
 
-    for (int i = 0; i < population_; ++i)
+    for (int i = 0; i < config.population; ++i)
     {
-        candidate_trajectories_.emplace_back(Trajectory(horizon_));
+        candidate_trajectories_.emplace_back(Trajectory(config.horizon));
     }
 
     sampler_.mean_ = Actions::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
@@ -31,7 +30,7 @@ template <typename DynamicsT>
 void CEM_MPC<DynamicsT>::rollout(Trajectory &trajectory)
 {
     double current_time_s{0.0f};
-    for (size_t i = 0; i + 1 < static_cast<size_t>(horizon_); ++i)
+    for (size_t i = 0; i + 1 < static_cast<size_t>(config_.horizon); ++i)
     {
         trajectory.times.at(i) = current_time_s;
 
@@ -39,7 +38,7 @@ void CEM_MPC<DynamicsT>::rollout(Trajectory &trajectory)
         DynamicsT::step(trajectory.states.col(i), trajectory.actions.col(i), parameters, trajectory.states.col(i + 1));
         current_time_s += DynamicsT::ts;
     }
-    trajectory.times.at(horizon_ - 1) = current_time_s;
+    trajectory.times.at(config_.horizon - 1) = current_time_s;
 }
 
 template <typename DynamicsT>
@@ -49,7 +48,7 @@ void CEM_MPC<DynamicsT>::run_cem_iteration(const Ref<State> &initial_state)
 
     /// Helper function to run multithreaded rollouts.
     const auto evaluate_trajectory_fn = [this, &initial_state](int k) {
-        int block_size = static_cast<int>(this->population_ / this->threads_.size());
+        int block_size = static_cast<int>(config_.population / this->threads_.size());
         for (int j = block_size * k; j < block_size * k + block_size; ++j)
         {
             auto &trajectory = this->candidate_trajectories_.at(j);
@@ -88,25 +87,25 @@ void CEM_MPC<DynamicsT>::update_action_distribution()
     std::sort(costs_index_pair_.begin(), costs_index_pair_.end(), [](const auto &lhs, const auto &rhs) { return lhs.first < rhs.first; });
 
     // Compute the mean actions using best trajectories.
-    Actions mean_actions = Actions::Zero(action_size, horizon_);
-    for (int i = 0; i < elites_; ++i)
+    Actions mean_actions = Actions::Zero(action_size, config_.horizon);
+    for (int i = 0; i < config_.elites; ++i)
     {
         const auto &elite_index = costs_index_pair_.at(i).second;
         mean_actions += candidate_trajectories.at(elite_index).actions;
     }
 
-    mean_actions = mean_actions / elites_;
+    mean_actions = mean_actions / config_.elites;
 
     // Compute the stddev of the actions using the best trajectories.
-    Actions stddev = Actions::Zero(action_size, horizon_);
-    for (int i = 0; i < elites_; ++i)
+    Actions stddev = Actions::Zero(action_size, config_.horizon);
+    for (int i = 0; i < config_.elites; ++i)
     {
         const auto &elite_index = costs_index_pair_.at(i).second;
         Actions temp = candidate_trajectories.at(elite_index).actions - mean_actions;
         stddev = stddev + temp.cwiseProduct(temp);
     }
 
-    stddev = (stddev / elites_).cwiseSqrt();
+    stddev = (stddev / config_.elites).cwiseSqrt();
 
     sampler_.mean_ = mean_actions;
     sampler_.stddev_ = stddev;
@@ -122,7 +121,7 @@ typename CEM_MPC<DynamicsT>::Trajectory CEM_MPC<DynamicsT>::solve(
         maybe_trajectory.has_value() ? maybe_trajectory->actions : Actions::Zero(trajectory_.actions.rows(), trajectory_.actions.cols());
     sampler_.stddev_ = Actions::Ones(trajectory_.actions.rows(), trajectory_.actions.cols());
 
-    for (int i = 0; i < num_iters_; ++i)
+    for (int i = 0; i < config_.num_iters; ++i)
     {
         run_cem_iteration(initial_state);
     }
@@ -134,9 +133,15 @@ typename CEM_MPC<DynamicsT>::Trajectory CEM_MPC<DynamicsT>::solve(
 }
 
 template <typename DynamicsT>
-int &CEM_MPC<DynamicsT>::get_num_iters_mutable()
+const CEM_MPC_Config &CEM_MPC<DynamicsT>::get_config() const
 {
-    return num_iters_;
+    return config_;
+}
+
+template <typename DynamicsT>
+CEM_MPC_Config &CEM_MPC<DynamicsT>::get_config_mutable()
+{
+    return config_;
 }
 
 template <typename DynamicsT>

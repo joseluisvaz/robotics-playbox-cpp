@@ -31,6 +31,7 @@
 #include <easy/profiler.h>
 
 #include "base_application/base_application.hpp"
+#include "cem_mpc/cem_mpc.h"
 #include "cem_mpc/cem_mpc_racing_app.hpp"
 #include "cem_mpc/intelligent_driver_model.hpp"
 #include "common/types.hpp"
@@ -118,11 +119,12 @@ CEMMPCRacingApp::CEMMPCRacingApp(const Arguments &arguments) : Magnum::Examples:
     new Graphics::LaneEntity(corridor_, scene_, vertex_color_shader_, drawable_group_);
 
     // Set Policy and cost function
-    ego_policy_ptr_ = std::make_shared<CEM_MPC<EigenKinematicBicycle>>(
-        /* iters= */ 20,
-        horizon,
-        /* population= */ population,
-        /* elites */ 10);
+    CEM_MPC_Config config =
+        {/* iters= */ 20,
+         horizon,
+         /* population= */ population,
+         /* elites */ 10};
+    ego_policy_ptr_ = std::make_shared<CEM_MPC<EigenKinematicBicycle>>(config);
 
     ego_policy_ptr_->cost_function_ = std::make_shared<QuadraticCostFunction>();
     mpc_viewer_ = KinematicBicycleCemViewer(ego_policy_ptr_, scene_, wireframe_shader_, flat_shader_, drawable_group_, horizon, population);
@@ -211,9 +213,10 @@ void CEMMPCRacingApp::show_menu()
 
     auto &ego_policy = *ego_policy_ptr_;
 
-    ImGui::SliderInt("Num Iterations", &ego_policy.get_num_iters_mutable(), 1, 100);
-    ImGui::SliderInt("Num Elites", &ego_policy.elites_, 1, 20);
-    ImGui::SliderInt("Num Population", &ego_policy.population_, 8, 2048);
+    auto &config_mutable = ego_policy.get_config_mutable();
+    // ImGui::SliderInt("Num Iterations", &config_mutable.num_iters, 1, 100);
+    // ImGui::SliderInt("Num Elites", &config_mutable.elites, 1, 20);
+    // ImGui::SliderInt("Num Population", &config_mutable.population, 8, 2048);
 
     auto maybe_quadratic_cost_function_ptr = std::dynamic_pointer_cast<QuadraticCostFunction>(ego_policy.cost_function_);
     if (maybe_quadratic_cost_function_ptr)

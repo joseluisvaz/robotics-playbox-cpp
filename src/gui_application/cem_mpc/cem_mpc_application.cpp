@@ -289,9 +289,10 @@ void CEMMPCApplication::show_menu()
         redraw();
     }
 
-    ImGui::SliderInt("Num Iterations", &ego_policy_.get_num_iters_mutable(), 1, 100);
-    ImGui::SliderInt("Num Elites", &ego_policy_.elites_, 1, 20);
-    ImGui::SliderInt("Num Population", &ego_policy_.population_, 8, 2048);
+    auto& config_mutable = ego_policy_.get_config_mutable();
+    ImGui::SliderInt("Num Iterations", &config_mutable.num_iters, 1, 100);
+    ImGui::SliderInt("Num Elites", &config_mutable.elites, 1, 20);
+    ImGui::SliderInt("Num Population", &config_mutable.population, 8, 2048);
 
     auto maybe_quadratic_cost_function_ptr = std::dynamic_pointer_cast<QuadraticCostFunction>(ego_policy_.cost_function_);
     if (maybe_quadratic_cost_function_ptr)
