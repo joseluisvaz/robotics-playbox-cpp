@@ -22,12 +22,12 @@ namespace mpex
 
 using namespace Eigen;
 
-class CEMMPCApplication : public Magnum::Examples::BaseApplication
+class CEMMPCRacingApp : public Magnum::Examples::BaseApplication
 {
   using Dynamics = EigenKinematicBicycle;
 
 public:
-  explicit CEMMPCApplication(const Arguments &arguments);
+  explicit CEMMPCRacingApp(const Arguments &arguments);
 
 private:
   virtual void show_menu();
@@ -38,9 +38,7 @@ private:
   // Visualization entities for plotting using Magnum
   Magnum::GL::Mesh _mesh{Magnum::NoCreate};
   Graphics::TrajectoryEntities trajectory_entities_;
-  Graphics::TrajectoryEntities trajectory_entities_idm_;
   std::vector<std::shared_ptr<Graphics::LineEntity>> path_entities_;
-
   std::shared_ptr<Graphics::LineEntity> left_boundary_;
   std::shared_ptr<Graphics::LineEntity> centerline_;
   std::shared_ptr<Graphics::LineEntity> right_boundary_;
@@ -51,10 +49,6 @@ private:
   // Ego policy and state information, used to control the agent that is using the MPC
   CEM_MPC<Dynamics> ego_policy_;
   Dynamics::State ego_state_;
-
-  // Actor policy and state information, used to control the agent that we are merging into
-  IntelligentDriverModelPolicy actor_policy_;
-  SingleIntegrator::State actor_state_;
 
   // Enviroment information such as the lane and the corresponding lanes
   environment::Lane lane_;

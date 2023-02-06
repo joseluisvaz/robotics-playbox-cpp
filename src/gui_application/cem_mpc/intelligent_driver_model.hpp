@@ -33,7 +33,7 @@ namespace mpex
 using namespace Eigen;
 
 /* Implementation of a simple Cross Entropy Method Model Predictive Control (CEM-MPC) */
-class IntelligentDriverModel
+class IntelligentDriverModelPolicy
 {
 
 public:
@@ -59,10 +59,10 @@ public:
     int delta = 4;
   };
 
-  IntelligentDriverModel() = default;
+  IntelligentDriverModelPolicy() = default;
 
   // Instantiate an intelligent driver model.
-  IntelligentDriverModel(const Config &config) : config_(std::move(config)){};
+  IntelligentDriverModelPolicy(const Config &config) : config_(std::move(config)){};
 
   // rollout a trajectory for this model.
   States &rollout(const Ref<const State> &x0, const Ref<const States> &x_lead_states)

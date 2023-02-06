@@ -31,9 +31,8 @@
 #include <easy/profiler.h>
 
 #include "base_application/base_application.hpp"
-#include "cem_mpc/cem_mpc_application.hpp"
+#include "cem_mpc/cem_mpc_racing_app.hpp"
 #include "cem_mpc/intelligent_driver_model.hpp"
-#include "common/dynamics.h"
 #include "common/types.hpp"
 #include "environment/lane_map.hpp"
 #include "geometry/geometry.hpp"
@@ -58,6 +57,60 @@ constexpr int horizon = 20;
 
 const auto red_color = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
 const auto blue_color = Magnum::Math::Color3(0.0f, 0.6f, 1.0f);
+
+/// Utility to read track file from csv.
+///@param filename The filename where the track file resides, use the global path.
+///@returns map with the contents of the track file.
+std::unordered_map<std::string, std::vector<double>> read_track_from_csv(std::string filename)
+{
+  /// Gotten from stack overflow: https://stackoverflow.com/questions/1120140/how-can-i-read-and-parse-csv-files-in-c
+  auto split_next_line_into_tokens = [](std::istream &str)
+  {
+    std::vector<std::string> result;
+    std::string line;
+    std::getline(str, line);
+
+    std::stringstream lineStream(line);
+    std::string cell;
+
+    while (std::getline(lineStream, cell, ','))
+    {
+      result.push_back(cell);
+    }
+    return result;
+  };
+
+  std::ifstream file(filename.c_str());
+  if (!file)
+  {
+    throw std::invalid_argument("Track file not found.");
+    return {};
+  }
+
+  std::unordered_map<std::string, std::vector<double>> output;
+
+  const auto header_tokens = split_next_line_into_tokens(file);
+  for (const auto &header : header_tokens)
+  {
+    output[header] = std::vector<double>();
+  }
+
+  while (file)
+  {
+    auto value_tokens = split_next_line_into_tokens(file);
+    if (value_tokens.empty())
+    {
+      // This if statement handles when there is a last empty line.
+      continue;
+    }
+
+    for (size_t i{0}; i < header_tokens.size(); ++i)
+    {
+      output[header_tokens[i]].push_back(5.0 * std::stod(value_tokens[i]));
+    }
+  }
+  return output;
+}
 
 Polyline2D compute_centerline(const Polyline2D &left_boundary, const Polyline2D &right_boundary)
 {
@@ -111,40 +164,9 @@ void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::
   }
 }
 
-IntelligentDriverModelPolicy::States calc_idm_lead_states_from_trajectory(
-    const IntelligentDriverModelPolicy &idm,
-    const IntelligentDriverModelPolicy::State idm_state,
-    const EigenKinematicBicycle::Trajectory &trajectory,
-    const environment::Lane lane)
-{
-  // In this case we need to explicitly define the type
-  typename IntelligentDriverModelPolicy::States lead_states =
-      IntelligentDriverModelPolicy::States::Ones(IntelligentDriverModelPolicy::state_size, trajectory.states.cols());
-
-  lead_states.row(0).array() = 1000.0f; // initialize x positions with high value but not too high.
-  lead_states.row(1).array() = idm.config_.v0;
-
-  const auto agent_xy = Point2D(idm_state[0], idm_state[1]);
-  const auto agent_dist_m = lane.centerline_.calc_curvilinear_coord(idm_state.head(2));
-
-  for (size_t i{0}; i < trajectory.states.cols(); ++i)
-  {
-    const auto ego_xy = Point2D(trajectory.states(0, i), trajectory.states(1, i));
-    const Vector2d current_ego_xy = trajectory.states.col(i).head(2);
-    const auto ego_dist_m = lane.centerline_.calc_curvilinear_coord(current_ego_xy);
-
-    if (lane.is_inside(ego_xy) && ego_dist_m > agent_dist_m)
-    {
-      lead_states(0, i) = trajectory.states(0, i); // x positions
-      lead_states(1, i) = trajectory.states(3, i); // speeds
-    }
-  }
-  return lead_states;
-}
-
 } // namespace
 
-CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examples::BaseApplication(arguments)
+CEMMPCRacingApp::CEMMPCRacingApp(const Arguments &arguments) : Magnum::Examples::BaseApplication(arguments)
 {
 
   ego_policy_ = CEM_MPC<EigenKinematicBicycle>(
@@ -155,40 +177,65 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
 
   ego_policy_.cost_function_ = std::make_shared<QuadraticCostFunction>();
   trajectory_entities_ = Graphics::TrajectoryEntities(scene_, horizon);
-  trajectory_entities_idm_ = Graphics::TrajectoryEntities(scene_, horizon);
 
   _mesh = Magnum::MeshTools::compile(Magnum::Primitives::cubeWireframe());
   for (auto &object : trajectory_entities_.get_objects())
   {
     new Graphics::WireframeDrawable{*object, wireframe_shader_, _mesh, drawable_group_, red_color};
   }
-  for (auto &object : trajectory_entities_idm_.get_objects())
-  {
-    new Graphics::WireframeDrawable{*object, wireframe_shader_, _mesh, drawable_group_, blue_color};
-  }
 
   for (int i = 0; i < population; ++i)
   {
     path_entities_.push_back(std::make_shared<Graphics::LineEntity>(scene_));
-    // new Graphics::
-    //     VertexColorDrawable{*path_entities_.back()->object_ptr_, vertex_color_shader_, path_entities_.back()->mesh_, drawable_group_};
     new Graphics::FlatDrawable{*path_entities_.back()->object_ptr_, flat_shader_, path_entities_.back()->mesh_, drawable_group_};
   }
 
-  lane_ = environment::create_line_helper(/* n_points */ 200);
+  // lane_ = environment::create_line_helper(/* n_points */ 200);
+  auto track_map_tmp = read_track_from_csv("/home/vjose/code/robotics_project/src/gui_application/track.csv");
+
+  decltype(track_map_tmp) track_map;
+  for (const auto &[key, values] : track_map_tmp)
+  {
+    for (int i{0}; i < values.size(); i += 10)
+    {
+      track_map[key].push_back(values[i]);
+    }
+  }
+
+  // Construct the polylines from the track information
+  geometry::Polyline2D c_left_boundary(track_map["left_x"], track_map["left_y"]);
+  geometry::Polyline2D c_right_boundary(track_map["right_x"], track_map["right_y"]);
+  geometry::Polyline2D c_centerline = compute_centerline(c_left_boundary, c_right_boundary);
+
+  // Map the centerline values to the x and y values that are used to fit the spline
+  auto arclengths_m = c_centerline.get_arclength();
+  auto x_values = std::vector<double>(arclengths_m.size(), 0);
+  auto y_values = std::vector<double>(arclengths_m.size(), 0);
+  Eigen::VectorXd::Map(&x_values[0], x_values.size()) = c_centerline.get_data().col(0);
+  Eigen::VectorXd::Map(&y_values[0], y_values.size()) = c_centerline.get_data().col(1);
+  auto cubic_spline_ptr = std::make_shared<geometry::AlglibCubic2DSpline>(arclengths_m, x_values, y_values);
+
+  // Subsample the spline to create a more dense centerline
+  Eigen::VectorXd subsampled_m = Eigen::VectorXd::LinSpaced(arclengths_m.size() * 10, arclengths_m.front(), arclengths_m.back());
+  std::vector<double> x_subsampled;
+  std::vector<double> y_subsampled;
+  for (int i{0}; i < subsampled_m.size(); ++i)
+  {
+    auto point2d = cubic_spline_ptr->eval(subsampled_m(i));
+    x_subsampled.push_back(point2d.x());
+    y_subsampled.push_back(point2d.y());
+  }
+  geometry::Polyline2D densified_centerline(x_subsampled, y_subsampled);
+
+  // Create the visualization of the track
+  lane_ = environment::Lane(densified_centerline, c_left_boundary, c_right_boundary);
   lane_entity_ = Graphics::LaneEntity(lane_, scene_, vertex_color_shader_, drawable_group_);
 
-  IntelligentDriverModelPolicy::Config config;
-  config.v0 = 10.0;
-  config.N = horizon;
-  actor_policy_ = IntelligentDriverModelPolicy(config);
+  std::cout << "reached here: " << std::endl;
 
   // Initialize current state for the simulation, kinematic bicycle.
   ego_state_ = Dynamics::State();
   ego_state_ << -10.0, 0.0, 0.0, 10.0, 0.0, 0.0;
-
-  actor_state_ = SingleIntegrator::State();
-  actor_state_ << -30.0, 5.0;
 
   history_buffer_["time_s"] = containers::Buffer<double>(n_buffer_capacity);
   history_buffer_["speed_mps"] = containers::Buffer<double>(n_buffer_capacity);
@@ -199,7 +246,7 @@ CEMMPCApplication::CEMMPCApplication(const Arguments &arguments) : Magnum::Examp
   runCEM();
 }
 
-void CEMMPCApplication::execute()
+void CEMMPCRacingApp::execute()
 {
   if (is_running_)
   {
@@ -215,7 +262,7 @@ void CEMMPCApplication::execute()
   }
 }
 
-void CEMMPCApplication::runCEM()
+void CEMMPCRacingApp::runCEM()
 {
   EASY_FUNCTION(profiler::colors::Red);
 
@@ -234,20 +281,8 @@ void CEMMPCApplication::runCEM()
 
   draw_candidate_paths(ego_policy_, path_entities_);
 
-  constexpr double idm_y_value_m = -5.0f;
-  const auto lead_states = calc_idm_lead_states_from_trajectory(actor_policy_, actor_state_, trajectory, lane_);
-  const auto idm_states = actor_policy_.rollout(actor_state_, lead_states);
-  for (size_t i{0}; i < idm_states.cols(); ++i)
-  {
-    auto new_state = idm_states.col(i);
-    trajectory_entities_idm_.set_state_at(i, new_state[0], idm_y_value_m, /* heading */ 0.0);
-  }
-
-  auto idm_action = actor_policy_.get_action(actor_state_, lead_states.col(0));
-
   Vector parameters = Vector::Zero(5);
   ego_state_ = Dynamics::step_(ego_state_, current_action, parameters);
-  actor_state_ = SingleIntegrator::step_(actor_state_, idm_action);
   time_s_ += Dynamics::ts;
 
   history_buffer_["time_s"].push(time_s_);
@@ -256,11 +291,10 @@ void CEMMPCApplication::runCEM()
   history_buffer_["yaw_rad"].push(ego_state_[2]);
   history_buffer_["steering_rad"].push(ego_state_[5]);
 
-  const auto ego_xy = Point2D(ego_state_[0], ego_state_[1]);
   EASY_END_BLOCK;
 }
 
-void CEMMPCApplication::show_menu()
+void CEMMPCRacingApp::show_menu()
 {
   EASY_FUNCTION(profiler::colors::Blue);
   ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
@@ -276,7 +310,6 @@ void CEMMPCApplication::show_menu()
   if (ImGui::Button("Reset state"))
   {
     ego_state_ << -10.0, 0.0, 0.0, 10.0, 0.0, 0.0;
-    actor_state_ << -30.0, 5.0;
     history_buffer_["time_s"] = containers::Buffer<double>(n_buffer_capacity);
     history_buffer_["speed_mps"] = containers::Buffer<double>(n_buffer_capacity);
     history_buffer_["accel_mpss"] = containers::Buffer<double>(n_buffer_capacity);
@@ -408,39 +441,8 @@ void CEMMPCApplication::show_menu()
   EASY_END_BLOCK;
 
   ImGui::End();
-
-  EASY_FUNCTION(profiler::colors::Blue);
-  ImGui::SetNextWindowPos({500.0f, 50.0f}, ImGuiCond_FirstUseEver);
-  ImGui::SetNextWindowBgAlpha(0.5f);
-  ImGui::Begin("IntelligentDriverModelPolicy", nullptr);
-
-  const auto make_plot_idm = [this](auto title, auto value_name, auto getter_fn)
-  {
-    ImPlot::SetNextAxesToFit();
-    if (ImPlot::BeginPlot(title))
-    {
-      ImPlot::SetupAxes("time[s]", value_name);
-
-      std::vector<double> values;
-      auto states = actor_policy_.get_states();
-      for (int i = 0; i < states.cols(); i++)
-      {
-        values.push_back(states(1, i));
-      }
-      ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.5f, 0.0f, 1.0f));
-      ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
-      ImPlot::PlotLine(
-          std::string(value_name).append("_hola").c_str(), this->ego_policy_.get_trajectory().times.data(), values.data(), values.size());
-      ImPlot::PopStyleColor();
-
-      ImPlot::EndPlot();
-    }
-  };
-
-  make_plot_idm("Speed Plot", "speed[mps]", [](const Ref<const SingleIntegrator::State> &state) { return state[1]; });
-  ImGui::End();
 }
 
 } // namespace mpex
 
-MAGNUM_APPLICATION_MAIN(mpex::CEMMPCApplication)
+MAGNUM_APPLICATION_MAIN(mpex::CEMMPCRacingApp)

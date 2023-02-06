@@ -56,6 +56,10 @@ using DynamicsF = Dynamics<_state_size, _action_size, float>;
 template <int _state_size, int _action_size>
 using DynamicsD = Dynamics<_state_size, _action_size, double>;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////// Kinematic Bicycle
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 class EigenKinematicBicycleT : public Dynamics<6, 2, T>
 {
@@ -112,6 +116,10 @@ public:
   }
 };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////// CurvilinearKinematicBicycleT
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 class CurvilinearKinematicBicycleT : public Dynamics<6, 2, T>
 {
@@ -139,7 +147,14 @@ public:
   }
 
   __host__ __device__ static void cu_step(
-      const T *state, const T *action, T *new_state, const T K, const T ts, const T one_over_wheelbase, const T max_jerk, const T max_steering_rate)
+      const T *state,
+      const T *action,
+      T *new_state,
+      const T K,
+      const T ts,
+      const T one_over_wheelbase,
+      const T max_jerk,
+      const T max_steering_rate)
   {
     double ds = (state[3] * cos(state[2])) / (std::abs(1 - state[1] * K) + 1e-8);
     new_state[0] = state[0] + ts * ds;
@@ -170,6 +185,10 @@ public:
 
 using EigenKinematicBicycle = EigenKinematicBicycleT<double>;
 using EigenKinematicBicycleF = EigenKinematicBicycleT<float>;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////// Single Integrator
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 class SingleIntegratorT : public Dynamics<2, 1, T>
@@ -205,34 +224,5 @@ public:
 
 using SingleIntegrator = SingleIntegratorT<double>;
 using SingleIntegratorF = SingleIntegratorT<float>;
-
-// class SingleIntegratorF : public Dynamics<2, 1, float>
-// {
-// public:
-//   constexpr static double ts{0.5f};
-//   __host__ __device__ static void step_single(const float &x, const float &v, const float &a, float &next_x, float &next_v)
-//   {
-//     constexpr float ts = 0.1f;
-//     next_x = x + ts * v + (ts * ts) / 2.0f * a;
-//     next_x = x + ts * v;
-//     next_v = v + ts * a;
-//   }
-//   __host__ __device__ static void cu_step(const float *state, const float *action, float *new_state)
-//   {
-//     step_single(state[0], state[1], action[0], new_state[0], new_state[1]);
-//   }
-//
-//   static void step(const Ref<const State> &state, const Ref<const Action> &action, Ref<State> new_state)
-//   {
-//     cu_step(state.data(), action.data(), new_state.data());
-//   }
-//
-//   static State step_(const Ref<const State> &state, const Ref<const Action> &action)
-//   {
-//     State new_state = State::Zero();
-//     step(state, action, new_state);
-//     return new_state;
-//   }
-// };
 
 } // namespace mpex

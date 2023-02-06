@@ -40,11 +40,11 @@ IlqrMain::IlqrMain(const Arguments &arguments) : Magnum::Examples::BaseApplicati
     new Graphics::WireframeDrawable{*object, wireframe_shader_, mesh_, drawable_group_, color};
   }
 
-  policy_ = IterativeLinearQuadraticRegulator(/* horizon */ horizon, /* iters */ 30, /* debug */ false);
+  ego_policy_ = IterativeLinearQuadraticRegulator(/* horizon */ horizon, /* iters */ 30, /* debug */ false);
 
   // Initialize current state for the simulation, kinematic bicycle.
-  current_state_ = Dynamics::State();
-  current_state_ << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+  ego_state_ = Dynamics::State();
+  ego_state_ << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
 
   lane_ = environment::create_line_helper(/* n_points */ 200);
   lane_entity_ = Graphics::LaneEntity(lane_, scene_, vertex_color_shader_, drawable_group_);
@@ -66,8 +66,8 @@ void IlqrMain::execute()
         .translate(Magnum::Vector3::xAxis(SCALE(50.0f)))
         .rotateX(-90.0_degf)
         .rotateY(-90.0_degf)
-        .translate(Magnum::Vector3::zAxis(SCALE(current_state_[0])))
-        .translate(Magnum::Vector3::xAxis(SCALE(current_state_[1])));
+        .translate(Magnum::Vector3::zAxis(SCALE(ego_state_[0])))
+        .translate(Magnum::Vector3::xAxis(SCALE(ego_state_[1])));
     is_running_ = false;
   }
 }
@@ -77,8 +77,8 @@ void IlqrMain::run_ilqr()
   EASY_FUNCTION(profiler::colors::Red);
   const auto run_policy = [&](auto &policy, auto &entities)
   {
-    // Dynamics::Trajectory trajectory = policy.solve(current_state_, maybe_current_trajectory_);
-    Dynamics::Trajectory trajectory = policy.solve(current_state_, {});
+    // Dynamics::Trajectory trajectory = policy.solve(ego_state_, maybe_current_trajectory_);
+    Dynamics::Trajectory trajectory = policy.solve(ego_state_, {});
     maybe_current_trajectory_ = trajectory;
     Dynamics::Action current_action = trajectory.actions.col(0);
 
@@ -90,18 +90,18 @@ void IlqrMain::run_ilqr()
     return current_action;
   };
 
-  auto current_action = run_policy(policy_, trajectory_entities_);
+  auto current_action = run_policy(ego_policy_, trajectory_entities_);
 
   Vector parameters = Vector::Zero(5);
-  current_state_ = Dynamics::step_(current_state_, current_action, parameters);
+  ego_state_ = Dynamics::step_(ego_state_, current_action, parameters);
   // std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   time_ += Dynamics::ts;
   history_buffer_["time_s"].push(time_);
-  history_buffer_["speed_mps"].push(current_state_[3]);
-  history_buffer_["accel_mpss"].push(current_state_[4]);
-  history_buffer_["yaw_rad"].push(current_state_[2]);
-  history_buffer_["steering_rad"].push(current_state_[5]);
+  history_buffer_["speed_mps"].push(ego_state_[3]);
+  history_buffer_["accel_mpss"].push(ego_state_[4]);
+  history_buffer_["yaw_rad"].push(ego_state_[2]);
+  history_buffer_["steering_rad"].push(ego_state_[5]);
 }
 
 void IlqrMain::show_menu()
@@ -119,7 +119,7 @@ void IlqrMain::show_menu()
 
   if (ImGui::Button("Reset state"))
   {
-    current_state_ << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    ego_state_ << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
     time_ = 0.0f;
     history_buffer_["time_s"] = containers::Buffer<double>(100);
     history_buffer_["speed_mps"] = containers::Buffer<double>(100);
@@ -162,7 +162,7 @@ void IlqrMain::show_menu()
         t_values.push_back(time_ + times[i]);
       }
 
-      for (auto &trajectory : policy_.debug_iterations_)
+      for (auto &trajectory : ego_policy_.debug_iterations_)
       {
         std::vector<double> _t_values;
         const auto &_times = trajectory.times;

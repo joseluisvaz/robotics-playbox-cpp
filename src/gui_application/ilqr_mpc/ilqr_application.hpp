@@ -52,12 +52,12 @@ private:
   void run_ilqr();
   Magnum::GL::Mesh mesh_{Magnum::NoCreate};
   Graphics::TrajectoryEntities trajectory_entities_;
-  IterativeLinearQuadraticRegulator policy_;
+  IterativeLinearQuadraticRegulator ego_policy_;
   std::optional<Dynamics::Trajectory> maybe_current_trajectory_;
   bool is_running_{false};
 
   // State
-  Dynamics::State current_state_;
+  Dynamics::State ego_state_;
   double time_;
 
   // enviroment
