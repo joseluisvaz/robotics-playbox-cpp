@@ -63,7 +63,7 @@ using geometry::Polyline2D;
     std::vector<double> x_vals;
     std::vector<double> y_vals;
     std::vector<double> z_vals;
-    for (int i{0}; i < n_points; ++i)
+    for (size_t i{0}; i < n_points; ++i)
     {
         x_vals.push_back(i * 2.0);
         y_vals.push_back(0.0);
@@ -74,7 +74,7 @@ using geometry::Polyline2D;
 
     x_vals.clear();
     y_vals.clear();
-    for (int i{0}; i < n_points; ++i)
+    for (size_t i{0}; i < n_points; ++i)
     {
         x_vals.push_back(i * 2.0);
         y_vals.push_back(4.0);
@@ -83,7 +83,7 @@ using geometry::Polyline2D;
 
     x_vals.clear();
     y_vals.clear();
-    for (int i{0}; i < n_points; ++i)
+    for (size_t i{0}; i < n_points; ++i)
     {
         x_vals.push_back(i * 2.0);
         y_vals.push_back(-4.0);
@@ -104,5 +104,21 @@ Corridor::Corridor(Polyline2D centerline, Polyline2D left_boundary, Polyline2D r
 {
     return is_between_polylines(left_boundary_, right_boundary_, point);
 };
+
+[[nodiscard]] const Polyline2D& Corridor::get_centerline() const
+{
+    return centerline_;
+};
+
+[[nodiscard]] const Polyline2D& Corridor::get_right_boundary() const
+{
+    return right_boundary_;
+};
+
+[[nodiscard]] const Polyline2D& Corridor::get_left_boundary() const
+{
+    return left_boundary_;
+};
+
 
 }} // namespace mpex::environment

@@ -67,7 +67,7 @@ Eigen::MatrixX2d Polyline2D::get_data() const
     return data_;
 }
 
-[[nodiscard]] std::vector<double> Polyline2D::get_arclength() const
+[[nodiscard]] const std::vector<double>& Polyline2D::get_arclength() const
 {
     return arclength_;
 }

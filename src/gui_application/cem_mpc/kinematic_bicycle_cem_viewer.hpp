@@ -38,18 +38,23 @@ namespace mpex {
 
 namespace impl {
 
-void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::shared_ptr<Graphics::LineEntity>> &path_entities)
+template <typename Dynamics>
+void draw_candidate_paths(
+    CEM_MPC<Dynamics> &mpc,
+    std::vector<std::shared_ptr<Graphics::LineEntity>> &path_entities,
+    std::shared_ptr<Graphics::LineEntity> &optimal_path_entity)
 {
-    const auto set_xy_helper = [](const auto &candidate_trajectory, auto &path_entity, auto color) {
+    const auto set_xy_helper = [&](const auto &candidate_trajectory, auto &path_entity, auto color) {
         std::vector<double> x_vals;
         std::vector<double> y_vals;
         std::vector<double> z_vals;
         for (int i = 0; i < candidate_trajectory.states.cols(); ++i)
         {
-            const EigenKinematicBicycle::State new_state = candidate_trajectory.states.col(i);
-            x_vals.push_back(new_state[0]);
-            y_vals.push_back(new_state[1]);
-            z_vals.push_back(new_state[3]);
+            const typename Dynamics::State state = candidate_trajectory.states.col(i);
+            auto se2 = mpc.dynamics_ptr_->get_track_ptr()->convert_to_se2(state[0], state[1], state[2]);
+            x_vals.push_back(se2.x);
+            y_vals.push_back(se2.y);
+            z_vals.push_back(state[3]);
         }
         path_entity.set_xy(x_vals.size(), x_vals.data(), y_vals.data(), z_vals.data(), color);
     };
@@ -72,6 +77,10 @@ void draw_candidate_paths(CEM_MPC<EigenKinematicBicycle> &mpc, std::vector<std::
         auto &candidate_traj = mpc.candidate_trajectories_[i];
         set_xy_helper(candidate_traj, *path_entities.at(i), color);
     }
+
+    const auto &optimal_trajectory = mpc.get_last_solution();
+    const auto color = Magnum::Math::Color3(0.5f, 1.0f, 0.5f);
+    set_xy_helper(optimal_trajectory, *optimal_path_entity, color);
 }
 
 } // namespace impl
@@ -81,6 +90,7 @@ using Scene3D = Magnum::SceneGraph::Scene<Magnum::SceneGraph::MatrixTransformati
 
 const auto kRedColor = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
 
+template <typename Dynamics = EigenKinematicBicycle>
 class KinematicBicycleCemViewer
 {
 
@@ -88,7 +98,7 @@ class KinematicBicycleCemViewer
     KinematicBicycleCemViewer() = default;
 
     KinematicBicycleCemViewer(
-        std::shared_ptr<CEM_MPC<EigenKinematicBicycle>> mpc_ptr,
+        std::shared_ptr<CEM_MPC<Dynamics>> mpc_ptr,
         Scene3D &scene,
         Magnum::Shaders::MeshVisualizerGL3D &shader,
         Magnum::Shaders::FlatGL3D &flat_shader,
@@ -103,6 +113,9 @@ class KinematicBicycleCemViewer
             new Graphics::FlatDrawable{*path_entities_.back()->object_ptr_, flat_shader, path_entities_.back()->mesh_, group};
         }
 
+        optimal_path_entity_ = std::make_shared<Graphics::LineEntity>(scene);
+        new Graphics::FlatDrawable{*optimal_path_entity_->object_ptr_, flat_shader, optimal_path_entity_->mesh_, group};
+
         trajectory_entities_ = std::make_shared<Graphics::TrajectoryEntities>(scene, horizon);
         for (auto &object : trajectory_entities_->get_objects())
         {
@@ -112,21 +125,24 @@ class KinematicBicycleCemViewer
 
     void draw()
     {
-        impl::draw_candidate_paths(*mpc_ptr_, path_entities_);
+        impl::draw_candidate_paths<Dynamics>(*mpc_ptr_, path_entities_, optimal_path_entity_);
 
         // Draw bounding boxes of trajectory.
         auto trajectory = mpc_ptr_->get_last_solution();
         for (int i = 0; i < trajectory.states.cols(); ++i)
         {
-            EigenKinematicBicycle::State state = trajectory.states.col(i);
+            typename Dynamics::State state = trajectory.states.col(i);
+
             // TODO: Create an SE2 utility function
-            trajectory_entities_->set_state_at(i, state[0], state[1], state[2]);
+            auto se2 = mpc_ptr_->dynamics_ptr_->get_track_ptr()->convert_to_se2(state[0], state[1], state[2]);
+            trajectory_entities_->set_state_at(i, se2.x, se2.y, se2.theta);
         }
     }
 
     std::shared_ptr<Graphics::TrajectoryEntities> trajectory_entities_;
     std::vector<std::shared_ptr<Graphics::LineEntity>> path_entities_;
-    std::shared_ptr<CEM_MPC<EigenKinematicBicycle>> mpc_ptr_;
+    std::shared_ptr<Graphics::LineEntity> optimal_path_entity_;
+    std::shared_ptr<CEM_MPC<Dynamics>> mpc_ptr_;
 };
 
 } // namespace mpex

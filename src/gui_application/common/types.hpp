@@ -78,4 +78,10 @@ struct EigenTrajectory
     };
 };
 
+struct SE2 {
+    double x;
+    double y;
+    double theta;
+};
+
 } // namespace mpex

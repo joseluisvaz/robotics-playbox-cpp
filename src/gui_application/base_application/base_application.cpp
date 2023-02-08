@@ -67,7 +67,7 @@ BaseApplication::BaseApplication(const Arguments &arguments) : Platform::Applica
         GL::Renderer::enable(GL::Renderer::Feature::Blending);
         GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add, GL::Renderer::BlendEquation::Add);
         GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha, GL::Renderer::BlendFunction::OneMinusSourceAlpha);
-        GL::Renderer::setLineWidth(4.0f);
+        GL::Renderer::setLineWidth(10.0f);
     }
 
     /* Shaders, renderer setup */

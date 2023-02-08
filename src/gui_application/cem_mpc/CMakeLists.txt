@@ -63,12 +63,14 @@ target_link_libraries(cem_mpc_application
 
 cuda_add_executable(cem_mpc_racing_app cem_mpc_racing_app.cpp cem_mpc_racing_app.hpp intelligent_driver_model.hpp)
 target_include_directories(cem_mpc_racing_app PUBLIC
-    ${PROJECT_SOURCE_DIR}/src/gui_application/)
+        ${PROJECT_SOURCE_DIR}/src/gui_application/
+        ${PROJECT_SOURCE_DIR}/src/gui_application/third_party/json/single_include/
+    )
 target_link_libraries(cem_mpc_racing_app 
         base_application
         Common
         Eigen3::Eigen
-        # Magnum::GL
         geometry
         environment
+        ${PYTHON_LIBRARIES}
     )

@@ -83,7 +83,7 @@ class LineEntity
     void set_xy(std::size_t n, double *x, double *y, double *z, const Color3 &color = Color3(1.0f, 1.0f, 0.0f))
     {
         data_.clear();
-        for (int i = 0; i < n; i++)
+        for (size_t i{0ULL}; i < n; i++)
         {
             auto color_4 = Magnum::Color4(color[0], color[1], color[2], 0.4f);
             auto pos = Magnum::Vector3(SCALE(static_cast<float>(y[i])), SCALE(static_cast<float>(z[i])), SCALE(static_cast<float>(x[i])));
@@ -159,7 +159,7 @@ class LaneEntity
   public:
     LaneEntity() = default;
     LaneEntity(
-        environment::Corridor &lane,
+        const environment::Corridor &lane,
         Scene3D &scene,
         Shaders::VertexColorGL3D &vertex_color_shader,
         SceneGraph::DrawableGroup3D &drawable_group);

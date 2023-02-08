@@ -34,8 +34,10 @@
 #include "cem_mpc/cem_mpc.h"
 #include "cem_mpc/cem_mpc_racing_app.hpp"
 #include "cem_mpc/intelligent_driver_model.hpp"
+#include "common/dynamics.h"
 #include "common/types.hpp"
 #include "environment/lane_map.hpp"
+#include "environment/track.hpp"
 #include "environment/track_utiilities.hpp"
 #include "geometry/geometry.hpp"
 #include "third_party/implot/implot.h"
@@ -53,70 +55,19 @@ using namespace Magnum::Math::Literals;
 
 constexpr int population = 1024;
 constexpr int iters = 20;
-constexpr int horizon = 20;
+constexpr int horizon = 30;
 
 const auto red_color = Magnum::Math::Color3(1.0f, 0.2f, 0.0f);
 const auto blue_color = Magnum::Math::Color3(0.0f, 0.6f, 1.0f);
-
-Polyline2D compute_centerline(const Polyline2D &left_boundary, const Polyline2D &right_boundary)
-{
-    geometry::Polyline2D centerline;
-    for (size_t i{0}; i < left_boundary.size(); ++i)
-    {
-        // Transform to vector because we have defined arithmetic operations
-        auto p_left = geometry::Vector2D(left_boundary[i]);
-        auto p_right = geometry::Vector2D(right_boundary[i]);
-        auto p_center = (p_right + p_left) / 2.0;
-        centerline.push_back(p_center.get_point());
-    }
-
-    return centerline;
-}
 
 } // namespace
 
 CEMMPCRacingApp::CEMMPCRacingApp(const Arguments &arguments) : Magnum::Examples::BaseApplication(arguments)
 {
-    auto track_map_tmp = environment::read_track_from_csv("/home/vjose/code/robotics_project/src/gui_application/track.csv");
+    track_ptr_ = std::make_shared<environment::Track>("/home/vjose/code/robotics_project/src/gui_application/track.json");
+    track_ptr_ = std::make_shared<environment::Track>(track_ptr_->scale(50.0));
 
-    decltype(track_map_tmp) track_map;
-    for (const auto &[key, values] : track_map_tmp)
-    {
-        for (int i{0}; i < values.size(); i += 10)
-        {
-            track_map[key].push_back(values[i]);
-        }
-    }
-
-    // Construct the polylines from the track information
-    geometry::Polyline2D c_left_boundary(track_map["left_x"], track_map["left_y"]);
-    geometry::Polyline2D c_right_boundary(track_map["right_x"], track_map["right_y"]);
-    geometry::Polyline2D c_centerline = compute_centerline(c_left_boundary, c_right_boundary);
-
-    // Map the centerline values to the x and y values that are used to fit the spline
-    auto arclengths_m = c_centerline.get_arclength();
-    auto x_values = std::vector<double>(arclengths_m.size(), 0);
-    auto y_values = std::vector<double>(arclengths_m.size(), 0);
-    Eigen::VectorXd::Map(&x_values[0], x_values.size()) = c_centerline.get_data().col(0);
-    Eigen::VectorXd::Map(&y_values[0], y_values.size()) = c_centerline.get_data().col(1);
-    auto cubic_spline_ptr = std::make_shared<geometry::AlglibCubic2DSpline>(arclengths_m, x_values, y_values);
-
-    // Subsample the spline to create a more dense centerline
-    Eigen::VectorXd subsampled_m = Eigen::VectorXd::LinSpaced(arclengths_m.size() * 10, arclengths_m.front(), arclengths_m.back());
-    std::vector<double> x_subsampled;
-    std::vector<double> y_subsampled;
-    for (int i{0}; i < subsampled_m.size(); ++i)
-    {
-        auto point2d = cubic_spline_ptr->eval(subsampled_m(i));
-        x_subsampled.push_back(point2d.x());
-        y_subsampled.push_back(point2d.y());
-    }
-    geometry::Polyline2D densified_centerline(x_subsampled, y_subsampled);
-
-    corridor_ = environment::Corridor(densified_centerline, c_left_boundary, c_right_boundary);
-
-    // Create the visualization of the track
-    new Graphics::LaneEntity(corridor_, scene_, vertex_color_shader_, drawable_group_);
+    new Graphics::LaneEntity(track_ptr_->get_corridor(), scene_, vertex_color_shader_, drawable_group_);
 
     // Set Policy and cost function
     CEM_MPC_Config config =
@@ -124,10 +75,13 @@ CEMMPCRacingApp::CEMMPCRacingApp(const Arguments &arguments) : Magnum::Examples:
          horizon,
          /* population= */ population,
          /* elites */ 10};
-    ego_policy_ptr_ = std::make_shared<CEM_MPC<EigenKinematicBicycle>>(config);
+
+    dynamics_ptr_ = std::make_shared<CurvilinearKinematicBicycle>(track_ptr_);
+    ego_policy_ptr_ = std::make_shared<CEM_MPC<CurvilinearKinematicBicycle>>(config, dynamics_ptr_);
 
     ego_policy_ptr_->cost_function_ = std::make_shared<QuadraticCostFunction>();
-    mpc_viewer_ = KinematicBicycleCemViewer(ego_policy_ptr_, scene_, wireframe_shader_, flat_shader_, drawable_group_, horizon, population);
+    mpc_viewer_ = KinematicBicycleCemViewer<
+        CurvilinearKinematicBicycle>(ego_policy_ptr_, scene_, wireframe_shader_, flat_shader_, drawable_group_, horizon, population);
 
     // Initialize current state for the simulation, kinematic bicycle.
     ego_state_ = Dynamics::State();
@@ -148,13 +102,14 @@ void CEMMPCRacingApp::execute()
     {
         runCEM();
 
+        auto se2 = ego_policy_ptr_->dynamics_ptr_->get_track_ptr()->convert_to_se2(ego_state_[0], ego_state_[1], ego_state_[2]);
         camera_object_->resetTransformation()
             .translate(Magnum::Vector3::zAxis(SCALE(200.0f)))
             .translate(Magnum::Vector3::xAxis(SCALE(50.0f)))
             .rotateX(-90.0_degf)
             .rotateY(-90.0_degf)
-            .translate(Magnum::Vector3::zAxis(SCALE(ego_state_[0])))
-            .translate(Magnum::Vector3::xAxis(SCALE(ego_state_[1])));
+            .translate(Magnum::Vector3::zAxis(SCALE(se2.x)))
+            .translate(Magnum::Vector3::xAxis(SCALE(se2.y)));
     }
 }
 
@@ -169,7 +124,7 @@ void CEMMPCRacingApp::runCEM()
     mpc_viewer_.draw();
 
     Vector parameters = Vector::Zero(5);
-    ego_state_ = Dynamics::step_(ego_state_, current_action, parameters);
+    ego_state_ = dynamics_ptr_->step_(ego_state_, current_action, parameters);
     time_s_ += Dynamics::ts;
 
     history_buffer_["time_s"].push(time_s_);

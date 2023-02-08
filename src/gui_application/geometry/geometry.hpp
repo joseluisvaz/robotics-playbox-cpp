@@ -66,7 +66,7 @@ class Polyline2D
     ///
     [[nodiscard]] Eigen::MatrixX2d get_data() const;
     [[nodiscard]] Point2D get_point(std::size_t i) const;
-    [[nodiscard]] std::vector<double> get_arclength() const;
+    [[nodiscard]] const std::vector<double>& get_arclength() const;
 
   private:
     Eigen::MatrixX2d data_;
@@ -119,6 +119,11 @@ class Vector2D : public Eigen::Vector2d
     Vector2D operator/(const double v)
     {
         return static_cast<Vector2D>(Eigen::Vector2d::operator/(v));
+    };
+
+    Vector2D normalized()
+    {
+        return static_cast<Vector2D>(Eigen::Vector2d::normalized());
     };
 };
 
@@ -184,7 +189,20 @@ class AlglibCubic2DSpline : protected Cubic2DSpline
         return Point2D(x_spline_->eval(x), y_spline_->eval(x));
     }
 
-  protected:
+    double eval_curvature(const double t)
+    {
+        double x, dx, ddx;
+        double y, dy, ddy;
+
+        x_spline_->eval_diff(t, x, dx, ddx);
+        y_spline_->eval_diff(t, y, dy, ddy);
+
+        double num = dx * ddy - dy * ddx;
+        double den = std::pow(dx * dx + dy * dy + 1e-9, 1.5);
+      
+        return num / den;
+    }
+    
     std::shared_ptr<AlglibCubic1DSpline> x_spline_;
     std::shared_ptr<AlglibCubic1DSpline> y_spline_;
 };

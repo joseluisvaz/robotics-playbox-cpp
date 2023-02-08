@@ -1,10 +1,12 @@
 #pragma once
 
-#include <Eigen/Dense>
-#include <easy/profiler.h>
 #include <iostream>
+#include <memory>
 #include <random>
 #include <thread>
+
+#include <Eigen/Dense>
+#include <easy/profiler.h>
 
 #include "cem_mpc/cem_mpc.h"
 #include "common/math.hpp"
@@ -13,7 +15,8 @@
 namespace mpex {
 
 template <typename DynamicsT>
-CEM_MPC<DynamicsT>::CEM_MPC(const CEM_MPC_Config &config) : config_(config), trajectory_(config.horizon)
+CEM_MPC<DynamicsT>::CEM_MPC(const CEM_MPC_Config &config, const std::shared_ptr<DynamicsT> dynamics_ptr)
+    : config_(config), dynamics_ptr_(dynamics_ptr), trajectory_(config.horizon)
 {
     costs_index_pair_ = std::vector<std::pair<double, int>>(config.population, std::make_pair(0.0f, 0));
 
@@ -35,7 +38,7 @@ void CEM_MPC<DynamicsT>::rollout(Trajectory &trajectory)
         trajectory.times.at(i) = current_time_s;
 
         Vector parameters = Vector::Zero(5);
-        DynamicsT::step(trajectory.states.col(i), trajectory.actions.col(i), parameters, trajectory.states.col(i + 1));
+        dynamics_ptr_->step(trajectory.states.col(i), trajectory.actions.col(i), parameters, trajectory.states.col(i + 1));
         current_time_s += DynamicsT::ts;
     }
     trajectory.times.at(config_.horizon - 1) = current_time_s;

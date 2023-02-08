@@ -30,6 +30,8 @@
 // #endif
 
 #include "cmath"
+
+#include "gui_application/environment/track.hpp"
 #include "types.hpp"
 
 namespace mpex {
@@ -72,6 +74,8 @@ class EigenKinematicBicycleT : public Dynamics<6, 2, T>
     constexpr static T max_steering_rate{0.1f};
     constexpr static T max_jerk{1.0f};
 
+    EigenKinematicBicycleT() = default;
+
     template <typename VectorT>
     static VectorT step_diff(const VectorT &state, const VectorT &action)
     {
@@ -88,7 +92,6 @@ class EigenKinematicBicycleT : public Dynamics<6, 2, T>
     __host__ __device__ static void cu_step(
         const T *state, const T *action, T *new_state, const T ts, const T one_over_wheelbase, const T max_jerk, const T max_steering_rate)
     {
-
         new_state[0] = state[0] + ts * state[3] * cos(state[2]);
         new_state[1] = state[1] + ts * state[3] * sin(state[2]);
         new_state[2] = state[2] + ts * state[3] * one_over_wheelbase * tan(state[5]);
@@ -97,16 +100,16 @@ class EigenKinematicBicycleT : public Dynamics<6, 2, T>
         new_state[5] = state[5] + ts * max_steering_rate * tanh(action[1]);
     };
 
-    static void step(
+    void step(
         const Ref<const typename D::State> &state,
         const Ref<const typename D::Action> &action,
-        const Ref<const Vector> &parameters,
+        [[maybe_unused]] const Ref<const Vector> &parameters,
         Ref<typename D::State> new_state)
     {
         cu_step(state.data(), action.data(), new_state.data(), ts, one_over_wheelbase, max_jerk, max_steering_rate);
     }
 
-    static typename D::State step_(
+    typename D::State step_(
         const Ref<const typename D::State> &state, const Ref<const typename D::Action> &action, const Ref<const Vector> &parameters)
     {
         typename D::State new_state = D::State::Zero();
@@ -114,6 +117,9 @@ class EigenKinematicBicycleT : public Dynamics<6, 2, T>
         return new_state;
     }
 };
+
+using EigenKinematicBicycle = EigenKinematicBicycleT<double>;
+using EigenKinematicBicycleF = EigenKinematicBicycleT<float>;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////// CurvilinearKinematicBicycleT
@@ -131,6 +137,9 @@ class CurvilinearKinematicBicycleT : public Dynamics<6, 2, T>
     constexpr static T max_steering{0.52f};
     constexpr static T max_steering_rate{0.1f};
     constexpr static T max_jerk{1.0f};
+
+    CurvilinearKinematicBicycleT() = default;
+    CurvilinearKinematicBicycleT(const std::shared_ptr<environment::Track> &track_ptr) : track_ptr_(track_ptr){};
 
     template <typename VectorT>
     static VectorT step_diff(const VectorT &state, const VectorT &action)
@@ -164,26 +173,35 @@ class CurvilinearKinematicBicycleT : public Dynamics<6, 2, T>
         new_state[5] = state[5] + ts * max_steering_rate * tanh(action[1]);
     };
 
-    static void step(
+    void step(
         const Ref<const typename D::State> &state,
         const Ref<const typename D::Action> &action,
         const Ref<const Vector> &parameters,
         Ref<typename D::State> new_state)
     {
-        cu_step(state.data(), action.data(), new_state.data(), parameters(0), ts, one_over_wheelbase, max_jerk, max_steering_rate);
+        double curvature = track_ptr_ ? track_ptr_->eval_curvature(state[0]) : 0.0;
+        cu_step(state.data(), action.data(), new_state.data(), curvature, ts, one_over_wheelbase, max_jerk, max_steering_rate);
     }
 
-    static typename D::State step_(
+    typename D::State step_(
         const Ref<const typename D::State> &state, const Ref<const typename D::Action> &action, const Ref<const Vector> &parameters)
     {
         typename D::State new_state = D::State::Zero();
         step(state, action, parameters, new_state);
         return new_state;
     }
+
+    [[nodiscard]] std::shared_ptr<const environment::Track> get_track_ptr() const
+    {
+        return track_ptr_;
+    }
+
+  private:
+    std::shared_ptr<environment::Track> track_ptr_;
 };
 
-using EigenKinematicBicycle = EigenKinematicBicycleT<double>;
-using EigenKinematicBicycleF = EigenKinematicBicycleT<float>;
+using CurvilinearKinematicBicycle = CurvilinearKinematicBicycleT<double>;
+using CurvilinearKinematicBicycleF = CurvilinearKinematicBicycleT<float>;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////// Single Integrator

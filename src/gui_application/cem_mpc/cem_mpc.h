@@ -43,7 +43,7 @@ class CEM_MPC
     CEM_MPC() = default;
 
     /// Construct a new cem_mpc object, preallocates memory for trajectories.
-    CEM_MPC(const CEM_MPC_Config &config);
+    CEM_MPC(const CEM_MPC_Config &config, const std::shared_ptr<DynamicsT> dynamics_ptr_);
 
     /// Execute the cross entropy method mpc, it return the full state-action trajectory. Extract the first action to
     /// control your system.
@@ -59,6 +59,9 @@ class CEM_MPC
     std::shared_ptr<CostFunction> cost_function_;
     std::vector<Trajectory> candidate_trajectories_;
     std::vector<std::pair<double, int>> costs_index_pair_;
+
+    // Dynamics function pointer
+    std::shared_ptr<DynamicsT> dynamics_ptr_;
 
   private:
     /// Runs a single rollout for a trajectory.
@@ -76,7 +79,6 @@ class CEM_MPC
     CEM_MPC_Config config_;
     Trajectory trajectory_;
     Sampler sampler_;
-
 };
 
 } // namespace mpex

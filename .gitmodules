@@ -10,3 +10,6 @@
 [submodule "src/gui_application/third_party/olcPGEDearImGui"]
 	path = src/gui_application/third_party/olcPGEDearImGui
 	url = https://github.com/dandistine/olcPGEDearImGui.git
+[submodule "src/gui_application/third_party/json"]
+	path = src/gui_application/third_party/json
+	url = https://github.com/nlohmann/json

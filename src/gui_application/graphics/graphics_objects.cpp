@@ -97,7 +97,10 @@ void FlatDrawable::draw(const Magnum::Matrix4 &transformation, SceneGraph::Camer
 }
 
 LaneEntity::LaneEntity(
-    environment::Corridor &lane, Scene3D &scene, Shaders::VertexColorGL3D &vertex_color_shader, SceneGraph::DrawableGroup3D &drawable_group)
+    const environment::Corridor &lane,
+    Scene3D &scene,
+    Shaders::VertexColorGL3D &vertex_color_shader,
+    SceneGraph::DrawableGroup3D &drawable_group)
     : lane_(lane)
 {
 

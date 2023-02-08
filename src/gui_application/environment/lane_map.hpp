@@ -27,6 +27,9 @@ class Corridor
     Corridor() = default;
     Corridor(Polyline2D centerline, Polyline2D left_boundary, Polyline2D right_boundary);
     [[nodiscard]] bool is_inside(const Point2D point) const noexcept;
+    [[nodiscard]] const Polyline2D &get_centerline() const;
+    [[nodiscard]] const Polyline2D &get_left_boundary() const;
+    [[nodiscard]] const Polyline2D &get_right_boundary() const;
 
     Polyline2D centerline_;
     Polyline2D left_boundary_;
