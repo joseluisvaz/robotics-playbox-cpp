@@ -126,15 +126,18 @@ class Track
 
     [[nodiscard]] double eval_curvature(const double s_unclamped) const
     {
-        const auto &arclength = corridor_.get_centerline().get_arclength();
-        const auto s = std::fmod(s_unclamped, arclength.back());
+        // const auto &arclength = corridor_.get_centerline().get_arclength();
+        // const auto s = std::fmod(s_unclamped, arclength.back());
+        const auto s = s_unclamped;
         return centerline_spline_ptr_->eval_curvature(s);
     }
 
     [[nodiscard]] SE2 convert_to_se2(const double s_unclamped, const double d, const double mu) const
     {
-        const auto &arclength = corridor_.get_centerline().get_arclength();
-        const auto s = std::fmod(s_unclamped, arclength.back());
+        // const auto &arclength = corridor_.get_centerline().get_arclength();
+        // const auto s = std::fmod(s_unclamped, arclength.back());
+        // const auto &arclength = corridor_.get_centerline().get_arclength();
+        const auto s = s_unclamped;
 
         const auto &x_spline = centerline_spline_ptr_->x_spline_;
         const auto &y_spline = centerline_spline_ptr_->y_spline_;
@@ -165,6 +168,11 @@ class Track
     [[nodiscard]] const Corridor &get_corridor() const
     {
         return corridor_;
+    }
+
+    [[nodiscard]] std::shared_ptr< Spline> &get_centerline_spline_ptr() 
+    {
+        return centerline_spline_ptr_;
     }
 
   private:

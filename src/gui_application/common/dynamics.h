@@ -132,43 +132,27 @@ class CurvilinearKinematicBicycleT : public Dynamics<6, 2, T>
     using D = Dynamics<6, 2, T>;
 
   public:
-    constexpr static T ts{0.5f};
-    constexpr static T one_over_wheelbase{1.0f / 3.0f};
-    constexpr static T max_steering{0.52f};
-    constexpr static T max_steering_rate{0.1f};
+    constexpr static T ts{0.1f};
+    constexpr static T one_over_wheelbase{1.0f / 1.5f};
+    constexpr static T max_steering{0.35f};
+    constexpr static T max_accel{2.0f};
     constexpr static T max_jerk{1.0f};
+    constexpr static T max_steering_rate{0.5f};
 
     CurvilinearKinematicBicycleT() = default;
     CurvilinearKinematicBicycleT(const std::shared_ptr<environment::Track> &track_ptr) : track_ptr_(track_ptr){};
 
-    template <typename VectorT>
-    static VectorT step_diff(const VectorT &state, const VectorT &action)
-    {
-        VectorT new_state = VectorT::Zero(state.size());
-        new_state[0] = state[0] + ts * state[3] * cos(state[2]);
-        new_state[1] = state[1] + ts * state[3] * sin(state[2]);
-        new_state[2] = state[2] + ts * state[3] * one_over_wheelbase * tan(state[5]);
-        new_state[3] = state[3] + ts * state[4];
-        new_state[4] = state[4] + ts * max_jerk * tanh(action[0]);
-        new_state[5] = state[5] + ts * max_steering_rate * tanh(action[1]);
-        return new_state;
-    }
-
     __host__ __device__ static void cu_step(
-        const T *state,
-        const T *action,
-        T *new_state,
-        const T K,
-        const T ts,
-        const T one_over_wheelbase,
-        const T max_jerk,
-        const T max_steering_rate)
+        const T *state, const T *action, T *new_state, const T K, const T ts, const T one_over_wheelbase)
     {
+
+        T accel = max_accel * tanh(action[0]);
+        T steering = max_steering * tanh(action[1]);
         double ds = (state[3] * cos(state[2])) / (std::abs(1 - state[1] * K) + 1e-8);
         new_state[0] = state[0] + ts * ds;
         new_state[1] = state[1] + ts * state[3] * sin(state[2]);
-        new_state[2] = state[2] + ts * ((state[3] * one_over_wheelbase * tan(state[5])) - K * ds);
-        new_state[3] = state[3] + ts * state[4];
+        new_state[2] = state[2] + ts * ((state[3] * one_over_wheelbase * tan(steering)) - K * ds);
+        new_state[3] = state[3] + ts * accel;
         new_state[4] = state[4] + ts * max_jerk * tanh(action[0]);
         new_state[5] = state[5] + ts * max_steering_rate * tanh(action[1]);
     };
@@ -180,7 +164,7 @@ class CurvilinearKinematicBicycleT : public Dynamics<6, 2, T>
         Ref<typename D::State> new_state)
     {
         double curvature = track_ptr_ ? track_ptr_->eval_curvature(state[0]) : 0.0;
-        cu_step(state.data(), action.data(), new_state.data(), curvature, ts, one_over_wheelbase, max_jerk, max_steering_rate);
+        cu_step(state.data(), action.data(), new_state.data(), curvature, ts, one_over_wheelbase);
     }
 
     typename D::State step_(

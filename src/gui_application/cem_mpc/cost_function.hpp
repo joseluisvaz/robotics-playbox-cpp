@@ -29,7 +29,7 @@ namespace mpex {
 
 class CostFunction
 {
-    using D = EigenKinematicBicycle;
+    using D = CurvilinearKinematicBicycle;
 
   public:
     virtual double operator()(const Ref<const D::States> &states, const Ref<const D::Actions> &actions) const = 0;
@@ -38,7 +38,7 @@ class CostFunction
 class QuadraticCostFunction : public CostFunction
 {
   public:
-    using D = EigenKinematicBicycle;
+    using D = CurvilinearKinematicBicycle;
 
     double evaluate_state_action_pair(
         const Ref<const D::State> &s,
@@ -51,12 +51,6 @@ class QuadraticCostFunction : public CostFunction
         double cost = 0.0f;
         for (int i = 0; i < D::state_size; ++i)
         {
-            if (i == 2 || i == 5)
-            {
-                // It is the yaw state or steering
-                cost += w_s[2] * (ANGLE_DIFF(s[2], r_s[2])) * (ANGLE_DIFF(s[2], r_s[2]));
-                continue;
-            }
             cost += w_s[i] * (s[i] - r_s[i]) * (s[i] - r_s[i]);
         }
 
@@ -64,6 +58,8 @@ class QuadraticCostFunction : public CostFunction
         {
             cost += w_a[i] * (a[i] - r_a[i]) * (a[i] - r_a[i]);
         }
+
+        // cost -= s[0];
 
         return cost;
     }
@@ -74,6 +70,12 @@ class QuadraticCostFunction : public CostFunction
         for (int i{0}; i + 1 < states.cols(); ++i)
         {
             cost += evaluate_state_action_pair(states.col(i), actions.col(i), w_s_, w_a_, r_s_, r_a_);
+
+            // if (i + 1 < actions.cols())
+            // {
+            //     cost += 10.0 * (actions(0, i) - actions(0, i + 1)) * (actions(0, i) - actions(0, i + 1));
+            //     cost += 10.0 * (actions(1, i) - actions(1, i + 1)) * (actions(1, i) - actions(1, i + 1));
+            // }
         }
         cost += evaluate_state_action_pair(states.col(states.cols() - 1), actions.col(actions.cols() - 1UL), W_s_, W_a_, R_s_, R_a_);
         return cost;

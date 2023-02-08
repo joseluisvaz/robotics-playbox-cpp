@@ -156,13 +156,16 @@ class FlatDrawable : public SceneGraph::Drawable3D
 class LaneEntity
 {
 
+    static constexpr auto kGrayColor = Magnum::Math::Color3{0.63f, 0.63f, 0.63f};
+
   public:
     LaneEntity() = default;
     LaneEntity(
         const environment::Corridor &lane,
         Scene3D &scene,
         Shaders::VertexColorGL3D &vertex_color_shader,
-        SceneGraph::DrawableGroup3D &drawable_group);
+        SceneGraph::DrawableGroup3D &drawable_group,
+        Magnum::Math::Color3<float> color = kGrayColor);
 
     environment::Corridor lane_;
     std::shared_ptr<Graphics::LineEntity> left_boundary_drawable_;

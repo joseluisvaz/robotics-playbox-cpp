@@ -100,7 +100,8 @@ LaneEntity::LaneEntity(
     const environment::Corridor &lane,
     Scene3D &scene,
     Shaders::VertexColorGL3D &vertex_color_shader,
-    SceneGraph::DrawableGroup3D &drawable_group)
+    SceneGraph::DrawableGroup3D &drawable_group,
+    Magnum::Math::Color3<float> color)
     : lane_(lane)
 {
 
@@ -115,17 +116,15 @@ LaneEntity::LaneEntity(
     new_drawable(left_boundary_drawable_);
     new_drawable(right_boundary_drawable_);
 
-    const auto gray_color = Magnum::Math::Color3(0.63f, 0.63f, 0.63f);
-
     auto centerline_data = lane_.centerline_.get_data();
     auto lb_data = lane_.left_boundary_.get_data();
     auto rb_data = lane_.right_boundary_.get_data();
 
     std::vector<double> z_vals(centerline_data.rows(), 0.0);
     const std::size_t N = centerline_data.rows();
-    centerline_drawable_->set_xy(N, centerline_data.data(), centerline_data.data() + N, z_vals.data(), gray_color);
-    left_boundary_drawable_->set_xy(lb_data.rows(), lb_data.data(), lb_data.data() + lb_data.rows(), z_vals.data(), gray_color);
-    right_boundary_drawable_->set_xy(rb_data.rows(), rb_data.data(), rb_data.data() + rb_data.rows(), z_vals.data(), gray_color);
+    centerline_drawable_->set_xy(N, centerline_data.data(), centerline_data.data() + N, z_vals.data(), color);
+    left_boundary_drawable_->set_xy(lb_data.rows(), lb_data.data(), lb_data.data() + lb_data.rows(), z_vals.data(), color);
+    right_boundary_drawable_->set_xy(rb_data.rows(), rb_data.data(), rb_data.data() + rb_data.rows(), z_vals.data(), color);
 }
 
 } // namespace mpex::Graphics
